@@ -1,0 +1,27 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "NolabelApp/**"
+      - "ci/**"
+      - "project.yml"
+      - ".github/workflows/ios-unsigned-ipa.yml"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build unsigned IPA
+        run: bash ci/build-unsigned-ipa.sh
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nolabel-unsigned-ipa
+          path: Nolabel-unsigned.ipa
+          if-no-files-found: error
