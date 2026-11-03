@@ -24,28 +24,33 @@ struct SettingsOverlay: View {
 
                 ScrollView {
                     VStack(spacing: 0) {
-                        header
-                        if model.settingsSubview == .main {
-                            mainView
-                                .transition(.opacity.combined(with: .move(edge: .leading)))
-                        } else {
-                            appearanceView
-                                .transition(.opacity.combined(with: .move(edge: .trailing)))
+                        Spacer(minLength: 0)
+                        VStack(spacing: 0) {
+                            header
+                            if model.settingsSubview == .main {
+                                mainView
+                                    .transition(.opacity.combined(with: .move(edge: .leading)))
+                            } else {
+                                appearanceView
+                                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+                            }
                         }
+                        .padding(18)
+                        .frame(maxWidth: min(390, proxy.size.width - 24))
+                        .glassEffect(.regular, in: .rect(cornerRadius: 24))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(palette.line, lineWidth: 1)
+                        )
+                        .shadow(color: palette.sheetShadow, radius: 34, y: 18)
+                        Spacer(minLength: 0)
                     }
-                    .padding(18)
-                    .frame(maxWidth: min(390, proxy.size.width - 24))
-                    .glassEffect(.regular, in: .rect(cornerRadius: 24))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(palette.line, lineWidth: 1)
-                    )
-                    .shadow(color: palette.sheetShadow, radius: 34, y: 18)
+                    .frame(minHeight: proxy.size.height)
+                    .frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.basedOnSize)
                 .frame(maxWidth: min(390, proxy.size.width - 24))
-                .frame(maxHeight: .infinity, alignment: .center)
                 .padding(.horizontal, 12)
             }
         }

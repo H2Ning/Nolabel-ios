@@ -98,7 +98,7 @@ struct EntryView: View {
                     noteFocused = false
                     model.dateSheetOpen = true
                 } label: {
-                    Text(DateHelp.fullDate(DateHelp.iso(from: model.entryDate)) + " · \(DateHelp.time(from: model.entryDate))")
+                    Text(DateHelp.dayTitle(DateHelp.iso(from: model.entryDate)) + " · \(DateHelp.time(from: model.entryDate))")
                         .font(.system(size: 12, weight: .medium))
                         .monospacedDigit()
                         .foregroundStyle(palette.muted)

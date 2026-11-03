@@ -310,6 +310,8 @@ struct DayCapsuleView: View {
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(netTextColor)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(netColor, in: Capsule())
