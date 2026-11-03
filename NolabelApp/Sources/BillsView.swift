@@ -1,0 +1,491 @@
+import SwiftUI
+
+struct BillsView: View {
+    @Bindable var model: AppModel
+    let palette: AppPalette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(model: AppModel, palette: AppPalette) {
+        self._model = Bindable(model)
+        self.palette = palette
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            topBar
+            ScrollView {
+                VStack(spacing: 0) {
+                    heading
+                    summaryCard
+                    listSection
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 128)
+            }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            addButton
+                .padding(.trailing, 20)
+                .padding(.bottom, 22)
+        }
+        .overlay(alignment: .bottom) {
+            if model.writing {
+                ProgressView()
+                    .tint(palette.ink)
+                    .padding(10)
+                    .glassCircle(interactive: false)
+                    .padding(.bottom, 28)
+            }
+        }
+    }
+
+    private var topBar: some View {
+        HStack(spacing: 12) {
+            Button(action: { model.openSettings() }) {
+                Image(systemName: "person")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(palette.ink2)
+                    .frame(width: 46, height: 46)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(PressableStyle(scale: 0.94))
+            .glassCircle()
+            .accessibilityLabel("设置")
+
+            Spacer(minLength: 0)
+
+            GlassEffectContainer(spacing: 0) {
+                HStack(spacing: 0) {
+                    monthButton(systemName: "chevron.left", label: "上个月") {
+                        model.shiftMonth(-1)
+                    }
+                    Rectangle()
+                        .fill(palette.line)
+                        .frame(width: 1, height: 22)
+                    monthButton(systemName: "chevron.right", label: "下个月") {
+                        model.shiftMonth(1)
+                    }
+                }
+                .frame(height: 46)
+                .glassEffect(.regular, in: .capsule)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
+    }
+
+    private func monthButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(palette.ink2)
+                .frame(width: 46, height: 46)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle(scale: 0.92))
+        .accessibilityLabel(label)
+    }
+
+    private var heading: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(model.monthTitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .tracking(1.1)
+                    .foregroundStyle(palette.muted)
+                Text("账单")
+                    .font(.system(size: 36, weight: .bold))
+                    .tracking(-0.8)
+                    .foregroundStyle(palette.ink)
+            }
+            Spacer()
+            Text("\(model.monthBills.count) 笔")
+                .font(.system(size: 13, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(palette.muted)
+                .padding(.bottom, 4)
+        }
+        .padding(.top, 18)
+        .padding(.bottom, 16)
+    }
+
+    private var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("该月支出")
+                    .font(.system(size: 13, weight: .medium))
+                    .tracking(0.2)
+                    .foregroundStyle(palette.muted)
+                Spacer()
+                Text(model.monthPeriod)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.muted)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("¥")
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundStyle(palette.accent)
+                Text(Formats.money(model.monthExpense))
+                    .font(.system(size: 43, weight: .bold, design: .rounded))
+                    .tracking(-1.3)
+                    .monospacedDigit()
+                    .foregroundStyle(palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+            }
+            .padding(.top, 4)
+
+            Rectangle()
+                .fill(palette.line)
+                .frame(height: 1)
+                .padding(.top, 12)
+
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(palette.income)
+                    .frame(width: 6, height: 6)
+                Text("收入")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.ink2)
+                Text(Formats.money(model.monthIncome))
+                    .font(.system(size: 12, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(palette.income)
+                Spacer()
+                Text("\(model.monthBills.count) 笔 · \(model.monthNotes) 张现钞")
+                    .font(.system(size: 12, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(palette.muted)
+            }
+            .padding(.top, 12)
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular, in: .rect(cornerRadius: 22))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(palette.line, lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("该月支出 \(Formats.money(model.monthExpense)) 元，收入 \(Formats.money(model.monthIncome)) 元，\(model.monthBills.count) 笔，\(model.monthNotes) 张现钞")
+    }
+
+    private var listSection: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("账单明细")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(palette.ink)
+                Spacer()
+                Button(action: { model.toggleSort() }) {
+                    Text(model.sortDesc ? "按时间倒序" : "按时间正序")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(palette.muted)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(PressableStyle(scale: 0.96))
+            }
+            .padding(.top, 24)
+            .padding(.bottom, 8)
+
+            if model.monthBills.isEmpty {
+                emptyState
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(model.monthGroups()) { group in
+                        DayCapsuleView(model: model, group: group, palette: palette)
+                    }
+                }
+                .animation(reduceMotion ? nil : AppMotion.spring, value: model.monthBills)
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(palette.surface)
+                .frame(width: 76, height: 58)
+                .overlay(
+                    VStack(spacing: 8) {
+                        ForEach(0..<3, id: \.self) { _ in
+                            Rectangle()
+                                .fill(palette.line)
+                                .frame(height: 1)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .stroke(palette.lineStrong, lineWidth: 1)
+                )
+                .rotationEffect(.degrees(-2))
+                .padding(.bottom, 16)
+
+            Text(model.bills.isEmpty ? "还没有账单" : "这个月还没有账单")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(palette.ink)
+
+            Button(action: { model.openEntry() }) {
+                Text("记一笔")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(palette.ink)
+                    .padding(.horizontal, 18)
+                    .frame(height: 42)
+                    .glassCapsule()
+            }
+            .buttonStyle(PressableStyle(scale: 0.96))
+            .padding(.top, 18)
+        }
+        .padding(.top, 38)
+        .padding(.bottom, 26)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var addButton: some View {
+        Button(action: { model.openEntry() }) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("记一笔")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundStyle(palette.accentInk)
+            .padding(.horizontal, 19)
+            .frame(height: 52)
+            .glassCapsule(tint: palette.accent)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(PressableStyle(scale: 0.95))
+        .accessibilityLabel("记一笔")
+    }
+}
+
+struct DayCapsuleView: View {
+    @Bindable var model: AppModel
+    let group: DayGroup
+    let palette: AppPalette
+
+    private var netText: String {
+        if group.net > 0 { return "+¥\(Formats.money(group.net))" }
+        if group.net < 0 { return "−¥\(Formats.money(-group.net))" }
+        return "¥0.00"
+    }
+
+    private var netColor: Color {
+        if group.net > 0 { return palette.income }
+        if group.net < 0 { return palette.expense }
+        return palette.surface2
+    }
+
+    private var netTextColor: Color {
+        group.net == 0 ? palette.ink : Color(hex: 0xFFFDF7)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Text(DateHelp.dayTitle(group.iso))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(palette.ink2)
+                if group.isToday {
+                    Text("今天")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(palette.accent)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(palette.accentSoft, in: Capsule())
+                }
+                Rectangle()
+                    .fill(palette.line)
+                    .frame(height: 1)
+                Text(netText)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(netTextColor)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(netColor, in: Capsule())
+                    .accessibilityLabel("当日支出 \(Formats.money(group.expense)) 元，收入 \(Formats.money(group.income)) 元")
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 9)
+            .background(palette.surface2.opacity(palette.isDark ? 0.55 : 0.62))
+
+            ForEach(Array(group.bills.enumerated()), id: \.element.id) { index, bill in
+                SwipeBillRow(
+                    model: model,
+                    bill: bill,
+                    palette: palette,
+                    showDivider: index < group.bills.count - 1
+                )
+            }
+        }
+        .background(palette.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(palette.line, lineWidth: 1)
+        )
+        .shadow(color: palette.isDark ? .black.opacity(0.12) : .black.opacity(0.06), radius: 12, y: 8)
+    }
+}
+
+struct SwipeBillRow: View {
+    @Bindable var model: AppModel
+    let bill: Bill
+    let palette: AppPalette
+    let showDivider: Bool
+
+    @State private var dragOffset: CGFloat = 0
+    @State private var startOffset: CGFloat = 0
+    @State private var isDragging = false
+    @State private var suppressTap = false
+
+    private let reveal: CGFloat = 68
+    private let circleSize: CGFloat = 44
+
+    private var isOpen: Bool { model.openBillID == bill.id }
+    private var offset: CGFloat {
+        if isDragging { return dragOffset }
+        return isOpen ? reveal : 0
+    }
+
+    private var appearProgress: CGFloat {
+        max(0, min(1, (offset - 34) / 34))
+    }
+
+    private var deleteBrightness: Double {
+        if palette.isDark {
+            return -0.5 + 0.5 * appearProgress
+        }
+        return 0.5 - 0.5 * appearProgress
+    }
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Button {
+                Task { await model.delete(bill) }
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: circleSize, height: circleSize)
+                    .background(palette.expense, in: Circle())
+                    .brightness(deleteBrightness)
+                    .scaleEffect(appearProgress)
+                    .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(PressableStyle(scale: 0.93))
+            .frame(width: circleSize, height: circleSize)
+            .padding(.trailing, 12)
+            .allowsHitTesting(isOpen && !isDragging)
+            .accessibilityLabel("删除 \(bill.title) \(Formats.money(bill.cents)) 元")
+
+            Button {
+                guard !suppressTap else { return }
+                if isOpen {
+                    withAnimation(AppMotion.spring) { model.openBillID = nil }
+                } else {
+                    model.openEntry(bill)
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(bill.type == .expense ? palette.expense : palette.income)
+                        .frame(width: 6, height: 6)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(bill.title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(palette.ink)
+                            .lineLimit(1)
+                        Text(metaText)
+                            .font(.system(size: 12, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(palette.muted)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    Text(bill.signedAmountText)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(bill.type == .expense ? palette.expense : palette.income)
+                        .lineLimit(1)
+                }
+                .padding(.leading, 16)
+                .padding(.trailing, 26)
+                .padding(.vertical, 13)
+                .frame(maxWidth: .infinity)
+                .background(palette.surface)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .offset(x: -offset)
+            .allowsHitTesting(!isDragging)
+
+            if showDivider {
+                VStack {
+                    Spacer()
+                    Rectangle()
+                        .fill(palette.line)
+                        .frame(height: 1)
+                }
+                .allowsHitTesting(false)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .clipped()
+        .contentShape(Rectangle())
+        .simultaneousGesture(swipeGesture)
+        .animation(isDragging ? nil : AppMotion.spring, value: offset)
+        .animation(isDragging ? nil : AppMotion.spring, value: isOpen)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var metaText: String {
+        var parts: [String] = []
+        if !bill.time.isEmpty { parts.append(bill.time) }
+        if bill.count > 0 { parts.append("\(bill.count) 张") }
+        if bill.kinds > 0 { parts.append("\(bill.kinds) 种面额") }
+        return parts.joined(separator: " · ")
+    }
+
+    private var swipeGesture: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                if !isDragging {
+                    if model.openBillID != bill.id {
+                        model.openBillID = nil
+                    }
+                    isDragging = true
+                    startOffset = isOpen ? reveal : 0
+                    suppressTap = true
+                }
+                let next = startOffset - value.translation.width
+                dragOffset = min(reveal, max(0, next))
+            }
+            .onEnded { value in
+                guard isDragging else { return }
+                isDragging = false
+                let projected = dragOffset + value.predictedEndTranslation.width * -0.22
+                let shouldOpen = projected > reveal * 0.42
+                withAnimation(AppMotion.spring) {
+                    model.openBillID = shouldOpen ? bill.id : nil
+                }
+                dragOffset = 0
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                    suppressTap = false
+                }
+            }
+    }
+}

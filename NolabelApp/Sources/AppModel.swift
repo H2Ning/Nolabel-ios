@@ -1,0 +1,754 @@
+import Foundation
+import Observation
+import SwiftUI
+import UIKit
+
+enum SettingsSubview {
+    case main
+    case appearance
+}
+
+enum EntryOperator: String, CaseIterable {
+    case add = "+"
+    case subtract = "−"
+    case multiply = "×"
+    case divide = "÷"
+
+    var next: EntryOperator {
+        switch self {
+        case .add: .subtract
+        case .subtract: .multiply
+        case .multiply: .divide
+        case .divide: .add
+        }
+    }
+}
+
+@Observable
+@MainActor
+final class AppModel {
+    private let api = AccountAPI()
+    private let defaults = UserDefaults.standard
+    private let cacheOwnerKey = "nolabel-cache-owner"
+    private let themeKey = "nolabel-theme"
+    private let sortKey = "nolabel-sort-desc"
+    private let usernameKey = "h2ning_username"
+
+    let previewMode: Bool
+
+    var bills: [Bill] = []
+    var user: AccountUser?
+    var authReady = false
+    var authLoading = false
+    var accountLoaded = false
+    var authMessage = ""
+    var authMessageIsError = false
+
+    var themeMode: ThemeMode
+    var sortDesc: Bool
+    var selectedMonth: Date
+    var settingsOpen = false
+    var settingsSubview: SettingsSubview = .main
+    var openBillID: String?
+    var lastSavedBillID: String?
+    var writing = false
+
+    var entryOpen = false
+    var entryEditingID: String?
+    var entryInput = ""
+    var entryTrailingDecimal = false
+    var entryJustEvaluated = false
+    var entryType: BillType = .expense
+    var entryNote = ""
+    var entryDate = Date()
+    var entryAccumulator: Int?
+    var entryOperator: EntryOperator?
+    var dateSheetOpen = false
+    var entryError = ""
+    var cashYaw: Double = -22
+    var cashPitch: Double = 8
+
+    private var bootstrapped = false
+    var palette: AppPalette {
+        AppPalette.palette(themeMode == .system ? currentSystemScheme : (themeMode == .dark ? .dark : .light))
+    }
+
+    private var currentSystemScheme: ColorScheme {
+        UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
+    }
+
+    var preferredColorScheme: ColorScheme? {
+        themeMode.colorScheme
+    }
+
+    var isLoggedIn: Bool { user != nil }
+
+    var selectedMonthKey: String { DateHelp.monthKey(selectedMonth) }
+
+    var monthBills: [Bill] {
+        bills
+            .filter { $0.monthKey == selectedMonthKey }
+            .sorted { lhs, rhs in
+                if lhs.iso != rhs.iso { return sortDesc ? lhs.iso > rhs.iso : lhs.iso < rhs.iso }
+                if lhs.createdAt != rhs.createdAt { return sortDesc ? lhs.createdAt > rhs.createdAt : lhs.createdAt < rhs.createdAt }
+                return lhs.id > rhs.id
+            }
+    }
+
+    var monthExpense: Int {
+        monthBills.filter { $0.type == .expense }.reduce(0) { $0 + $1.cents }
+    }
+
+    var monthIncome: Int {
+        monthBills.filter { $0.type == .income }.reduce(0) { $0 + $1.cents }
+    }
+
+    var monthNotes: Int {
+        monthBills.reduce(0) { $0 + $1.count }
+    }
+
+    var monthTitle: String { DateHelp.monthTitle(selectedMonth) }
+    var monthPeriod: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月"
+        return formatter.string(from: selectedMonth)
+    }
+
+    var entryCents: Int {
+        Formats.inputCents(entryInput)
+    }
+
+    var entryDisplay: String {
+        guard !entryInput.isEmpty else { return "0.00" }
+        return Formats.formattedInput(entryInput)
+    }
+
+    var entryGroups: [CashGroup] {
+        CashBreakdown.groups(for: entryCents)
+    }
+
+    var entryNotePlaceholder: String {
+        "备注"
+    }
+
+    init() {
+        let arguments = ProcessInfo.processInfo.arguments
+        previewMode = arguments.contains("--preview")
+        let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
+        themeMode = ThemeMode(rawValue: storedTheme) ?? .system
+        sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
+        selectedMonth = DateHelp.monthStart(Date())
+
+        if let raw = BillStore.shared.loadRaw(), let envelope = BillsCodec.parse(raw) {
+            bills = envelope.bills
+        }
+
+        if previewMode {
+            configurePreview(arguments: arguments)
+        }
+    }
+
+    func bootstrap() async {
+        guard !bootstrapped else { return }
+        bootstrapped = true
+        if previewMode {
+            authReady = true
+            return
+        }
+        await checkAuth()
+    }
+
+    private func configurePreview(arguments: [String]) {
+        themeMode = value(after: "--preview-theme", in: arguments).flatMap(ThemeMode.init(rawValue:)) ?? .dark
+        bills = SampleData.bills
+        authReady = true
+        authMessage = ""
+
+        let screen = value(after: "--preview-screen", in: arguments)
+        if screen == "settings" {
+            settingsOpen = true
+            if value(after: "--preview-settings", in: arguments) == "appearance" {
+                settingsSubview = .appearance
+            }
+        } else if screen == "entry" {
+            entryOpen = true
+            if let raw = value(after: "--preview-amount", in: arguments) {
+                entryInput = raw
+            } else {
+                entryInput = "52145"
+            }
+            entryType = .expense
+            entryNote = ""
+        } else if screen == "account" {
+            settingsOpen = true
+        }
+    }
+
+    private func value(after flag: String, in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else {
+            return nil
+        }
+        return arguments[index + 1]
+    }
+
+    func checkAuth() async {
+        guard !previewMode else { return }
+        authLoading = true
+        authMessage = ""
+        authMessageIsError = false
+        defer { authLoading = false }
+        do {
+            let user = try await api.me()
+            self.user = user
+            authReady = true
+            if user != nil {
+                await loadAccount()
+            } else {
+                accountLoaded = false
+            }
+        } catch {
+            user = nil
+            authReady = true
+            accountLoaded = false
+            authMessage = (error as? LocalizedError)?.errorDescription ?? "网络错误，暂未连接账号"
+            authMessageIsError = true
+        }
+    }
+
+    func loadAccount() async {
+        guard let user else { return }
+        authLoading = true
+        accountLoaded = false
+        authMessage = ""
+        authMessageIsError = false
+        defer { authLoading = false }
+
+        do {
+            let remote = try await api.fetchBills()
+            let local = currentLocalEnvelope()
+            let owner = defaults.string(forKey: cacheOwnerKey)
+            let localBelongs = owner == nil || owner == user.name
+
+            var result = remote?.bills ?? []
+            let remoteCount = result.count
+
+            if localBelongs, let local, !local.bills.isEmpty {
+                result = mergeBills(primary: result, secondary: local.bills)
+            }
+
+            if result.isEmpty, let local, localBelongs, !local.bills.isEmpty {
+                result = local.bills
+            }
+
+            if result.count > remoteCount || (remote == nil && !result.isEmpty) {
+                try await api.saveBills(result, updatedAt: Date().timeIntervalSince1970 * 1000)
+            }
+
+            bills = result
+            accountLoaded = true
+            selectedMonth = DateHelp.monthStart(Date())
+            persistCache(bills: result, owner: user.name)
+            authMessage = ""
+        } catch AccountError.unauthorized {
+            self.user = nil
+            accountLoaded = false
+            authMessage = "登录已过期，请重新登录"
+            authMessageIsError = true
+        } catch {
+            accountLoaded = false
+            authMessage = (error as? LocalizedError)?.errorDescription ?? "账号数据加载失败"
+            authMessageIsError = true
+        }
+    }
+
+    private func currentLocalEnvelope() -> BillsEnvelope? {
+        guard let raw = BillStore.shared.loadRaw() else { return nil }
+        return BillsCodec.parse(raw)
+    }
+
+    private func mergeBills(primary: [Bill], secondary: [Bill]) -> [Bill] {
+        var map: [String: Bill] = [:]
+        for bill in secondary { map[bill.id] = bill }
+        for bill in primary { map[bill.id] = bill }
+        return map.values.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func persistCache(bills: [Bill], owner: String?) {
+        let raw = BillsCodec.raw(bills, updatedAt: Date().timeIntervalSince1970 * 1000)
+        BillStore.shared.saveRaw(raw)
+        if let owner {
+            defaults.set(owner, forKey: cacheOwnerKey)
+        } else {
+            defaults.removeObject(forKey: cacheOwnerKey)
+        }
+    }
+
+    private func clearCache() {
+        BillStore.shared.saveRaw(BillsCodec.raw([], updatedAt: Date().timeIntervalSince1970 * 1000))
+        defaults.removeObject(forKey: cacheOwnerKey)
+    }
+
+    func login(username: String, password: String) async {
+        guard !username.isEmpty, !password.isEmpty else {
+            authMessage = "请输入用户名和密码"
+            authMessageIsError = true
+            return
+        }
+        authLoading = true
+        authMessage = ""
+        authMessageIsError = false
+        defer { authLoading = false }
+        do {
+            let user = try await api.login(username: username, password: password)
+            self.user = user
+            defaults.set(username, forKey: usernameKey)
+            authReady = true
+            await loadAccount()
+        } catch {
+            authMessage = (error as? LocalizedError)?.errorDescription ?? "登录失败"
+            authMessageIsError = true
+        }
+    }
+
+    func logout() async {
+        authLoading = true
+        defer { authLoading = false }
+        do {
+            try await api.logout()
+        } catch {
+            // The local session is cleared even when the server is unreachable.
+        }
+        user = nil
+        accountLoaded = false
+        authReady = true
+        bills = []
+        clearCache()
+        authMessage = ""
+        authMessageIsError = false
+        settingsSubview = .main
+    }
+
+    var savedUsername: String {
+        defaults.string(forKey: usernameKey) ?? ""
+    }
+
+    @discardableResult
+    func requireLogin() -> Bool {
+        if previewMode { return true }
+        guard user != nil, accountLoaded else {
+            authMessage = user == nil ? "请先在设置登录账号" : "账号数据还没加载好"
+            authMessageIsError = true
+            settingsOpen = true
+            settingsSubview = .main
+            return false
+        }
+        return true
+    }
+
+    func saveBills(_ next: [Bill]) async -> Bool {
+        guard requireLogin() else { return false }
+        writing = true
+        defer { writing = false }
+        do {
+            try await api.saveBills(next, updatedAt: Date().timeIntervalSince1970 * 1000)
+            bills = next
+            if let user { persistCache(bills: next, owner: user.name) }
+            return true
+        } catch AccountError.unauthorized {
+            user = nil
+            accountLoaded = false
+            authMessage = "登录已过期，请重新登录"
+            authMessageIsError = true
+            settingsOpen = true
+            return false
+        } catch {
+            authMessage = (error as? LocalizedError)?.errorDescription ?? "保存失败，请检查网络后重试"
+            authMessageIsError = true
+            return false
+        }
+    }
+
+    func delete(_ bill: Bill) async {
+        guard requireLogin() else { return }
+        let next = bills.filter { $0.id != bill.id }
+        if await saveBills(next) {
+            openBillID = nil
+            Haptics.success()
+        }
+    }
+
+    func shiftMonth(_ value: Int) {
+        selectedMonth = DateHelp.shiftMonth(selectedMonth, by: value)
+    }
+
+    var csvExportText: String {
+        CSVCodec.csv(for: bills)
+    }
+
+    @discardableResult
+    func importCSV(_ text: String) async -> Bool {
+        guard requireLogin() else { return false }
+        do {
+            let imported = try CSVCodec.parse(text)
+            var map: [String: Bill] = [:]
+            for bill in bills { map[bill.id] = bill }
+            for bill in imported { map[bill.id] = bill }
+            let next = map.values.sorted { $0.createdAt > $1.createdAt }
+            if await saveBills(next) {
+                if let latest = next.max(by: { $0.iso < $1.iso }), let date = DateHelp.date(from: latest.iso) {
+                    selectedMonth = DateHelp.monthStart(date)
+                }
+                authMessage = ""
+                authMessageIsError = false
+                Haptics.success()
+                return true
+            }
+            return false
+        } catch {
+            authMessage = (error as? LocalizedError)?.errorDescription ?? "CSV 读取失败"
+            authMessageIsError = true
+            settingsOpen = true
+            Haptics.warning()
+            return false
+        }
+    }
+
+    func setTheme(_ mode: ThemeMode) {
+        themeMode = mode
+        defaults.set(mode.rawValue, forKey: themeKey)
+    }
+
+    func setSort(descending: Bool) {
+        sortDesc = descending
+        defaults.set(descending, forKey: sortKey)
+    }
+
+    func toggleSort() {
+        setSort(descending: !sortDesc)
+    }
+
+    func openSettings() {
+        settingsSubview = .main
+        settingsOpen = true
+    }
+
+    func closeSettings() {
+        settingsOpen = false
+        settingsSubview = .main
+    }
+
+    func openEntry(_ bill: Bill? = nil) {
+        entryEditingID = bill?.id
+        if let bill {
+            entryInput = Formats.amountInput(bill.cents)
+            entryTrailingDecimal = false
+            entryType = bill.type
+            entryNote = bill.note
+            entryDate = DateHelp.date(from: bill.iso) ?? Date()
+            if let components = bill.time.split(separator: ":").compactMap({ Int($0) }), components.count == 2 {
+                entryDate = Calendar.current.date(bySettingHour: components[0], minute: components[1], second: 0, of: entryDate) ?? entryDate
+            }
+        } else {
+            entryInput = ""
+            entryTrailingDecimal = false
+            entryType = .expense
+            entryNote = ""
+            entryDate = Date()
+        }
+        entryAccumulator = nil
+        entryOperator = nil
+        entryJustEvaluated = false
+        entryError = ""
+        cashYaw = -22
+        cashPitch = 8
+        entryOpen = true
+        Haptics.light()
+    }
+
+    func closeEntry() {
+        entryOpen = false
+        entryEditingID = nil
+        entryInput = ""
+        entryNote = ""
+        entryError = ""
+        entryOperator = nil
+        entryAccumulator = nil
+    }
+
+    func saveEntry() async {
+        guard entryCents > 0 else {
+            entryError = "金额必须大于 0"
+            return
+        }
+        let groups = CashBreakdown.groups(for: entryCents)
+        guard !groups.isEmpty else {
+            entryError = "这个金额暂时无法组合"
+            return
+        }
+        guard requireLogin() else { return }
+
+        let iso = DateHelp.iso(from: entryDate)
+        let time = DateHelp.time(from: entryDate)
+        let fields = (
+            cents: entryCents,
+            type: entryType,
+            note: entryNote.trimmingCharacters(in: .whitespacesAndNewlines),
+            iso: iso,
+            time: time,
+            count: CashBreakdown.totalNotes(groups),
+            kinds: groups.count,
+            groups: groups.map { BillDenomGroup(key: $0.denomination.id, count: $0.count) }
+        )
+
+        var next = bills
+        let bill: Bill
+        if let editing = entryEditingID,
+           let index = next.firstIndex(where: { $0.id == editing }) {
+            let previous = next[index]
+            let timestamp = previous.iso == iso && previous.time == time ? previous.createdAt : entryDate.timeIntervalSince1970 * 1000
+            bill = Bill(
+                id: previous.id,
+                cents: fields.cents,
+                type: fields.type,
+                note: fields.note,
+                iso: fields.iso,
+                time: fields.time,
+                createdAt: timestamp,
+                count: fields.count,
+                kinds: fields.kinds,
+                groups: fields.groups
+            )
+            next[index] = bill
+        } else {
+            bill = Bill(
+                id: "\(Int(Date().timeIntervalSince1970 * 1000))\(UUID().uuidString.prefix(4))",
+                cents: fields.cents,
+                type: fields.type,
+                note: fields.note,
+                iso: fields.iso,
+                time: fields.time,
+                createdAt: Date().timeIntervalSince1970 * 1000,
+                count: fields.count,
+                kinds: fields.kinds,
+                groups: fields.groups
+            )
+            next.insert(bill, at: 0)
+        }
+
+        if await saveBills(next) {
+            lastSavedBillID = bill.id
+            selectedMonth = DateHelp.monthStart(entryDate)
+            entryOpen = false
+            entryEditingID = nil
+            entryInput = ""
+            entryNote = ""
+            entryError = ""
+            Haptics.success()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                if self?.lastSavedBillID == bill.id {
+                    self?.lastSavedBillID = nil
+                }
+            }
+        }
+    }
+
+    func pressDigit(_ digit: String) {
+        if entryJustEvaluated {
+            entryInput = ""
+            entryTrailingDecimal = false
+            entryJustEvaluated = false
+        }
+        if entryTrailingDecimal {
+            guard digit != "." else { return }
+            let fraction = entryInput.split(separator: ".", omittingEmptySubsequences: false).last ?? ""
+            guard fraction.count < 2 else { return }
+            entryInput += digit
+            return
+        }
+        if digit == "0" && entryInput == "0" { return }
+        if entryInput == "0" { entryInput = digit; return }
+        entryInput += digit
+    }
+
+    func pressDecimal() {
+        if entryJustEvaluated {
+            entryInput = ""
+            entryJustEvaluated = false
+        }
+        guard !entryInput.contains(".") else { return }
+        if entryInput.isEmpty { entryInput = "0" }
+        entryInput += "."
+        entryTrailingDecimal = true
+    }
+
+    func pressDoubleZero() {
+        if entryJustEvaluated {
+            entryInput = ""
+            entryTrailingDecimal = false
+            entryJustEvaluated = false
+        }
+        if entryInput.isEmpty { entryInput = "0" }
+        if entryTrailingDecimal {
+            let fraction = entryInput.split(separator: ".", omittingEmptySubsequences: false).last ?? ""
+            if fraction.isEmpty { entryInput += "00" }
+            else if fraction.count == 1 { entryInput += "0" }
+            return
+        }
+        entryInput += "00"
+    }
+
+    func pressBackspace() {
+        if entryJustEvaluated {
+            entryInput = ""
+            entryTrailingDecimal = false
+            entryJustEvaluated = false
+        }
+        guard !entryInput.isEmpty else { return }
+        entryInput.removeLast()
+        entryTrailingDecimal = entryInput.last == "."
+    }
+
+    func clearEntry() {
+        entryInput = ""
+        entryTrailingDecimal = false
+        entryJustEvaluated = false
+        entryAccumulator = nil
+        entryOperator = nil
+    }
+
+    func pressOperator() {
+        let current = entryCents
+        if entryInput.isEmpty, entryOperator == nil {
+            entryOperator = .add
+            return
+        }
+        if entryOperator == nil {
+            entryAccumulator = current
+            entryOperator = .add
+        } else {
+            entryOperator = entryOperator?.next
+        }
+        entryInput = ""
+        entryTrailingDecimal = false
+        entryJustEvaluated = false
+    }
+
+    func pressEquals() {
+        let current = entryInput.isEmpty ? 0 : entryCents
+        guard let left = entryAccumulator else { return }
+        let op = entryOperator ?? .add
+        let result: Int
+        switch op {
+        case .add:
+            result = left + current
+        case .subtract:
+            result = left - current
+        case .multiply:
+            result = Int((Double(left) * Double(current) / 100.0).rounded())
+        case .divide:
+            guard current != 0 else {
+                entryError = "不能除以 0"
+                return
+            }
+            result = Int((Double(left) * 100.0 / Double(current)).rounded())
+        }
+        entryInput = Formats.amountInput(max(0, result))
+        entryTrailingDecimal = false
+        entryAccumulator = nil
+        entryOperator = nil
+        entryJustEvaluated = true
+    }
+
+    func changeType(_ type: BillType) {
+        entryType = type
+        Haptics.light()
+    }
+
+    func confirmDate(_ date: Date) {
+        entryDate = date
+        dateSheetOpen = false
+    }
+
+    func dismissEntryError() {
+        entryError = ""
+    }
+
+    func monthGroups() -> [DayGroup] {
+        let sorted = monthBills
+        var order: [String] = []
+        var grouped: [String: [Bill]] = [:]
+        for bill in sorted {
+            if grouped[bill.iso] == nil {
+                order.append(bill.iso)
+                grouped[bill.iso] = []
+            }
+            grouped[bill.iso]?.append(bill)
+        }
+        return order.map { iso in
+            let items = grouped[iso] ?? []
+            let expense = items.filter { $0.type == .expense }.reduce(0) { $0 + $1.cents }
+            let income = items.filter { $0.type == .income }.reduce(0) { $0 + $1.cents }
+            return DayGroup(iso: iso, bills: items, expense: expense, income: income)
+        }
+    }
+}
+
+struct DayGroup: Identifiable {
+    let iso: String
+    let bills: [Bill]
+    let expense: Int
+    let income: Int
+
+    var id: String { iso }
+    var net: Int { income - expense }
+    var isToday: Bool { iso == DateHelp.todayISO }
+}
+
+enum Haptics {
+    static func light() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    static func success() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    static func warning() {
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+}
+
+enum SampleData {
+    static let bills: [Bill] = {
+        let now = Date()
+        let calendar = Calendar.current
+        func iso(_ offset: Int) -> String {
+            let date = calendar.date(byAdding: .day, value: offset, to: now) ?? now
+            return DateHelp.iso(from: date)
+        }
+        return [
+            Bill(id: "sample-1", cents: 12345, type: .expense, note: "买菜", iso: iso(0), time: "18:20", createdAt: 3_000, count: 4, kinds: 3, groups: []),
+            Bill(id: "sample-2", cents: 2800, type: .expense, note: "咖啡", iso: iso(0), time: "14:10", createdAt: 2_000, count: 3, kinds: 2, groups: []),
+            Bill(id: "sample-3", cents: 500000, type: .income, note: "项目尾款", iso: iso(0), time: "09:30", createdAt: 1_000, count: 5, kinds: 1, groups: []),
+            Bill(id: "sample-4", cents: 4650, type: .expense, note: "打车", iso: iso(-1), time: "21:05", createdAt: 900, count: 4, kinds: 3, groups: []),
+            Bill(id: "sample-5", cents: 3200, type: .expense, note: "午饭", iso: iso(-1), time: "12:40", createdAt: 800, count: 3, kinds: 2, groups: [])
+        ]
+    }()
+}
+
+extension Formats {
+    static func formattedInput(_ raw: String) -> String {
+        let parts = raw.split(separator: ".", omittingEmptySubsequences: false)
+        let whole = String(parts.first ?? "0")
+        let grouped = whole.reversed().enumerated().reduce(into: "") { result, pair in
+            if pair.offset > 0 && pair.offset % 3 == 0 { result.append(",") }
+            result.append(pair.element)
+        }
+        let reversed = String(grouped.reversed())
+        if parts.count > 1 {
+            return reversed + "." + String(parts[1].prefix(2))
+        }
+        return reversed
+    }
+}

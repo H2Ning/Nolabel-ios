@@ -2,7 +2,7 @@ name: Nolabel
 options:
   bundleIdPrefix: com.h2ning
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 settings:
   base:
@@ -14,10 +14,10 @@ targets:
     type: application
     platform: iOS
     deploymentTarget:
-      iOS: "16.0"
+      iOS: "26.0"
     sources:
       - path: NolabelApp/Sources
-      - path: NolabelApp/Resources/www
+      - path: NolabelApp/Resources/Notes
         type: folder
         buildPhase: resources
       - path: NolabelApp/Resources/Assets.xcassets

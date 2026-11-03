@@ -1,0 +1,97 @@
+name: Build and screenshot iOS app
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "NolabelApp/**"
+      - "ci/**"
+      - "project.yml"
+      - ".github/workflows/ios-simulator-screenshots.yml"
+
+jobs:
+  screenshots:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Select simulator
+        id: simulator
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available | grep -E "iPhone (17 Pro|16 Pro|15 Pro|16|15)" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
+          if [ -z "$DEVICE_ID" ]; then
+            echo "No iPhone simulator found" >&2
+            exit 1
+          fi
+          echo "id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "Using simulator $DEVICE_ID"
+
+      - name: Build simulator app
+        run: |
+          xcodebuild \
+            -project Nolabel.xcodeproj \
+            -scheme Nolabel \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Boot simulator
+        run: |
+          DEVICE_ID="${{ steps.simulator.outputs.id }}"
+          xcrun simctl boot "$DEVICE_ID" || true
+          open -a Simulator
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl status_bar "$DEVICE_ID" override --time "9:41" --batteryState charged --batteryLevel 100
+
+      - name: Install app
+        run: |
+          DEVICE_ID="${{ steps.simulator.outputs.id }}"
+          xcrun simctl install "$DEVICE_ID" build/Build/Products/Debug-iphonesimulator/Nolabel.app
+
+      - name: Capture screens
+        run: |
+          DEVICE_ID="${{ steps.simulator.outputs.id }}"
+          BUNDLE_ID="com.h2ning.nolabel"
+          mkdir -p screenshots
+          capture() {
+            NAME="$1"
+            shift
+            xcrun simctl terminate "$DEVICE_ID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+            xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID" "$@" >/dev/null
+            sleep 2
+            xcrun simctl io "$DEVICE_ID" screenshot "screenshots/$NAME.png"
+          }
+          capture bills-dark --preview --preview-screen bills --preview-theme dark
+          capture bills-light --preview --preview-screen bills --preview-theme light
+          capture entry-dark --preview --preview-screen entry --preview-theme dark --preview-amount 52145
+          capture entry-light --preview --preview-screen entry --preview-theme light --preview-amount 123
+          capture settings-dark --preview --preview-screen settings --preview-theme dark
+          capture settings-appearance --preview --preview-screen settings --preview-theme dark --preview-settings appearance
+          capture account-dark --preview --preview-screen account --preview-theme dark
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-screenshots
+          path: screenshots
+          if-no-files-found: error

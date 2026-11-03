@@ -2,25 +2,79 @@ import SwiftUI
 
 @main
 struct NolabelApp: App {
+    @State private var model = AppModel()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .preferredColorScheme(.dark)
-                .ignoresSafeArea()
+            RootView()
+                .environment(model)
+                .preferredColorScheme(model.preferredColorScheme)
+                .tint(model.themeMode == .light ? AppPalette.light.accent : AppPalette.dark.accent)
         }
     }
 }
 
-struct ContentView: View {
+struct RootView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var palette: AppPalette { .palette(colorScheme) }
+
     var body: some View {
-        WebView()
-            .background(
-                Color(
-                    red: 7.0 / 255.0,
-                    green: 11.0 / 255.0,
-                    blue: 9.0 / 255.0
-                )
-            )
-            .ignoresSafeArea()
+        ZStack {
+            palette.pageBG.ignoresSafeArea()
+            appAtmosphere
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            BillsView(model: model, palette: palette)
+                .opacity(model.entryOpen ? 0.36 : 1)
+                .scaleEffect(model.entryOpen ? 0.988 : 1)
+                .allowsHitTesting(!model.entryOpen && !model.settingsOpen)
+                .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
+
+            if model.entryOpen {
+                EntryView(model: model, palette: palette)
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .bottom).combined(with: .opacity)
+                        )
+                    )
+                    .zIndex(2)
+            }
+
+            if model.settingsOpen {
+                SettingsOverlay(model: model, palette: palette)
+                    .transition(.opacity)
+                    .zIndex(3)
+            }
+
+            if model.dateSheetOpen {
+                DateOverlay(model: model, palette: palette)
+                    .transition(.opacity)
+                    .zIndex(4)
+            }
+        }
+        .animation(reduceMotion ? nil : AppMotion.spring, value: model.settingsOpen)
+        .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
+        .task {
+            await model.bootstrap()
+        }
+    }
+
+    private var appAtmosphere: some View {
+        RadialGradient(
+            colors: [
+                palette.isDark
+                    ? Color(hex: 0x22372A).opacity(0.65)
+                    : Color.white.opacity(0.70),
+                .clear
+            ],
+            center: UnitPoint(x: 0.5, y: -0.08),
+            startRadius: 0,
+            endRadius: 430
+        )
     }
 }
