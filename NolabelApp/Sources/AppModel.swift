@@ -446,7 +446,8 @@ final class AppModel {
             entryType = bill.type
             entryNote = bill.note
             entryDate = DateHelp.date(from: bill.iso) ?? Date()
-            if let components = bill.time.split(separator: ":").compactMap({ Int($0) }), components.count == 2 {
+            let components = bill.time.split(separator: ":").compactMap { Int($0) }
+            if components.count == 2 {
                 entryDate = Calendar.current.date(bySettingHour: components[0], minute: components[1], second: 0, of: entryDate) ?? entryDate
             }
         } else {
