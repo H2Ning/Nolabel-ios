@@ -117,7 +117,7 @@ struct AccountAPI {
         )
         guard (200..<300).contains(response.statusCode) else {
             if response.statusCode == 401 {
-                throw AccountError.unauthorized
+                throw AccountError.server("用户名或密码错误")
             }
             throw AccountError.server(message(from: data))
         }
