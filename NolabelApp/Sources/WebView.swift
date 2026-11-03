@@ -38,19 +38,9 @@ struct WebView: UIViewRepresentable {
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.bounces = false
         webView.allowsBackForwardNavigationGestures = false
+        webView.navigationDelegate = context.coordinator
 
-        guard let indexURL = Bundle.main.url(
-            forResource: "index",
-            withExtension: "html",
-            subdirectory: "www"
-        ) else {
-            return webView
-        }
-
-        webView.loadFileURL(
-            indexURL,
-            allowingReadAccessTo: indexURL.deletingLastPathComponent()
-        )
+        context.coordinator.loadRemote(in: webView)
         return webView
     }
 
@@ -62,7 +52,46 @@ struct WebView: UIViewRepresentable {
         return "window.__nolabelNativeBills = \(literal);"
     }
 
-    final class Coordinator: NSObject, WKScriptMessageHandler {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+        private static let remoteURL = URL(string: "https://h2ning.com/Nolabel/")!
+        private var didFallback = false
+
+        func loadRemote(in webView: WKWebView) {
+            webView.load(URLRequest(url: Self.remoteURL))
+        }
+
+        private func loadLocalFallback(in webView: WKWebView) {
+            guard !didFallback else { return }
+            didFallback = true
+            guard let indexURL = Bundle.main.url(
+                forResource: "index",
+                withExtension: "html",
+                subdirectory: "www"
+            ) else {
+                return
+            }
+            webView.loadFileURL(
+                indexURL,
+                allowingReadAccessTo: indexURL.deletingLastPathComponent()
+            )
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            loadLocalFallback(in: webView)
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            didFail navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            loadLocalFallback(in: webView)
+        }
+
         func userContentController(
             _ userContentController: WKUserContentController,
             didReceive message: WKScriptMessage

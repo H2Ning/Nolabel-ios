@@ -1,6 +1,6 @@
 # Nolabel iOS（免费签名版）
 
-这是只给自己用的 iOS 壳：把网页版打进 WKWebView，账单用原生 JSON 文件保存，用免费 Apple ID 侧载，不需要 Apple Developer Program，也不需要 Mac。
+这是只给自己用的 iOS 壳：启动时加载 `https://h2ning.com/Nolabel/`，登录 h2ning 账号后账单保存到账号，本机 `Application Support/Nolabel` 作为缓存和备份；用免费 Apple ID 侧载，不需要 Apple Developer Program，也不需要 Mac。
 
 ## 先确认网页源
 
@@ -10,7 +10,7 @@
 C:\Users\34851\Desktop\clock\Nolabel
 ```
 
-`Nolabel/ios/NolabelApp/Resources/www` 已与 `Nolabel` 里的网页同步。以后网页改了，在 `Nolabel` 目录运行：
+App 在线时直接加载 server 上的网页；`Nolabel/ios/NolabelApp/Resources/www` 是网络失败时使用的内置回退页面。以后改了回退网页，在 `Nolabel` 目录运行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\ios\sync-web.ps1
@@ -82,10 +82,11 @@ AltStore 和 Sideloadly 都不需要越狱。
 
 ## 数据
 
-- 主文件是 `Application Support/Nolabel/bills.json`，同时保留 `bills.backup.json` 和最近 30 份 `Snapshots/bills-*.json`。
+- h2ning 账号是主数据源。未登录不能保存和删除，登录后账单写入账号。
+- 本机 `Application Support/Nolabel/bills.json` 是缓存，同时保留 `bills.backup.json` 和最近 30 份 `Snapshots/bills-*.json`。
 - 启动时依次回退：主文件 → 备份 → 最新快照 → `Documents/Nolabel-backup.json`，避免单文件损坏直接丢账。
 - 每次保存还会写一份 `Documents/Nolabel-backup.json`。Info.plist 已开启文件共享，可以在 iPhone 的“文件”App → 我的 iPhone → 诺诺 里找到，复制到 iCloud Drive 或电脑。
-- 网页 localStorage 只作缓存；App 启动时会比较本地文件和缓存里的 `updatedAt`，取较新的数据。
+- 网页 localStorage 和原生 JSON 都只作缓存；退出登录会清空本机账单缓存，账号里的数据仍保留。
 - Application Support 和 Documents 默认进入 iCloud/iTunes 备份；请保持系统备份开启。
 - 免费签名刷新使用同一个 Bundle ID，正常刷新不会丢数据；删除 App 或重置手机才会丢本地文件，所以重要账目要额外导出。
 - 导出的 JSON 是明文，放在网盘/电脑上时注意访问权限。

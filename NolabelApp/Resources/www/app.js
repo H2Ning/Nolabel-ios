@@ -254,7 +254,7 @@
     return chosen.bills;
   }
 
-  const ACCOUNT_MODE = !nativeStore() && /(^|\.)h2ning\.com$/i.test(location.hostname);
+  const ACCOUNT_MODE = nativeStore() || /(^|\.)h2ning\.com$/i.test(location.hostname);
   const auth = {
     user: null,
     ready: false,
@@ -820,6 +820,7 @@
         localStorage.removeItem(BILLS_KEY);
         localStorage.removeItem(BILLS_OWNER_KEY);
       } catch (err) {}
+      sendToNative(billsPayload([], Date.now()));
       renderBills();
       auth.message = '';
       auth.tone = '';
