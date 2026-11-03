@@ -155,7 +155,7 @@ enum CSVCodec {
             guard let decimal = Decimal(string: amountText), decimal > 0 else {
                 throw CSVError.badRow(line, "金额必须大于 0")
             }
-            let cents = Int((decimal * Decimal(100)).rounded())
+            let cents = Int((NSDecimalNumber(decimal: decimal).doubleValue * 100).rounded())
             guard cents >= 1 else { throw CSVError.badRow(line, "金额最小到 0.01 元") }
             let groups = CashBreakdown.groups(for: cents)
             guard !groups.isEmpty else { throw CSVError.badRow(line, "金额无法组合成现钞") }
