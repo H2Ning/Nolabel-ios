@@ -85,7 +85,9 @@ jobs:
           capture bills-light --preview --preview-screen bills --preview-theme light
           capture entry-dark --preview --preview-screen entry --preview-theme dark --preview-amount 52145
           capture entry-light --preview --preview-screen entry --preview-theme light --preview-amount 123
+          capture bills-open --preview --preview-screen bills --preview-theme dark --preview-open
           capture settings-dark --preview --preview-screen settings --preview-theme dark
+          capture settings-user --preview --preview-screen settings --preview-theme dark --preview-user
           capture settings-appearance --preview --preview-screen settings --preview-theme dark --preview-settings appearance
           capture account-dark --preview --preview-screen account --preview-theme dark
 

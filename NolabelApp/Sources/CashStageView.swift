@@ -13,12 +13,31 @@ struct CashStageView: View {
         CashBreakdown.groups(for: cents)
     }
 
+    private var units: [CashUnit] {
+        var result: [CashUnit] = []
+        for group in groups {
+            if group.count <= 600 {
+                var remaining = group.count
+                var index = 0
+                while remaining > 0 {
+                    let count = min(remaining, 100)
+                    result.append(CashUnit(denomination: group.denomination, count: count, index: index))
+                    remaining -= count
+                    index += 1
+                }
+            } else {
+                result.append(CashUnit(denomination: group.denomination, count: group.count, index: 0))
+            }
+        }
+        return Array(result.prefix(12))
+    }
+
     var body: some View {
         GeometryReader { proxy in
             ZStack {
                 stageBackground
                 grid
-                if !groups.isEmpty {
+                if !units.isEmpty {
                     notes(in: proxy.size)
                 }
             }
@@ -78,8 +97,9 @@ struct CashStageView: View {
     }
 
     private func notes(in size: CGSize) -> some View {
-        let columns = groups.count <= 2 ? groups.count : (groups.count <= 4 ? 2 : 3)
-        let rows = max(1, Int(ceil(Double(groups.count) / Double(max(columns, 1)))))
+        let count = units.count
+        let columns = count <= 2 ? count : (count <= 4 ? 2 : 3)
+        let rows = max(1, Int(ceil(Double(count) / Double(max(columns, 1)))))
         let horizontalPadding: CGFloat = 20
         let verticalPadding: CGFloat = 24
         let cellWidth = (size.width - horizontalPadding * 2) / CGFloat(max(columns, 1))
@@ -87,14 +107,14 @@ struct CashStageView: View {
         let noteWidth = min(158, cellWidth * 0.92)
 
         return ZStack {
-            ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+            ForEach(Array(units.enumerated()), id: \.element.id) { index, unit in
                 let column = index % max(columns, 1)
                 let row = index / max(columns, 1)
                 let x = horizontalPadding + cellWidth * (CGFloat(column) + 0.5)
                 let y = verticalPadding + cellHeight * (CGFloat(row) + 0.5)
                 CashStackView(
-                    group: group,
-                    width: noteWidth * scaleFor(group.denomination),
+                    group: CashGroup(denomination: unit.denomination, count: unit.count),
+                    width: noteWidth * scaleFor(unit.denomination),
                     palette: palette,
                     yaw: yaw + Double(index % 2 == 0 ? -5 : 5),
                     pitch: pitch,
@@ -141,6 +161,13 @@ struct CashStageView: View {
         let pieces = groups.map { "\($0.denomination.name) \($0.count) 张" }.joined(separator: "，")
         return "共 \(total) 张：\(pieces)。上下拖动可按高度旋转，查看现钞组合。"
     }
+}
+
+private struct CashUnit: Identifiable {
+    let denomination: Denomination
+    let count: Int
+    let index: Int
+    var id: String { "\(denomination.id)-\(index)" }
 }
 
 private struct CashStackView: View {

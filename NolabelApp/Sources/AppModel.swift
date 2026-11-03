@@ -65,8 +65,8 @@ final class AppModel {
     var entryOperator: EntryOperator?
     var dateSheetOpen = false
     var entryError = ""
-    var cashYaw: Double = -22
-    var cashPitch: Double = 8
+    var cashYaw: Double = -16
+    var cashPitch: Double = 30
 
     private var bootstrapped = false
     var palette: AppPalette {
@@ -164,6 +164,10 @@ final class AppModel {
         bills = SampleData.bills
         authReady = true
         authMessage = ""
+        if arguments.contains("--preview-user") {
+            user = AccountUser(id: "preview", name: "H2Ning")
+            accountLoaded = true
+        }
 
         let screen = value(after: "--preview-screen", in: arguments)
         if screen == "settings" {
@@ -182,6 +186,10 @@ final class AppModel {
             entryNote = ""
         } else if screen == "account" {
             settingsOpen = true
+        } else {
+            if arguments.contains("--preview-open"), let first = SampleData.bills.first {
+                openBillID = first.id
+            }
         }
     }
 
@@ -461,8 +469,8 @@ final class AppModel {
         entryOperator = nil
         entryJustEvaluated = false
         entryError = ""
-        cashYaw = -22
-        cashPitch = 8
+        cashYaw = -16
+        cashPitch = 30
         entryOpen = true
         Haptics.light()
     }

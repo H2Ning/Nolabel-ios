@@ -4,6 +4,11 @@ struct AccountUser: Equatable {
     let id: String?
     let name: String
 
+    init(id: String?, name: String) {
+        self.id = id
+        self.name = name
+    }
+
     init?(dictionary: [String: Any]) {
         let rawID = dictionary["id"]
         let rawName = dictionary["name"] ?? dictionary["username"]
