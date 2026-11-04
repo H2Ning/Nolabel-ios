@@ -110,7 +110,6 @@ struct CashPlazaDemoView: View {
                 VStack(spacing: 14) {
                     header
                     stage
-                    breakdown
                     chartCard
                 }
                 .padding(.horizontal, 20)
@@ -203,7 +202,7 @@ struct CashPlazaDemoView: View {
                 )
             }
         }
-        .frame(height: 340)
+        .frame(height: 360)
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
@@ -218,28 +217,6 @@ struct CashPlazaDemoView: View {
                 .background(palette.isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.36), in: Capsule())
                 .padding(11)
         }
-    }
-
-    private var breakdown: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 7) {
-                ForEach(tallies) { group in
-                    HStack(spacing: 4) {
-                        Text(group.denomination.name)
-                            .font(.system(size: 11, weight: .semibold))
-                        Text("× \(group.count)")
-                            .font(.system(size: 11, weight: .medium))
-                            .monospacedDigit()
-                    }
-                    .foregroundStyle(palette.ink2)
-                    .padding(.horizontal, 9)
-                    .frame(height: 27)
-                    .background(palette.surface, in: Capsule())
-                    .overlay(Capsule().stroke(palette.line, lineWidth: 1))
-                }
-            }
-        }
-        .scrollIndicators(.hidden)
     }
 
     private var chartCard: some View {

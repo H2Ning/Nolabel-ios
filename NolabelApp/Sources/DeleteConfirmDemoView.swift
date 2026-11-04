@@ -23,11 +23,6 @@ struct DeleteConfirmDemoView: View {
                         .foregroundStyle(palette.ink)
                         .padding(.top, 2)
 
-                    Text("删除后无法撤销")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(palette.muted)
-                        .padding(.top, 5)
-
                     HStack(spacing: 10) {
                         Circle()
                             .fill(bill.type == .expense ? palette.expense : palette.income)
@@ -87,11 +82,7 @@ struct DeleteConfirmDemoView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.top, 6)
-
-                    Text("勾选后，今天后续删除不再确认，明天恢复。")
-                        .font(.system(size: 10.5, weight: .regular))
-                        .foregroundStyle(palette.muted)
-                        .padding(.bottom, 16)
+                    .padding(.bottom, 16)
 
                     HStack(spacing: 10) {
                         Button(action: onCancel) {
