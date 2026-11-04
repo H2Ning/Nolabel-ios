@@ -149,11 +149,28 @@ struct SettingsOverlay: View {
                 }
             }
             if model.authMessageIsError && !model.authMessage.isEmpty {
-                Text(model.authMessage)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(palette.expense)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(model.authMessage)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(palette.expense)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if model.authRetryable {
+                        Button {
+                            Task { await model.retryConnection() }
+                        } label: {
+                            if model.authLoading {
+                                ProgressView().tint(palette.expense)
+                            } else {
+                                Text("重试")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(palette.expense)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(model.authLoading)
+                    }
+                }
+                .padding(.horizontal, 4)
             }
         }
     }

@@ -60,6 +60,7 @@ struct RootView: View {
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.settingsOpen)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
         .task {
+            Haptics.prepare()
             await model.bootstrap()
         }
     }

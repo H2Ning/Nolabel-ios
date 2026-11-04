@@ -43,6 +43,7 @@ final class AppModel {
     var accountLoaded = false
     var authMessage = ""
     var authMessageIsError = false
+    var authRetryable = false
 
     var themeMode: ThemeMode
     var sortDesc: Bool
@@ -65,8 +66,9 @@ final class AppModel {
     var entryOperator: EntryOperator?
     var dateSheetOpen = false
     var entryError = ""
-    var cashYaw: Double = -16
-    var cashPitch: Double = 30
+    var cashYaw: Double = Double(CashSceneLayout.defaultYaw)
+    var cashPitch: Double = Double(CashSceneLayout.packageTilt)
+    var cashMode = 1
 
     private var bootstrapped = false
     var palette: AppPalette {
@@ -182,6 +184,11 @@ final class AppModel {
             } else {
                 entryInput = "52145"
             }
+            if let raw = value(after: "--preview-cash-mode", in: arguments),
+               let value = Int(raw),
+               (1...3).contains(value) {
+                cashMode = value
+            }
             entryType = .expense
             entryNote = ""
         } else if screen == "account" {
@@ -205,6 +212,7 @@ final class AppModel {
         authLoading = true
         authMessage = ""
         authMessageIsError = false
+        authRetryable = false
         defer { authLoading = false }
         do {
             let user = try await api.me()
@@ -221,6 +229,15 @@ final class AppModel {
             accountLoaded = false
             authMessage = (error as? LocalizedError)?.errorDescription ?? "网络错误，暂未连接账号"
             authMessageIsError = true
+            authRetryable = (error as? AccountError)?.isNetwork == true
+        }
+    }
+
+    func retryConnection() async {
+        if user == nil {
+            await checkAuth()
+        } else {
+            await loadAccount()
         }
     }
 
@@ -230,6 +247,7 @@ final class AppModel {
         accountLoaded = false
         authMessage = ""
         authMessageIsError = false
+        authRetryable = false
         defer { authLoading = false }
 
         do {
@@ -263,10 +281,12 @@ final class AppModel {
             accountLoaded = false
             authMessage = "登录已过期，请重新登录"
             authMessageIsError = true
+            authRetryable = false
         } catch {
             accountLoaded = false
             authMessage = (error as? LocalizedError)?.errorDescription ?? "账号数据加载失败"
             authMessageIsError = true
+            authRetryable = (error as? AccountError)?.isNetwork == true
         }
     }
 
@@ -306,16 +326,20 @@ final class AppModel {
         authLoading = true
         authMessage = ""
         authMessageIsError = false
+        authRetryable = false
         defer { authLoading = false }
         do {
             let user = try await api.login(username: username, password: password)
             self.user = user
             defaults.set(username, forKey: usernameKey)
             authReady = true
+            Haptics.success()
             await loadAccount()
         } catch {
             authMessage = (error as? LocalizedError)?.errorDescription ?? "登录失败"
             authMessageIsError = true
+            authRetryable = (error as? AccountError)?.isNetwork == true
+            Haptics.error()
         }
     }
 
@@ -368,11 +392,15 @@ final class AppModel {
             accountLoaded = false
             authMessage = "登录已过期，请重新登录"
             authMessageIsError = true
+            authRetryable = false
             settingsOpen = true
+            Haptics.error()
             return false
         } catch {
             authMessage = (error as? LocalizedError)?.errorDescription ?? "保存失败，请检查网络后重试"
             authMessageIsError = true
+            authRetryable = (error as? AccountError)?.isNetwork == true
+            Haptics.error()
             return false
         }
     }
@@ -382,12 +410,13 @@ final class AppModel {
         let next = bills.filter { $0.id != bill.id }
         if await saveBills(next) {
             openBillID = nil
-            Haptics.success()
+            Haptics.delete()
         }
     }
 
     func shiftMonth(_ value: Int) {
         selectedMonth = DateHelp.shiftMonth(selectedMonth, by: value)
+        Haptics.pick()
     }
 
     var csvExportText: String {
@@ -423,10 +452,12 @@ final class AppModel {
     }
 
     func setTheme(_ mode: ThemeMode) {
+        guard mode != themeMode else { return }
         withAnimation(AppMotion.grace) {
             themeMode = mode
         }
         defaults.set(mode.rawValue, forKey: themeKey)
+        Haptics.pick()
     }
 
     func setSort(descending: Bool) {
@@ -436,16 +467,19 @@ final class AppModel {
 
     func toggleSort() {
         setSort(descending: !sortDesc)
+        Haptics.pick()
     }
 
     func openSettings() {
         settingsSubview = .main
         settingsOpen = true
+        Haptics.soft()
     }
 
     func closeSettings() {
         settingsOpen = false
         settingsSubview = .main
+        Haptics.soft()
     }
 
     func openEntry(_ bill: Bill? = nil) {
@@ -471,10 +505,11 @@ final class AppModel {
         entryOperator = nil
         entryJustEvaluated = false
         entryError = ""
-        cashYaw = -16
-        cashPitch = 30
+        cashYaw = Double(CashSceneLayout.defaultYaw)
+        cashPitch = Double(CashSceneLayout.packageTilt)
+        cashMode = 1
         entryOpen = true
-        Haptics.light()
+        Haptics.soft()
     }
 
     func closeEntry() {
@@ -490,11 +525,13 @@ final class AppModel {
     func saveEntry() async {
         guard entryCents > 0 else {
             entryError = "金额必须大于 0"
+            Haptics.warning()
             return
         }
         let groups = CashBreakdown.groups(for: entryCents)
         guard !groups.isEmpty else {
             entryError = "这个金额暂时无法组合"
+            Haptics.warning()
             return
         }
         guard requireLogin() else { return }
@@ -672,11 +709,14 @@ final class AppModel {
     }
 
     func changeType(_ type: BillType) {
+        guard type != entryType else { return }
+        Haptics.pick()
         entryType = type
         Haptics.light()
     }
 
     func confirmDate(_ date: Date) {
+        Haptics.pick()
         entryDate = date
         dateSheetOpen = false
     }
@@ -714,20 +754,6 @@ struct DayGroup: Identifiable {
     var id: String { iso }
     var net: Int { income - expense }
     var isToday: Bool { iso == DateHelp.todayISO }
-}
-
-enum Haptics {
-    static func light() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
-
-    static func success() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
-
-    static func warning() {
-        UINotificationFeedbackGenerator().notificationOccurred(.warning)
-    }
 }
 
 enum SampleData {

@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 enum BillType: String, Codable, Hashable {
@@ -126,20 +127,28 @@ struct Denomination: Identifiable, Hashable {
     let value: Int
     let name: String
     let imageName: String
+    let physicalWidth: CGFloat
+    let ratio: CGFloat
+    let sideColor: UInt32
+    let sideLineColor: UInt32
+    let sideDarkColor: UInt32
+
+    var baseWidth: CGFloat { 240 * physicalWidth / 155 }
+    var baseDepth: CGFloat { baseWidth / ratio }
 
     static let all: [Denomination] = [
-        Denomination(id: "100", value: 10_000, name: "100元", imageName: "100"),
-        Denomination(id: "50", value: 5_000, name: "50元", imageName: "50"),
-        Denomination(id: "20", value: 2_000, name: "20元", imageName: "20"),
-        Denomination(id: "10", value: 1_000, name: "10元", imageName: "10"),
-        Denomination(id: "5", value: 500, name: "5元", imageName: "5"),
-        Denomination(id: "1", value: 100, name: "1元", imageName: "1"),
-        Denomination(id: "0.5", value: 50, name: "5角", imageName: "0.5"),
-        Denomination(id: "0.2", value: 20, name: "2角", imageName: "0.2"),
-        Denomination(id: "0.1", value: 10, name: "1角", imageName: "0.1"),
-        Denomination(id: "0.05", value: 5, name: "5分", imageName: "0.05"),
-        Denomination(id: "0.02", value: 2, name: "2分", imageName: "0.02"),
-        Denomination(id: "0.01", value: 1, name: "1分", imageName: "0.01")
+        Denomination(id: "100", value: 10_000, name: "100元", imageName: "100", physicalWidth: 155, ratio: 640.0 / 314.0, sideColor: 0xC98D9B, sideLineColor: 0xA16B79, sideDarkColor: 0x83515F),
+        Denomination(id: "50", value: 5_000, name: "50元", imageName: "50", physicalWidth: 150, ratio: 600.0 / 280.0, sideColor: 0x89A991, sideLineColor: 0x677F6E, sideDarkColor: 0x506452),
+        Denomination(id: "20", value: 2_000, name: "20元", imageName: "20", physicalWidth: 145, ratio: 638.0 / 311.0, sideColor: 0xB39580, sideLineColor: 0x8B705D, sideDarkColor: 0x6D5646),
+        Denomination(id: "10", value: 1_000, name: "10元", imageName: "10", physicalWidth: 140, ratio: 432.0 / 211.0, sideColor: 0x819AB6, sideLineColor: 0x607892, sideDarkColor: 0x4B5E75),
+        Denomination(id: "5", value: 500, name: "5元", imageName: "5", physicalWidth: 135, ratio: 640.0 / 306.0, sideColor: 0x9C8EAE, sideLineColor: 0x786C89, sideDarkColor: 0x5C526A),
+        Denomination(id: "1", value: 100, name: "1元", imageName: "1", physicalWidth: 130, ratio: 640.0 / 310.0, sideColor: 0x93B18E, sideLineColor: 0x6F8B6A, sideDarkColor: 0x576C53),
+        Denomination(id: "0.5", value: 50, name: "5角", imageName: "0.5", physicalWidth: 125, ratio: 600.0 / 274.0, sideColor: 0xAD8A9B, sideLineColor: 0x876978, sideDarkColor: 0x66515E),
+        Denomination(id: "0.2", value: 20, name: "2角", imageName: "0.2", physicalWidth: 120, ratio: 640.0 / 298.0, sideColor: 0x93A9A0, sideLineColor: 0x6F857C, sideDarkColor: 0x576861),
+        Denomination(id: "0.1", value: 10, name: "1角", imageName: "0.1", physicalWidth: 115, ratio: 440.0 / 195.0, sideColor: 0x9D8B79, sideLineColor: 0x7B6B5B, sideDarkColor: 0x5E5246),
+        Denomination(id: "0.05", value: 5, name: "5分", imageName: "0.05", physicalWidth: 112, ratio: 640.0 / 304.0, sideColor: 0x98AA9B, sideLineColor: 0x748779, sideDarkColor: 0x57695C),
+        Denomination(id: "0.02", value: 2, name: "2分", imageName: "0.02", physicalWidth: 110, ratio: 640.0 / 303.0, sideColor: 0x8FA6BC, sideLineColor: 0x6C8298, sideDarkColor: 0x516577),
+        Denomination(id: "0.01", value: 1, name: "1分", imageName: "0.01", physicalWidth: 108, ratio: 640.0 / 306.0, sideColor: 0xC0A48D, sideLineColor: 0x997F6B, sideDarkColor: 0x735D4D)
     ]
 
     static func find(_ key: String) -> Denomination? {

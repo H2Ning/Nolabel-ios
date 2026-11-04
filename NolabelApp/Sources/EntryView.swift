@@ -31,7 +31,8 @@ struct EntryView: View {
                     cents: model.entryCents,
                     palette: palette,
                     yaw: $model.cashYaw,
-                    pitch: $model.cashPitch
+                    pitch: $model.cashPitch,
+                    mode: $model.cashMode
                 )
                 .frame(height: stageHeight)
                 .padding(.horizontal, 20)
@@ -97,6 +98,7 @@ struct EntryView: View {
                 Button {
                     noteFocused = false
                     model.dateSheetOpen = true
+                    Haptics.soft()
                 } label: {
                     Text(DateHelp.dayTitle(DateHelp.iso(from: model.entryDate)) + " · \(DateHelp.time(from: model.entryDate))")
                         .font(.system(size: 12, weight: .medium))
@@ -195,10 +197,7 @@ struct EntryView: View {
     }
 
     private func key(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: {
-            action()
-            Haptics.light()
-        }) {
+        Button(action: action) {
             Text(title)
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(palette.ink)
@@ -210,13 +209,12 @@ struct EntryView: View {
                         .stroke(palette.line, lineWidth: 1)
                 )
         }
-        .buttonStyle(PressableStyle(scale: 0.94))
+        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.65))
     }
 
     private var backspaceKey: some View {
         Button {
             model.pressBackspace()
-            Haptics.light()
         } label: {
             Image(systemName: "delete.left")
                 .font(.system(size: 19, weight: .medium))
@@ -229,7 +227,7 @@ struct EntryView: View {
                         .stroke(palette.line, lineWidth: 1)
                 )
         }
-        .buttonStyle(PressableStyle(scale: 0.94))
+        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.65))
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.55).onEnded { _ in
                 model.clearEntry()
@@ -242,7 +240,6 @@ struct EntryView: View {
     private var operatorKey: some View {
         Button {
             model.pressOperator()
-            Haptics.light()
         } label: {
             HStack(spacing: 2) {
                 ForEach(EntryOperator.allCases, id: \.rawValue) { op in
@@ -259,14 +256,13 @@ struct EntryView: View {
                     .stroke(palette.line, lineWidth: 1)
             )
         }
-        .buttonStyle(PressableStyle(scale: 0.94))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.5))
         .accessibilityLabel("选择运算")
     }
 
     private var equalsKey: some View {
         Button {
             model.pressEquals()
-            Haptics.light()
         } label: {
             Text("=")
                 .font(.system(size: 21, weight: .semibold))
@@ -275,7 +271,7 @@ struct EntryView: View {
                 .frame(height: 52)
                 .background(Color(hex: 0x2E9F5B), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(PressableStyle(scale: 0.94))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.6))
     }
 
     private var saveKey: some View {
@@ -290,7 +286,7 @@ struct EntryView: View {
                 .background(Color(hex: 0x3B7BE8), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .opacity(model.entryCents > 0 ? 1 : 0.55)
         }
-        .buttonStyle(PressableStyle(scale: 0.94))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.7))
         .disabled(model.entryCents <= 0 || model.writing)
         .accessibilityLabel("保存这笔账")
     }

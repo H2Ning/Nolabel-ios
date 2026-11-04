@@ -6,6 +6,7 @@ struct CashStageView: View {
     let palette: AppPalette
     @Binding var yaw: Double
     @Binding var pitch: Double
+    @Binding var mode: Int
 
     @State private var dragOrigin: (yaw: Double, pitch: Double)?
 
@@ -13,32 +14,33 @@ struct CashStageView: View {
         CashBreakdown.groups(for: cents)
     }
 
-    private var units: [CashUnit] {
-        var result: [CashUnit] = []
-        for group in groups {
-            if group.count <= 600 {
-                var remaining = group.count
-                var index = 0
-                while remaining > 0 {
-                    let count = min(remaining, 100)
-                    result.append(CashUnit(denomination: group.denomination, count: count, index: index))
-                    remaining -= count
-                    index += 1
-                }
-            } else {
-                result.append(CashUnit(denomination: group.denomination, count: group.count, index: 0))
-            }
-        }
-        return Array(result.prefix(12))
-    }
-
     var body: some View {
         GeometryReader { proxy in
             ZStack {
                 stageBackground
                 grid
-                if !units.isEmpty {
-                    notes(in: proxy.size)
+
+                if !groups.isEmpty {
+                    if mode == 3 {
+                        CashNoteGrid(cents: cents, palette: palette)
+                            .transition(.opacity)
+                    } else {
+                        CashScene3DView(
+                            cents: cents,
+                            mode: mode,
+                            yaw: yaw,
+                            pitch: pitch,
+                            isDark: palette.isDark
+                        )
+                        .transition(.opacity)
+                    }
+                }
+
+                if !groups.isEmpty {
+                    modeBadge
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(11)
+                        .allowsHitTesting(false)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
@@ -47,9 +49,16 @@ struct CashStageView: View {
                     .stroke(palette.line, lineWidth: 1)
             )
             .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .gesture(rotationGesture)
+            .gesture(rotationGesture, including: mode == 3 || groups.isEmpty ? .none : .all)
+            .simultaneousGesture(
+                TapGesture().onEnded {
+                    if !groups.isEmpty { cycleMode() }
+                }
+            )
+            .animation(.easeOut(duration: 0.18), value: mode)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint("轻点切换现金摆放方式")
         }
     }
 
@@ -96,44 +105,17 @@ struct CashStageView: View {
         .allowsHitTesting(false)
     }
 
-    private func notes(in size: CGSize) -> some View {
-        let count = units.count
-        let columns = count <= 2 ? count : (count <= 4 ? 2 : 3)
-        let rows = max(1, Int(ceil(Double(count) / Double(max(columns, 1)))))
-        let horizontalPadding: CGFloat = 20
-        let verticalPadding: CGFloat = 24
-        let cellWidth = (size.width - horizontalPadding * 2) / CGFloat(max(columns, 1))
-        let cellHeight = (size.height - verticalPadding * 2) / CGFloat(max(rows, 1))
-        let noteWidth = min(158, cellWidth * 0.92)
-
-        return ZStack {
-            ForEach(Array(units.enumerated()), id: \.element.id) { index, unit in
-                let column = index % max(columns, 1)
-                let row = index / max(columns, 1)
-                let x = horizontalPadding + cellWidth * (CGFloat(column) + 0.5)
-                let y = verticalPadding + cellHeight * (CGFloat(row) + 0.5)
-                CashStackView(
-                    group: CashGroup(denomination: unit.denomination, count: unit.count),
-                    width: noteWidth * scaleFor(unit.denomination),
-                    palette: palette,
-                    yaw: yaw + Double(index % 2 == 0 ? -5 : 5),
-                    pitch: pitch,
-                    tilt: Double(index % 3) * 3 - 3
-                )
-                .position(x: x, y: y)
-                .zIndex(Double(100 - index))
+    private var modeBadge: some View {
+        HStack(spacing: 4) {
+            ForEach(1...3, id: \.self) { value in
+                Circle()
+                    .fill(value == mode ? palette.ink2 : palette.muted.opacity(0.35))
+                    .frame(width: value == mode ? 5 : 4, height: value == mode ? 5 : 4)
             }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.9), value: cents)
-    }
-
-    private func scaleFor(_ denomination: Denomination) -> CGFloat {
-        switch denomination.value {
-        case 10_000, 5_000, 2_000: 1.0
-        case 1_000, 500, 100: 0.92
-        case 50, 20, 10: 0.78
-        default: 0.64
-        }
+        .padding(.horizontal, 8)
+        .frame(height: 20)
+        .background(palette.isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.36), in: Capsule())
     }
 
     private var rotationGesture: some Gesture {
@@ -143,95 +125,104 @@ struct CashStageView: View {
                     dragOrigin = (yaw, pitch)
                 }
                 guard let origin = dragOrigin else { return }
-                yaw = max(-72, min(72, origin.yaw + Double(value.translation.width) * 0.28))
-                pitch = max(-20, min(26, origin.pitch - Double(value.translation.height) * 0.18))
+                yaw = max(-80, min(80, origin.yaw - Double(value.translation.width) * 0.55))
+                pitch = max(26, min(66, origin.pitch - Double(value.translation.height) * 0.30))
             }
             .onEnded { _ in
                 dragOrigin = nil
                 withAnimation(AppMotion.spring) {
-                    yaw = max(-72, min(72, yaw))
-                    pitch = max(-20, min(26, pitch))
+                    yaw = max(-80, min(80, yaw))
+                    pitch = max(26, min(66, pitch))
                 }
             }
+    }
+
+    private func cycleMode() {
+        withAnimation(AppMotion.quick) {
+            mode = mode % 3 + 1
+        }
+        Haptics.pick()
     }
 
     private var accessibilityLabel: String {
         guard !groups.isEmpty else { return "金额为零，未生成现钞" }
         let total = CashBreakdown.totalNotes(groups)
         let pieces = groups.map { "\($0.denomination.name) \($0.count) 张" }.joined(separator: "，")
-        return "共 \(total) 张：\(pieces)。上下拖动可按高度旋转，查看现钞组合。"
+        let modeText: String
+        switch mode {
+        case 2: modeText = "按面额分组"
+        case 3: modeText = "全部展开"
+        default: modeText = "整叠摆放"
+        }
+        return "共 \(total) 张：\(pieces)。当前\(modeText)。左右拖动可旋转，轻点切换摆放方式。"
     }
 }
 
-private struct CashUnit: Identifiable {
-    let denomination: Denomination
-    let count: Int
-    let index: Int
-    var id: String { "\(denomination.id)-\(index)" }
-}
-
-private struct CashStackView: View {
-    let group: CashGroup
-    let width: CGFloat
+private struct CashNoteGrid: View {
+    let cents: Int
     let palette: AppPalette
-    let yaw: Double
-    let pitch: Double
-    let tilt: Double
 
-    private var image: UIImage? {
-        guard let path = Bundle.main.path(
-            forResource: group.denomination.imageName,
-            ofType: "jpg",
-            inDirectory: "Notes"
-        ) else { return nil }
-        return UIImage(contentsOfFile: path)
-    }
-
-    private var aspect: CGFloat {
-        guard let image, image.size.height > 0 else { return 640 / 306 }
-        return image.size.width / image.size.height
-    }
-
-    private var layers: Int {
-        min(max(group.count, 1), 7)
+    private var notes: [Denomination] {
+        let groups = CashBreakdown.groups(for: cents)
+        var result: [Denomination] = []
+        for group in groups {
+            result.append(contentsOf: Array(repeating: group.denomination, count: group.count))
+        }
+        return result
     }
 
     var body: some View {
-        ZStack {
-            if let image {
-                ForEach(0..<layers, id: \.self) { layer in
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: width)
-                        .overlay(
-                            Rectangle()
-                                .stroke(palette.isDark ? Color.white.opacity(0.12) : Color.black.opacity(0.10), lineWidth: 0.5)
-                        )
-                        .offset(
-                            x: CGFloat(layer) * 0.9,
-                            y: -CGFloat(layer) * max(0.8, min(2.0, 8.0 / CGFloat(layers)))
-                        )
-                        .rotation3DEffect(.degrees(yaw), axis: (x: 0, y: 1, z: 0), perspective: 0.62)
-                        .rotation3DEffect(.degrees(pitch), axis: (x: 1, y: 0, z: 0), perspective: 0.62)
-                        .rotationEffect(.degrees(tilt))
-                        .shadow(color: .black.opacity(0.30), radius: 7, x: 0, y: 9)
+        ScrollView {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 5),
+                spacing: 5
+            ) {
+                ForEach(Array(notes.enumerated()), id: \.offset) { _, denom in
+                    NoteThumbnail(denom: denom)
                 }
-            } else {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(palette.surface2)
-                    .frame(width: width, height: width / aspect)
             }
+            .padding(12)
+        }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize)
+    }
+}
 
-            if group.count >= 100 {
+private struct NoteThumbnail: View {
+    let denom: Denomination
+
+    var body: some View {
+        Group {
+            if let image = NoteAsset.image(denom.imageName) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
                 Rectangle()
-                    .fill(palette.isDark ? Color(hex: 0xE8DFC9).opacity(0.9) : Color(hex: 0x6B5B3B).opacity(0.75))
-                    .frame(width: width * 0.13, height: width / aspect * 1.12)
-                    .rotation3DEffect(.degrees(yaw), axis: (x: 0, y: 1, z: 0), perspective: 0.62)
-                    .rotation3DEffect(.degrees(pitch), axis: (x: 1, y: 0, z: 0), perspective: 0.62)
-                    .rotationEffect(.degrees(tilt))
+                    .fill(Color.white.opacity(0.08))
             }
         }
-        .frame(width: width, height: width / aspect + 8)
+        .aspectRatio(denom.ratio, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .stroke(Color.black.opacity(0.20), lineWidth: 0.5)
+        )
+    }
+}
+
+private enum NoteAsset {
+    private static let cache = NSCache<NSString, UIImage>()
+
+    static func image(_ name: String) -> UIImage? {
+        if let cached = cache.object(forKey: name as NSString) {
+            return cached
+        }
+        guard let path = Bundle.main.path(forResource: name, ofType: "jpg", inDirectory: "Notes"),
+              let image = UIImage(contentsOfFile: path) else {
+            return nil
+        }
+        cache.setObject(image, forKey: name as NSString)
+        return image
     }
 }

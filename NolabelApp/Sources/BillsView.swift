@@ -352,6 +352,7 @@ struct SwipeBillRow: View {
     @State private var dragOffset: CGFloat = 0
     @State private var startOffset: CGFloat = 0
     @State private var isDragging = false
+    @State private var crossedReveal = false
     @State private var suppressTap = false
 
     private let reveal: CGFloat = 68
@@ -480,10 +481,15 @@ struct SwipeBillRow: View {
                         model.openBillID = nil
                     }
                     isDragging = true
+                    crossedReveal = false
                     startOffset = isOpen ? reveal : 0
                     suppressTap = true
                 }
                 let next = startOffset - value.translation.width
+                if next >= 34 && !crossedReveal {
+                    crossedReveal = true
+                    Haptics.pick()
+                }
                 dragOffset = min(reveal, max(0, next))
             }
             .onEnded { value in

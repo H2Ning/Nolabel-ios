@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 struct AccountUser: Equatable {
     let id: String?
@@ -20,7 +21,7 @@ struct AccountUser: Equatable {
 
 enum AccountError: Error, LocalizedError {
     case unauthorized
-    case network
+    case network(URLError?)
     case server(String?)
 
     var errorDescription: String? {
@@ -33,6 +34,20 @@ enum AccountError: Error, LocalizedError {
             message ?? "账号操作失败"
         }
     }
+
+    var isNetwork: Bool {
+        if case .network = self { return true }
+        return false
+    }
+
+    var failureReason: String? {
+        switch self {
+        case .network(let error):
+            error.map { "URLError \($0.code.rawValue): \($0.localizedDescription)" }
+        default:
+            nil
+        }
+    }
 }
 
 struct AccountAPI {
@@ -40,44 +55,102 @@ struct AccountAPI {
     static let appKey = "nolabel"
     static let dataKey = "bills"
 
+    private static let logger = Logger(subsystem: "com.h2ning.nolabel", category: "network")
+
     private static let session: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.httpCookieStorage = .shared
         configuration.httpShouldSetCookies = true
         configuration.httpCookieAcceptPolicy = .always
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        configuration.timeoutIntervalForRequest = 22
-        configuration.timeoutIntervalForResource = 35
+        configuration.timeoutIntervalForRequest = 20
+        configuration.timeoutIntervalForResource = 30
+        configuration.httpAdditionalHeaders = [
+            "Accept-Language": "zh-CN,zh;q=0.9",
+            "Referer": "https://h2ning.com/"
+        ]
         return URLSession(configuration: configuration)
     }()
 
     private func request(
         path: String,
         method: String = "GET",
-        body: [String: Any]? = nil
+        body: [String: Any]? = nil,
+        attempts: Int = 3
     ) async throws -> (Data, HTTPURLResponse) {
         guard let url = URL(string: path, relativeTo: Self.baseURL) else {
-            throw AccountError.network
+            Self.logger.error("Could not build URL for \(path, privacy: .public)")
+            throw AccountError.network(nil)
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Nolabel-iOS/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("Nolabel-iOS/1.1", forHTTPHeaderField: "User-Agent")
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
-        do {
-            let (data, response) = try await Self.session.data(for: request)
-            guard let http = response as? HTTPURLResponse else {
-                throw AccountError.network
+
+        let total = max(1, attempts)
+        var lastError: URLError?
+        for attempt in 1...total {
+            do {
+                let (data, response) = try await Self.session.data(for: request)
+                guard let http = response as? HTTPURLResponse else {
+                    throw AccountError.network(nil)
+                }
+                return (data, http)
+            } catch let error as URLError {
+                lastError = error
+                Self.logger.error("Request \(path, privacy: .public) failed on attempt \(attempt)/\(total): code=\(error.code.rawValue) \(error.localizedDescription, privacy: .public)")
+                guard attempt < total, Self.isTransient(error) else {
+                    throw AccountError.network(error)
+                }
+                try? await Task.sleep(nanoseconds: UInt64(350_000_000 * attempt))
+            } catch let error as AccountError {
+                throw error
+            } catch {
+                Self.logger.error("Request \(path, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                throw AccountError.network(nil)
             }
-            return (data, http)
-        } catch let error as AccountError {
-            throw error
-        } catch {
-            throw AccountError.network
         }
+        throw AccountError.network(lastError)
+    }
+
+    private static func isTransient(_ error: URLError) -> Bool {
+        switch error.code {
+        case .timedOut,
+             .networkConnectionLost,
+             .notConnectedToInternet,
+             .cannotConnectToHost,
+             .cannotFindHost,
+             .dnsLookupFailed,
+             .resourceUnavailable:
+            true
+        default:
+            false
+        }
+    }
+
+    private static func perform(_ request: URLRequest, path: String) async throws -> (Data, HTTPURLResponse) {
+        var lastError: URLError?
+        for attempt in 1...3 {
+            do {
+                let (data, response) = try await session.data(for: request)
+                guard let http = response as? HTTPURLResponse else {
+                    throw AccountError.network(nil)
+                }
+                return (data, http)
+            } catch let error as URLError {
+                lastError = error
+                logger.error("Request \(path, privacy: .public) failed on attempt \(attempt)/3: code=\(error.code.rawValue) \(error.localizedDescription, privacy: .public)")
+                guard attempt < 3, isTransient(error) else {
+                    throw AccountError.network(error)
+                }
+                try? await Task.sleep(nanoseconds: UInt64(350_000_000 * attempt))
+            }
+        }
+        throw AccountError.network(lastError)
     }
 
     private func json(_ data: Data) -> [String: Any]? {
@@ -150,17 +223,20 @@ struct AccountAPI {
             URLQueryItem(name: "app", value: Self.appKey),
             URLQueryItem(name: "key", value: Self.dataKey)
         ]
-        guard let url = components?.url else { throw AccountError.network }
+        guard let url = components?.url else { throw AccountError.network(nil) }
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Nolabel-iOS/1.0", forHTTPHeaderField: "User-Agent")
-        let (data, response): (Data, URLResponse)
+        request.setValue("Nolabel-iOS/1.1", forHTTPHeaderField: "User-Agent")
+        let result: (Data, HTTPURLResponse)
         do {
-            (data, response) = try await Self.session.data(for: request)
+            result = try await Self.perform(request, path: "/api/user/get")
+        } catch let error as URLError {
+            throw AccountError.network(error)
         } catch {
-            throw AccountError.network
+            throw error
         }
-        guard let http = response as? HTTPURLResponse else { throw AccountError.network }
+        let data = result.0
+        let http = result.1
         if http.statusCode == 401 { throw AccountError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
             throw AccountError.server(message(from: data))
