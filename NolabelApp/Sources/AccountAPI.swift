@@ -56,7 +56,7 @@ enum AccountError: Error, LocalizedError {
             parts.append(error.localizedDescription)
             return parts.joined(separator: " · ")
         default:
-            nil
+            return nil
         }
     }
 }
