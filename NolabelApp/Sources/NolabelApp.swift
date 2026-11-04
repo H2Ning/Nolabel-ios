@@ -31,7 +31,7 @@ struct RootView: View {
             BillsView(model: model, palette: palette)
                 .opacity(model.entryOpen ? 0.36 : 1)
                 .scaleEffect(model.entryOpen ? 0.988 : 1)
-                .allowsHitTesting(!model.entryOpen && !model.settingsOpen)
+                .allowsHitTesting(!model.entryOpen && !model.settingsOpen && !model.cashPlazaOpen && model.pendingDeleteBill == nil)
                 .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
 
             if model.entryOpen {
@@ -57,26 +57,33 @@ struct RootView: View {
                     .zIndex(4)
             }
 
-            if model.deleteDemoOpen {
-                DeleteConfirmDemoView(
-                    bill: model.monthBills.first ?? SampleData.bills[0],
+            if model.cashPlazaOpen {
+                CashPlazaView(
+                    bills: model.monthBills,
+                    monthTitle: model.monthTitle,
                     palette: palette,
-                    onCancel: { model.deleteDemoOpen = false }
+                    onClose: { model.cashPlazaOpen = false }
                 )
-                .zIndex(6)
+                .transition(.opacity)
+                .zIndex(5)
             }
 
-            if model.plazaDemoOpen {
-                CashPlazaDemoView(
-                    bills: CashPlazaDemoData.bills,
+            if let bill = model.pendingDeleteBill {
+                DeleteConfirmView(
+                    bill: bill,
                     palette: palette,
-                    onClose: { model.plazaDemoOpen = false }
+                    onCancel: { model.cancelDeletePrompt() },
+                    onConfirm: { suppressToday in
+                        model.confirmDeletePrompt(suppressToday: suppressToday)
+                    }
                 )
                 .zIndex(6)
             }
         }
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.settingsOpen)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
+        .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
+        .animation(reduceMotion ? nil : AppMotion.spring, value: model.pendingDeleteBill?.id)
         .task {
             Haptics.prepare()
             await model.bootstrap()

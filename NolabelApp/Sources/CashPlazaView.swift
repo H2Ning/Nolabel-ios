@@ -1,10 +1,9 @@
 import Charts
 import SwiftUI
 
-/// Preview-only design for the total-expense cash plaza. Production wiring is
-/// intentionally not added until the user approves this layout.
-struct CashPlazaDemoView: View {
+struct CashPlazaView: View {
     let bills: [Bill]
+    let monthTitle: String
     let palette: AppPalette
     let onClose: () -> Void
 
@@ -40,14 +39,6 @@ struct CashPlazaDemoView: View {
 
     private var totalNotes: Int {
         CashBreakdown.totalNotes(tallies)
-    }
-
-    private var monthTitle: String {
-        guard let first = expenseBills.min(by: { $0.iso < $1.iso }),
-              let date = DateHelp.date(from: first.iso) else {
-            return "现金广场"
-        }
-        return DateHelp.monthTitle(date)
     }
 
     private var points: [PlazaDay] {
@@ -222,54 +213,62 @@ struct CashPlazaDemoView: View {
                 }
             }
 
-            Chart(points) { point in
-                BarMark(
-                    x: .value("日期", point.date, unit: .day),
-                    y: .value("每日支出", point.daily)
-                )
-                .foregroundStyle(palette.expense.opacity(0.55))
-                .cornerRadius(2)
+            if points.isEmpty {
+                Text("暂无支出")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.muted)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 190)
+            } else {
+                Chart(points) { point in
+                    BarMark(
+                        x: .value("日期", point.date, unit: .day),
+                        y: .value("每日支出", point.daily)
+                    )
+                    .foregroundStyle(palette.expense.opacity(0.55))
+                    .cornerRadius(2)
 
-                LineMark(
-                    x: .value("日期", point.date),
-                    y: .value("累计支出", point.cumulative)
-                )
-                .foregroundStyle(palette.accent)
-                .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
-                .interpolationMethod(.monotone)
+                    LineMark(
+                        x: .value("日期", point.date),
+                        y: .value("累计支出", point.cumulative)
+                    )
+                    .foregroundStyle(palette.accent)
+                    .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+                    .interpolationMethod(.monotone)
 
-                PointMark(
-                    x: .value("日期", point.date),
-                    y: .value("累计支出", point.cumulative)
-                )
-                .foregroundStyle(palette.accent)
-                .symbolSize(18)
-            }
-            .chartXScale(domain: xStart...xEnd)
-            .chartYScale(domain: 0...chartMax)
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .day, count: tickStride)) { _ in
-                    AxisGridLine().foregroundStyle(palette.line.opacity(0.4))
-                    AxisTick().foregroundStyle(palette.line)
-                    AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
-                        .foregroundStyle(palette.muted)
+                    PointMark(
+                        x: .value("日期", point.date),
+                        y: .value("累计支出", point.cumulative)
+                    )
+                    .foregroundStyle(palette.accent)
+                    .symbolSize(18)
                 }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
-                    AxisGridLine().foregroundStyle(palette.line.opacity(0.35))
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text("¥\(Int(amount))")
-                                .font(.system(size: 9, weight: .medium))
-                                .monospacedDigit()
-                                .foregroundStyle(palette.muted)
+                .chartXScale(domain: xStart...xEnd)
+                .chartYScale(domain: 0...chartMax)
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day, count: tickStride)) { _ in
+                        AxisGridLine().foregroundStyle(palette.line.opacity(0.4))
+                        AxisTick().foregroundStyle(palette.line)
+                        AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
+                            .foregroundStyle(palette.muted)
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+                        AxisGridLine().foregroundStyle(palette.line.opacity(0.35))
+                        AxisValueLabel {
+                            if let amount = value.as(Double.self) {
+                                Text("¥\(Int(amount))")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .monospacedDigit()
+                                    .foregroundStyle(palette.muted)
+                            }
                         }
                     }
                 }
+                .frame(height: 190)
+                .animation(AppMotion.grace, value: points.count)
             }
-            .frame(height: 190)
-            .animation(AppMotion.grace, value: points.count)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -303,52 +302,4 @@ private struct PlazaDay: Identifiable {
     let daily: Double
     let cumulative: Double
     var id: Date { date }
-}
-
-enum CashPlazaDemoData {
-    static var bills: [Bill] {
-        let calendar = Calendar.current
-        let base = calendar.date(byAdding: .month, value: -1, to: Date()) ?? Date()
-        let parts = calendar.dateComponents([.year, .month], from: base)
-        let specs: [(day: Int, cents: Int, note: String)] = [
-            (1, 1_000, "早餐"),
-            (2, 1_000, "停车"),
-            (2, 3_250, "午饭"),
-            (3, 12_850, "超市"),
-            (4, 4_500, "打车"),
-            (5, 6_800, "咖啡"),
-            (6, 21_000, "晚餐"),
-            (7, 2_500, "水果"),
-            (8, 8_800, "电影"),
-            (9, 5_600, "买菜"),
-            (10, 12_000, "加油"),
-            (11, 3_900, "早餐"),
-            (12, 7_500, "外卖"),
-            (13, 15_000, "日用品"),
-            (14, 9_900, "书")
-        ]
-
-        return specs.enumerated().compactMap { index, spec in
-            guard let date = calendar.date(from: DateComponents(
-                year: parts.year,
-                month: parts.month,
-                day: spec.day,
-                hour: 12,
-                minute: 0
-            )) else { return nil }
-            let groups = CashBreakdown.groups(for: spec.cents)
-            return Bill(
-                id: "plaza-\(index)",
-                cents: spec.cents,
-                type: .expense,
-                note: spec.note,
-                iso: DateHelp.iso(from: date),
-                time: DateHelp.time(from: date),
-                createdAt: date.timeIntervalSince1970 * 1000 + Double(index),
-                count: CashBreakdown.totalNotes(groups),
-                kinds: groups.count,
-                groups: groups.map { BillDenomGroup(key: $0.denomination.id, count: $0.count) }
-            )
-        }
-    }
 }

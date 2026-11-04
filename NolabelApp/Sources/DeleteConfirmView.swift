@@ -1,11 +1,10 @@
 import SwiftUI
 
-/// Preview-only design. The production delete path is intentionally not wired
-/// until the user approves this confirmation pattern.
-struct DeleteConfirmDemoView: View {
+struct DeleteConfirmView: View {
     let bill: Bill
     let palette: AppPalette
     let onCancel: () -> Void
+    let onConfirm: (Bool) -> Void
 
     @State private var suppressToday = false
 
@@ -81,6 +80,7 @@ struct DeleteConfirmDemoView: View {
                         .frame(height: 40)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityValue(suppressToday ? "已勾选" : "未勾选")
                     .padding(.top, 6)
                     .padding(.bottom, 16)
 
@@ -95,7 +95,9 @@ struct DeleteConfirmDemoView: View {
                         }
                         .buttonStyle(PressableStyle(scale: 0.98))
 
-                        Button(action: onCancel) {
+                        Button {
+                            onConfirm(suppressToday)
+                        } label: {
                             Text("删除")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(.white)

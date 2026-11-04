@@ -33,12 +33,13 @@ final class AppModel {
     private let themeKey = "nolabel-theme"
     private let sortKey = "nolabel-sort-desc"
     private let cashModeKey = "nolabel-cash-mode"
+    private let deleteSuppressKey = "nolabel-delete-suppress-date"
     private let usernameKey = "h2ning_username"
 
     let previewMode: Bool
     let previewProbe: Bool
-    var deleteDemoOpen: Bool
-    var plazaDemoOpen: Bool
+    var pendingDeleteBill: Bill?
+    var cashPlazaOpen = false
 
     var bills: [Bill] = []
     var user: AccountUser?
@@ -145,8 +146,6 @@ final class AppModel {
         let arguments = ProcessInfo.processInfo.arguments
         previewMode = arguments.contains("--preview")
         previewProbe = arguments.contains("--preview-probe")
-        deleteDemoOpen = arguments.contains("--preview-delete-confirm")
-        plazaDemoOpen = arguments.contains("--preview-plaza")
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
@@ -212,6 +211,13 @@ final class AppModel {
             if arguments.contains("--preview-open"), let first = SampleData.bills.first {
                 openBillID = first.id
             }
+        }
+
+        if arguments.contains("--preview-delete-confirm"), let first = bills.first {
+            pendingDeleteBill = first
+        }
+        if arguments.contains("--preview-plaza") {
+            cashPlazaOpen = true
         }
     }
 
@@ -510,6 +516,34 @@ final class AppModel {
             Haptics.error()
             return false
         }
+    }
+
+    var deleteConfirmationSuppressedToday: Bool {
+        defaults.string(forKey: deleteSuppressKey) == DateHelp.todayISO
+    }
+
+    func requestDelete(_ bill: Bill) {
+        guard requireLogin() else { return }
+        if deleteConfirmationSuppressedToday {
+            Task { await delete(bill) }
+        } else {
+            pendingDeleteBill = bill
+            Haptics.pick()
+        }
+    }
+
+    func cancelDeletePrompt() {
+        pendingDeleteBill = nil
+        Haptics.soft()
+    }
+
+    func confirmDeletePrompt(suppressToday: Bool) {
+        guard let bill = pendingDeleteBill else { return }
+        pendingDeleteBill = nil
+        if suppressToday {
+            defaults.set(DateHelp.todayISO, forKey: deleteSuppressKey)
+        }
+        Task { await delete(bill) }
     }
 
     func delete(_ bill: Bill) async {

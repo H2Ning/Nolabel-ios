@@ -174,7 +174,15 @@ struct BillsView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .onTapGesture {
+            Haptics.soft()
+            withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                model.cashPlazaOpen = true
+            }
+        }
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel("该月支出 \(Formats.money(model.monthExpense)) 元，收入 \(Formats.money(model.monthIncome)) 元，\(model.monthBills.count) 笔，\(model.monthNotes) 张现钞")
     }
 
@@ -378,7 +386,7 @@ struct SwipeBillRow: View {
     var body: some View {
         ZStack(alignment: .trailing) {
             Button {
-                Task { await model.delete(bill) }
+                model.requestDelete(bill)
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 17, weight: .medium))
