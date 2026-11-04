@@ -94,6 +94,9 @@ struct SettingsOverlay: View {
             if case .failure = result {
                 model.authMessage = "CSV 文件导出失败"
                 model.authMessageIsError = true
+                Haptics.error()
+            } else {
+                Haptics.success()
             }
         }
     }
