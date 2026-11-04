@@ -1,10 +1,12 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct SettingsOverlay: View {
     @Bindable var model: AppModel
     let palette: AppPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openURL) private var openURL
 
     @State private var username = ""
     @State private var password = ""
@@ -149,25 +151,55 @@ struct SettingsOverlay: View {
                 }
             }
             if model.authMessageIsError && !model.authMessage.isEmpty {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(model.authMessage)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(palette.expense)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if model.authRetryable {
-                        Button {
-                            Task { await model.retryConnection() }
-                        } label: {
-                            if model.authLoading {
-                                ProgressView().tint(palette.expense)
-                            } else {
-                                Text("重试")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(palette.expense)
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(model.authMessage)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(palette.expense)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if model.authRetryable {
+                            Button {
+                                if !username.isEmpty && !password.isEmpty {
+                                    submitLogin()
+                                } else {
+                                    Task { await model.retryConnection() }
+                                }
+                            } label: {
+                                if model.authLoading {
+                                    ProgressView().tint(palette.expense)
+                                } else {
+                                    Text("重试")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(palette.expense)
+                                }
                             }
+                            .buttonStyle(.plain)
+                            .disabled(model.authLoading)
+
+                            Button {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    openURL(url)
+                                }
+                            } label: {
+                                Text("设置")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(palette.accent)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(model.authLoading)
+                    }
+
+                    if !model.networkDiagnostic.isEmpty {
+                        Text(model.networkDiagnostic)
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(palette.muted)
+                    }
+
+                    if model.authRetryable {
+                        Text("已允许仍失败：设置 → 蜂窝网络 → 诺诺 → 无线局域网与蜂窝移动数据；或 设置 → 隐私与安全性 → 本地网络 → 诺诺。若开着 VPN/Tailscale 或 Wi-Fi 代理，请先关闭或改用蜂窝数据。")
+                            .font(.system(size: 10.5, weight: .regular))
+                            .foregroundStyle(palette.muted)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(.horizontal, 4)

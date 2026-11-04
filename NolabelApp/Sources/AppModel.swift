@@ -46,6 +46,7 @@ final class AppModel {
     var authMessage = ""
     var authMessageIsError = false
     var authRetryable = false
+    var networkDiagnostic = ""
 
     var themeMode: ThemeMode
     var sortDesc: Bool
@@ -241,6 +242,7 @@ final class AppModel {
         authMessage = ""
         authMessageIsError = false
         authRetryable = false
+        networkDiagnostic = ""
         defer { authLoading = false }
         do {
             let user = try await api.me()
@@ -283,6 +285,7 @@ final class AppModel {
         authMessage = ""
         authMessageIsError = false
         authRetryable = false
+        networkDiagnostic = ""
         defer { authLoading = false }
 
         do {
@@ -330,8 +333,21 @@ final class AppModel {
     }
 
     private func networkMessage(for error: Error, fallback: String) -> String {
-        if (error as? AccountError)?.isNetwork == true,
-           let address = AccountAPI.privateNetworkAddress() {
+        guard let accountError = error as? AccountError, accountError.isNetwork else {
+            return (error as? LocalizedError)?.errorDescription ?? fallback
+        }
+
+        var details: [String] = []
+        if case .network(let urlError) = accountError, let urlError {
+            details.append("错误码 \(urlError.code.rawValue)")
+        }
+        let address = AccountAPI.privateNetworkAddress()
+        if let address {
+            details.append("DNS \(address)")
+        }
+        networkDiagnostic = details.joined(separator: " · ")
+
+        if let address {
             return "当前网络把 h2ning.com 解析到内网地址 \(address)。请关闭 VPN/Tailscale，或切换 Wi-Fi/蜂窝后重试。"
         }
         return (error as? LocalizedError)?.errorDescription ?? fallback
@@ -391,12 +407,16 @@ final class AppModel {
         authMessage = ""
         authMessageIsError = false
         authRetryable = false
+        networkDiagnostic = ""
         defer { authLoading = false }
         do {
             let user = try await api.login(username: username, password: password)
             self.user = user
             defaults.set(username, forKey: usernameKey)
             authReady = true
+            autoRetryUsed = false
+            autoRetryTask?.cancel()
+            autoRetryTask = nil
             Haptics.success()
             await loadAccount()
         } catch {
@@ -404,6 +424,17 @@ final class AppModel {
             authMessageIsError = true
             authRetryable = (error as? AccountError)?.isNetwork == true
             Haptics.error()
+            if authRetryable, !autoRetryUsed {
+                autoRetryUsed = true
+                autoRetryTask?.cancel()
+                autoRetryTask = Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: 2_500_000_000)
+                    guard let self, !Task.isCancelled else { return }
+                    self.autoRetryTask = nil
+                    guard self.authMessageIsError, !self.authLoading else { return }
+                    await self.login(username: username, password: password)
+                }
+            }
         }
     }
 

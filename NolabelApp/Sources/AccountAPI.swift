@@ -58,7 +58,12 @@ struct AccountAPI {
 
     private static let logger = Logger(subsystem: "com.h2ning.nolabel", category: "network")
 
-    private static let session: URLSession = {
+    private static let userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1"
+
+    /// A fresh session per attempt. On a Chinese iPhone the first request can
+    /// arrive while the system's "allow wireless data" sheet is up; a session
+    /// created in that state can stay wedged after the user allows access.
+    private static func makeSession() -> URLSession {
         let configuration = URLSessionConfiguration.default
         configuration.httpCookieStorage = .shared
         configuration.httpShouldSetCookies = true
@@ -66,15 +71,14 @@ struct AccountAPI {
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 45
-        // The first request may arrive while iOS is showing the local-network
-        // permission sheet. Wait for that decision instead of failing instantly.
         configuration.waitsForConnectivity = true
         configuration.httpAdditionalHeaders = [
             "Accept-Language": "zh-CN,zh;q=0.9",
+            "Origin": "https://www.h2ning.com",
             "Referer": "https://www.h2ning.com/"
         ]
         return URLSession(configuration: configuration)
-    }()
+    }
 
     private func request(
         path: String,
@@ -89,7 +93,7 @@ struct AccountAPI {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Nolabel-iOS/1.1", forHTTPHeaderField: "User-Agent")
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -98,8 +102,10 @@ struct AccountAPI {
         let total = max(1, attempts)
         var lastError: URLError?
         for attempt in 1...total {
+            let session = Self.makeSession()
+            defer { session.finishTasksAndInvalidate() }
             do {
-                let (data, response) = try await Self.session.data(for: request)
+                let (data, response) = try await session.data(for: request)
                 guard let http = response as? HTTPURLResponse else {
                     throw AccountError.network(nil)
                 }
@@ -139,6 +145,8 @@ struct AccountAPI {
     private static func perform(_ request: URLRequest, path: String) async throws -> (Data, HTTPURLResponse) {
         var lastError: URLError?
         for attempt in 1...3 {
+            let session = makeSession()
+            defer { session.finishTasksAndInvalidate() }
             do {
                 let (data, response) = try await session.data(for: request)
                 guard let http = response as? HTTPURLResponse else {
@@ -230,7 +238,7 @@ struct AccountAPI {
         guard let url = components?.url else { throw AccountError.network(nil) }
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Nolabel-iOS/1.1", forHTTPHeaderField: "User-Agent")
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
         let result: (Data, HTTPURLResponse)
         do {
             result = try await Self.perform(request, path: "/api/user/get")
