@@ -225,7 +225,7 @@ struct EntryView: View {
                         .stroke(palette.line, lineWidth: 1)
                 )
         }
-        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.82))
+        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.82, level: model.hapticLevel))
     }
 
     private var backspaceKey: some View {
@@ -243,7 +243,7 @@ struct EntryView: View {
                         .stroke(palette.line, lineWidth: 1)
                 )
         }
-        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.82))
+        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.82, level: model.hapticLevel))
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.55).onEnded { _ in
                 model.clearEntry()
@@ -272,7 +272,7 @@ struct EntryView: View {
                     .stroke(palette.line, lineWidth: 1)
             )
         }
-        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.68))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.68, level: model.hapticLevel))
         .accessibilityLabel("选择运算")
     }
 
@@ -287,7 +287,7 @@ struct EntryView: View {
                 .frame(height: 52)
                 .background(Color(hex: 0x2E9F5B), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.76))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.76, level: model.hapticLevel))
     }
 
     private var saveKey: some View {
@@ -302,7 +302,7 @@ struct EntryView: View {
                 .background(Color(hex: 0x3B7BE8), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .opacity(model.entryCents > 0 ? 1 : 0.55)
         }
-        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86, level: model.hapticLevel))
         .disabled(model.entryCents <= 0 || model.writing)
         .accessibilityLabel("保存这笔账")
     }

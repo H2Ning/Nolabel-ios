@@ -105,7 +105,6 @@ struct CashPlazaView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .transition(.opacity)
     }
 
     private var header: some View {

@@ -176,7 +176,7 @@ struct BillsView: View {
         )
         .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .onTapGesture {
-            Haptics.soft()
+            Haptics.lift()
             withAnimation(reduceMotion ? nil : AppMotion.spring) {
                 model.cashPlazaOpen = true
             }
@@ -442,6 +442,7 @@ struct SwipeBillRow: View {
             .onTapGesture {
                 guard !suppressTap else { return }
                 if isOpen {
+                    Haptics.swipeClose()
                     withAnimation(AppMotion.spring) { model.openBillID = nil }
                 } else {
                     model.openEntry(bill)
@@ -502,7 +503,7 @@ struct SwipeBillRow: View {
                 let next = startOffset - value.translation.width
                 if next >= 34 && !crossedReveal {
                     crossedReveal = true
-                    Haptics.pick()
+                    Haptics.detent()
                 }
                 dragOffset = min(reveal, max(0, next))
             }
@@ -511,6 +512,13 @@ struct SwipeBillRow: View {
                 isDragging = false
                 let projected = dragOffset + value.predictedEndTranslation.width * -0.22
                 let shouldOpen = projected > reveal * 0.42
+                if shouldOpen != isOpen {
+                    if shouldOpen {
+                        Haptics.swipeOpen()
+                    } else {
+                        Haptics.swipeClose()
+                    }
+                }
                 withAnimation(AppMotion.spring) {
                     model.openBillID = shouldOpen ? bill.id : nil
                 }

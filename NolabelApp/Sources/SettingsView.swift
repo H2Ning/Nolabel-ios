@@ -32,8 +32,11 @@ struct SettingsOverlay: View {
                             if model.settingsSubview == .main {
                                 mainView
                                     .transition(.opacity.combined(with: .move(edge: .leading)))
-                            } else {
+                            } else if model.settingsSubview == .appearance {
                                 appearanceView
+                                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+                            } else {
+                                hapticsView
                                     .transition(.opacity.combined(with: .move(edge: .trailing)))
                             }
                         }
@@ -98,7 +101,7 @@ struct SettingsOverlay: View {
     private var header: some View {
         ZStack {
             HStack {
-                if model.settingsSubview == .appearance {
+                if model.settingsSubview != .main {
                     Button {
                         withAnimation(AppMotion.spring) { model.settingsSubview = .main }
                     } label: {
@@ -126,7 +129,7 @@ struct SettingsOverlay: View {
                 .glassCircle()
                 .accessibilityLabel("关闭设置")
             }
-            Text(model.settingsSubview == .main ? "设置" : "外观")
+            Text(settingsTitle)
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(palette.ink)
         }
@@ -139,6 +142,10 @@ struct SettingsOverlay: View {
             sectionCard {
                 settingsLink(title: "外观", value: model.themeMode.label) {
                     withAnimation(AppMotion.spring) { model.settingsSubview = .appearance }
+                }
+                divider
+                settingsLink(title: "触感", value: model.hapticLevel.label) {
+                    withAnimation(AppMotion.spring) { model.settingsSubview = .haptics }
                 }
             }
             if model.user != nil && model.accountLoaded {
@@ -308,6 +315,14 @@ struct SettingsOverlay: View {
         )
     }
 
+    private var settingsTitle: String {
+        switch model.settingsSubview {
+        case .main: return "设置"
+        case .appearance: return "外观"
+        case .haptics: return "触感"
+        }
+    }
+
     private var appearanceView: some View {
         sectionCard {
             ForEach(Array(ThemeMode.allCases.enumerated()), id: \.element) { index, mode in
@@ -331,6 +346,35 @@ struct SettingsOverlay: View {
                 }
                 .buttonStyle(.plain)
                 if index < ThemeMode.allCases.count - 1 {
+                    divider
+                }
+            }
+        }
+    }
+
+    private var hapticsView: some View {
+        sectionCard {
+            ForEach(Array(HapticLevel.allCases.enumerated()), id: \.element) { index, level in
+                Button {
+                    model.setHapticLevel(level)
+                } label: {
+                    HStack {
+                        Text(level.label)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(palette.ink)
+                        Spacer()
+                        if model.hapticLevel == level {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(palette.accent)
+                        }
+                    }
+                    .frame(height: 54)
+                    .padding(.horizontal, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                if index < HapticLevel.allCases.count - 1 {
                     divider
                 }
             }

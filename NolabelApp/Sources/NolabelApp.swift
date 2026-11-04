@@ -29,10 +29,11 @@ struct RootView: View {
                 .allowsHitTesting(false)
 
             BillsView(model: model, palette: palette)
-                .opacity(model.entryOpen ? 0.36 : 1)
-                .scaleEffect(model.entryOpen ? 0.988 : 1)
+                .opacity(model.entryOpen || model.cashPlazaOpen ? 0.36 : 1)
+                .scaleEffect(model.entryOpen || model.cashPlazaOpen ? 0.988 : 1)
                 .allowsHitTesting(!model.entryOpen && !model.settingsOpen && !model.cashPlazaOpen && model.pendingDeleteBill == nil)
                 .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
+                .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
 
             if model.entryOpen {
                 EntryView(model: model, palette: palette)
@@ -62,9 +63,17 @@ struct RootView: View {
                     bills: model.monthBills,
                     monthTitle: model.monthTitle,
                     palette: palette,
-                    onClose: { model.cashPlazaOpen = false }
+                    onClose: {
+                        Haptics.lower()
+                        model.cashPlazaOpen = false
+                    }
                 )
-                .transition(.opacity)
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .move(edge: .bottom).combined(with: .opacity)
+                    )
+                )
                 .zIndex(5)
             }
 

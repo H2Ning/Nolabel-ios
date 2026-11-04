@@ -94,6 +94,7 @@ jobs:
           capture settings-dark --preview --preview-screen settings --preview-theme dark
           capture settings-user --preview --preview-screen settings --preview-theme dark --preview-user
           capture settings-appearance --preview --preview-screen settings --preview-theme dark --preview-settings appearance
+          capture settings-haptics --preview --preview-screen settings --preview-theme dark --preview-settings haptics
           capture account-dark --preview --preview-screen account --preview-theme dark
           capture network-probe --preview --preview-screen settings --preview-theme dark --preview-probe
           capture network-probe-pin --preview --preview-screen settings --preview-theme dark --preview-probe --force-pin

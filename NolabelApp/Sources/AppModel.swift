@@ -6,6 +6,7 @@ import UIKit
 enum SettingsSubview {
     case main
     case appearance
+    case haptics
 }
 
 enum EntryOperator: String, CaseIterable {
@@ -33,6 +34,7 @@ final class AppModel {
     private let themeKey = "nolabel-theme"
     private let sortKey = "nolabel-sort-desc"
     private let cashModeKey = "nolabel-cash-mode"
+    private let hapticKey = "nolabel-haptic-level"
     private let deleteSuppressKey = "nolabel-delete-suppress-date"
     private let usernameKey = "h2ning_username"
 
@@ -52,6 +54,7 @@ final class AppModel {
     var networkDiagnostic = ""
 
     var themeMode: ThemeMode
+    var hapticLevel: HapticLevel
     var sortDesc: Bool
     var selectedMonth: Date
     var settingsOpen = false
@@ -148,6 +151,8 @@ final class AppModel {
         previewProbe = arguments.contains("--preview-probe")
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
+        hapticLevel = HapticLevel(rawValue: defaults.string(forKey: hapticKey) ?? "") ?? .rich
+        Haptics.setLevel(hapticLevel)
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
         let storedCashMode = defaults.integer(forKey: cashModeKey)
         cashMode = (1...3).contains(storedCashMode) ? storedCashMode : 1
@@ -188,8 +193,10 @@ final class AppModel {
         let screen = value(after: "--preview-screen", in: arguments)
         if screen == "settings" {
             settingsOpen = true
-            if value(after: "--preview-settings", in: arguments) == "appearance" {
-                settingsSubview = .appearance
+            switch value(after: "--preview-settings", in: arguments) {
+            case "appearance": settingsSubview = .appearance
+            case "haptics": settingsSubview = .haptics
+            default: break
             }
         } else if screen == "entry" {
             entryOpen = true
@@ -525,10 +532,11 @@ final class AppModel {
     func requestDelete(_ bill: Bill) {
         guard requireLogin() else { return }
         if deleteConfirmationSuppressedToday {
+            Haptics.deleteConfirm()
             Task { await delete(bill) }
         } else {
             pendingDeleteBill = bill
-            Haptics.pick()
+            Haptics.deletePrompt()
         }
     }
 
@@ -543,6 +551,7 @@ final class AppModel {
         if suppressToday {
             defaults.set(DateHelp.todayISO, forKey: deleteSuppressKey)
         }
+        Haptics.deleteConfirm()
         Task { await delete(bill) }
     }
 
@@ -551,19 +560,20 @@ final class AppModel {
         let next = bills.filter { $0.id != bill.id }
         if await saveBills(next) {
             openBillID = nil
-            Haptics.delete()
         }
     }
 
     func shiftMonth(_ value: Int) {
+        let previousYear = Calendar.current.component(.year, from: selectedMonth)
         selectedMonth = DateHelp.shiftMonth(selectedMonth, by: value)
-        Haptics.pick()
+        let nextYear = Calendar.current.component(.year, from: selectedMonth)
+        Haptics.monthShift(crossesYear: previousYear != nextYear)
     }
 
     func cycleCashMode() {
         cashMode = cashMode % 3 + 1
         defaults.set(cashMode, forKey: cashModeKey)
-        Haptics.pick()
+        Haptics.cashMode(cashMode)
     }
 
     var csvExportText: String {
@@ -596,6 +606,14 @@ final class AppModel {
             Haptics.warning()
             return false
         }
+    }
+
+    func setHapticLevel(_ value: HapticLevel) {
+        guard value != hapticLevel else { return }
+        hapticLevel = value
+        defaults.set(value.rawValue, forKey: hapticKey)
+        Haptics.setLevel(value)
+        Haptics.pick()
     }
 
     func setTheme(_ mode: ThemeMode) {
@@ -666,6 +684,7 @@ final class AppModel {
         entryError = ""
         entryOperator = nil
         entryAccumulator = nil
+        Haptics.soft()
     }
 
     func saveEntry() async {
@@ -738,7 +757,7 @@ final class AppModel {
             entryInput = ""
             entryNote = ""
             entryError = ""
-            Haptics.success()
+            Haptics.cashCounted()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 if self?.lastSavedBillID == bill.id {
                     self?.lastSavedBillID = nil
@@ -852,13 +871,13 @@ final class AppModel {
         entryAccumulator = nil
         entryOperator = nil
         entryJustEvaluated = true
+        Haptics.equalsSettle()
     }
 
     func changeType(_ type: BillType) {
         guard type != entryType else { return }
-        Haptics.pick()
         entryType = type
-        Haptics.light()
+        Haptics.pick()
     }
 
     func confirmDate(_ date: Date) {
