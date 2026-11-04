@@ -127,7 +127,7 @@ enum Haptics {
 
     /// A crisp timer-wheel detent while the cash model rotates.
     static func rotationDetent() {
-        impact(lightGenerator, 0.34)
+        impact(rigidGenerator, 0.55)
     }
 
     /// First beat after equals; the button itself supplies the firmer press.
@@ -192,9 +192,22 @@ enum Haptics {
     }
 
     static func deleteConfirm() {
-        impact(rigidGenerator, 0.90)
-        after(0.060) {
-            impact(softGenerator, 0.38)
+        // A sharp center burst followed by a short, uneven crackle.
+        impact(rigidGenerator, 1.0)
+        after(0.032) {
+            impact(mediumGenerator, 0.92)
+        }
+        after(0.072) {
+            impact(lightGenerator, 0.84)
+        }
+        after(0.116) {
+            impact(lightGenerator, 0.70)
+        }
+        after(0.164) {
+            impact(lightGenerator, 0.55)
+        }
+        after(0.218) {
+            impact(softGenerator, 0.42)
         }
     }
 
