@@ -106,16 +106,29 @@ struct CashStageView: View {
     }
 
     private var modeBadge: some View {
-        HStack(spacing: 4) {
-            ForEach(1...3, id: \.self) { value in
-                Circle()
-                    .fill(value == mode ? palette.ink2 : palette.muted.opacity(0.35))
-                    .frame(width: value == mode ? 5 : 4, height: value == mode ? 5 : 4)
+        HStack(spacing: 5) {
+            HStack(spacing: 4) {
+                ForEach(1...3, id: \.self) { value in
+                    Circle()
+                        .fill(value == mode ? palette.ink2 : palette.muted.opacity(0.35))
+                        .frame(width: value == mode ? 5 : 4, height: value == mode ? 5 : 4)
+                }
             }
+            Text(modeLabel)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(palette.muted)
         }
         .padding(.horizontal, 8)
         .frame(height: 20)
         .background(palette.isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.36), in: Capsule())
+    }
+
+    private var modeLabel: String {
+        switch mode {
+        case 2: "分组"
+        case 3: "展开"
+        default: "整叠"
+        }
     }
 
     private var rotationGesture: some Gesture {
