@@ -100,7 +100,7 @@ struct CashPlazaView: View {
                     chartCard
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 10)
+                .padding(.top, 16)
                 .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
@@ -108,18 +108,7 @@ struct CashPlazaView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("现金广场")
-                    .font(.system(size: 28, weight: .bold))
-                    .tracking(-0.5)
-                    .foregroundStyle(palette.ink)
-                Text("\(monthTitle) · \(expenseBills.count) 笔 · \(totalNotes) 张现钞")
-                    .font(.system(size: 12, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(palette.muted)
-            }
-            Spacer()
+        VStack(alignment: .leading, spacing: 14) {
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
@@ -130,7 +119,19 @@ struct CashPlazaView: View {
             .buttonStyle(PressableStyle(scale: 0.92))
             .glassCircle()
             .accessibilityLabel("关闭现金广场")
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("现金广场")
+                    .font(.system(size: 28, weight: .bold))
+                    .tracking(-0.5)
+                    .foregroundStyle(palette.ink)
+                Text("\(monthTitle) · \(expenseBills.count) 笔 · \(totalNotes) 张现钞")
+                    .font(.system(size: 12, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(palette.muted)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var stage: some View {

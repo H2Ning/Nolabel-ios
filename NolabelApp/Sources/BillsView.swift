@@ -362,6 +362,7 @@ struct SwipeBillRow: View {
     @State private var isDragging = false
     @State private var crossedReveal = false
     @State private var suppressTap = false
+    @State private var verticalDrag = false
 
     private let reveal: CGFloat = 68
     private let circleSize: CGFloat = 44
@@ -439,15 +440,7 @@ struct SwipeBillRow: View {
                 }
             }
             .contentShape(Rectangle())
-            .onTapGesture {
-                guard !suppressTap else { return }
-                if isOpen {
-                    Haptics.swipeClose()
-                    withAnimation(AppMotion.spring) { model.openBillID = nil }
-                } else {
-                    model.openEntry(bill)
-                }
-            }
+            .simultaneousGesture(swipeGesture)
             .accessibilityAddTraits(.isButton)
             .accessibilityAction {
                 guard !suppressTap else { return }
@@ -473,7 +466,6 @@ struct SwipeBillRow: View {
         .frame(maxWidth: .infinity)
         .clipped()
         .contentShape(Rectangle())
-        .simultaneousGesture(swipeGesture)
         .animation(isDragging ? nil : AppMotion.spring, value: offset)
         .animation(isDragging ? nil : AppMotion.spring, value: isOpen)
         .accessibilityElement(children: .contain)
@@ -487,11 +479,31 @@ struct SwipeBillRow: View {
         return parts.joined(separator: " · ")
     }
 
+    private func handleRowTap() {
+        guard !suppressTap else { return }
+        if isOpen {
+            Haptics.swipeClose()
+            withAnimation(AppMotion.spring) { model.openBillID = nil }
+        } else {
+            model.openEntry(bill)
+        }
+    }
+
     private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 8)
+        DragGesture(minimumDistance: 0)
             .onChanged { value in
-                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                let dx = value.translation.width
+                let dy = value.translation.height
                 if !isDragging {
+                    if abs(dx) < 8 && abs(dy) < 8 {
+                        verticalDrag = false
+                        return
+                    }
+                    if abs(dy) >= abs(dx) {
+                        verticalDrag = true
+                        return
+                    }
+                    verticalDrag = false
                     if model.openBillID != bill.id {
                         model.openBillID = nil
                     }
@@ -500,7 +512,7 @@ struct SwipeBillRow: View {
                     startOffset = isOpen ? reveal : 0
                     suppressTap = true
                 }
-                let next = startOffset - value.translation.width
+                let next = startOffset - dx
                 if next >= 34 && !crossedReveal {
                     crossedReveal = true
                     Haptics.detent()
@@ -508,8 +520,15 @@ struct SwipeBillRow: View {
                 dragOffset = min(reveal, max(0, next))
             }
             .onEnded { value in
-                guard isDragging else { return }
+                guard isDragging else {
+                    if !verticalDrag {
+                        handleRowTap()
+                    }
+                    verticalDrag = false
+                    return
+                }
                 isDragging = false
+                verticalDrag = false
                 let projected = dragOffset + value.predictedEndTranslation.width * -0.22
                 let shouldOpen = projected > reveal * 0.42
                 if shouldOpen != isOpen {

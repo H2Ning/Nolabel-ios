@@ -101,9 +101,24 @@ jobs:
           capture delete-confirm --preview --preview-screen bills --preview-theme dark --preview-delete-confirm
           capture cash-plaza --preview --preview-screen bills --preview-theme dark --preview-plaza
 
+      - name: Make previews
+        run: |
+          mkdir -p previews
+          for f in screenshots/*.png; do
+            name=$(basename "$f" .png)
+            sips -Z 1800 -s format jpeg -s formatOptions 80 "$f" --out "previews/$name.jpg" >/dev/null
+          done
+
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
           name: ios-screenshots
           path: screenshots
+          if-no-files-found: error
+
+      - name: Upload previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-previews
+          path: previews
           if-no-files-found: error

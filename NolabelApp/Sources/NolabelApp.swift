@@ -48,7 +48,12 @@ struct RootView: View {
 
             if model.settingsOpen {
                 SettingsOverlay(model: model, palette: palette)
-                    .transition(.opacity)
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .trailing).combined(with: .opacity)
+                        )
+                    )
                     .zIndex(3)
             }
 

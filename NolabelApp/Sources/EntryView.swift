@@ -59,7 +59,7 @@ struct EntryView: View {
             noteFocused = false
         }
         .task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
+            try? await Task.sleep(nanoseconds: 650_000_000)
             revealContent()
         }
     }

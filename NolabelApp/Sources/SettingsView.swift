@@ -17,48 +17,41 @@ struct SettingsOverlay: View {
     private enum Field { case username, password }
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                Color.black.opacity(palette.isDark ? 0.52 : 0.28)
-                    .ignoresSafeArea()
-                    .background(.ultraThinMaterial)
-                    .onTapGesture { model.closeSettings() }
+        ZStack {
+            palette.pageBG.ignoresSafeArea()
+            settingsAtmosphere
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        VStack(spacing: 0) {
-                            header
-                            if model.settingsSubview == .main {
-                                mainView
-                                    .transition(.opacity.combined(with: .move(edge: .leading)))
-                            } else if model.settingsSubview == .appearance {
-                                appearanceView
-                                    .transition(.opacity.combined(with: .move(edge: .trailing)))
-                            } else {
-                                hapticsView
-                                    .transition(.opacity.combined(with: .move(edge: .trailing)))
-                            }
-                        }
-                        .padding(18)
-                        .frame(maxWidth: min(390, proxy.size.width - 24))
-                        .glassEffect(.regular, in: .rect(cornerRadius: 24))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(palette.line, lineWidth: 1)
-                        )
-                        .shadow(color: palette.sheetShadow, radius: 34, y: 18)
-                        Spacer(minLength: 0)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    pageHeader
+
+                    Text(settingsTitle)
+                        .font(.system(size: 36, weight: .bold))
+                        .tracking(-0.8)
+                        .foregroundStyle(palette.ink)
+                        .padding(.bottom, 2)
+
+                    if model.settingsSubview == .main {
+                        mainView
+                            .transition(.opacity.combined(with: .move(edge: .leading)))
+                    } else if model.settingsSubview == .appearance {
+                        appearanceView
+                            .transition(.opacity.combined(with: .move(edge: .trailing)))
+                    } else {
+                        hapticsView
+                            .transition(.opacity.combined(with: .move(edge: .trailing)))
                     }
-                    .frame(minHeight: proxy.size.height)
-                    .frame(maxWidth: .infinity)
                 }
-                .scrollIndicators(.hidden)
-                .scrollBounceBehavior(.basedOnSize)
-                .frame(maxWidth: min(390, proxy.size.width - 24))
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 20)
+                .padding(.top, 6)
+                .padding(.bottom, 40)
             }
+            .scrollIndicators(.hidden)
         }
+        .contentShape(Rectangle())
+        .simultaneousGesture(backSwipe)
         .onAppear {
             username = model.savedUsername
         }
@@ -101,42 +94,57 @@ struct SettingsOverlay: View {
         }
     }
 
-    private var header: some View {
-        ZStack {
-            HStack {
-                if model.settingsSubview != .main {
-                    Button {
-                        withAnimation(AppMotion.spring) { model.settingsSubview = .main }
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(palette.ink2)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(PressableStyle(scale: 0.92))
-                    .glassCircle()
-                    .accessibilityLabel("返回设置")
-                } else {
-                    Color.clear.frame(width: 44, height: 44)
-                }
-                Spacer()
-                Button(action: { model.closeSettings() }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(palette.ink2)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Circle())
-                }
-                .buttonStyle(PressableStyle(scale: 0.92))
-                .glassCircle()
-                .accessibilityLabel("关闭设置")
+    private var pageHeader: some View {
+        HStack {
+            Button(action: goBack) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(palette.ink2)
+                    .frame(width: 46, height: 46)
+                    .contentShape(Circle())
             }
-            Text(settingsTitle)
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(palette.ink)
+            .buttonStyle(PressableStyle(scale: 0.92))
+            .glassCircle()
+            .accessibilityLabel(model.settingsSubview == .main ? "关闭设置" : "返回设置")
+            Spacer(minLength: 0)
         }
-        .padding(.bottom, 20)
+    }
+
+    private var settingsAtmosphere: some View {
+        RadialGradient(
+            colors: [
+                palette.isDark
+                    ? Color(hex: 0x22372A).opacity(0.65)
+                    : Color.white.opacity(0.70),
+                .clear
+            ],
+            center: UnitPoint(x: 0.5, y: -0.08),
+            startRadius: 0,
+            endRadius: 430
+        )
+    }
+
+    private var backSwipe: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onEnded { value in
+                guard value.startLocation.x < 28,
+                      value.translation.width > 90,
+                      abs(value.translation.width) > abs(value.translation.height) else {
+                    return
+                }
+                goBack()
+            }
+    }
+
+    private func goBack() {
+        if model.settingsSubview == .main {
+            model.closeSettings()
+            return
+        }
+        Haptics.soft()
+        withAnimation(AppMotion.spring) {
+            model.settingsSubview = .main
+        }
     }
 
     private var mainView: some View {
@@ -311,9 +319,9 @@ struct SettingsOverlay: View {
             }
         }
         .background(sectionBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -415,9 +423,9 @@ struct SettingsOverlay: View {
             content()
         }
         .background(sectionBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }

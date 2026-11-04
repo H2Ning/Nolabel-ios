@@ -9,29 +9,16 @@ struct CashScene3DView: UIViewRepresentable {
     let isDark: Bool
     var onReady: (() -> Void)? = nil
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    final class Coordinator {
-        var ready = false
-    }
-
     func makeUIView(context: Context) -> CashSceneCanvas {
         let view = CashSceneCanvas()
         view.isUserInteractionEnabled = false
+        view.onReady = onReady
         return view
     }
 
     func updateUIView(_ view: CashSceneCanvas, context: Context) {
+        view.onReady = onReady
         view.update(source: source, mode: mode, yaw: yaw, pitch: pitch, isDark: isDark)
-        if !context.coordinator.ready {
-            context.coordinator.ready = true
-            let ready = onReady
-            DispatchQueue.main.async {
-                ready?()
-            }
-        }
     }
 }
 
@@ -44,6 +31,9 @@ final class CashSceneCanvas: UIView {
     private var lastMode = 1
     private var yaw: Double = Double(CashSceneLayout.defaultYaw)
     private var pitch: Double = Double(CashSceneLayout.packageTilt)
+    private var hasSource = false
+    private var readySignaled = false
+    var onReady: (() -> Void)?
 
     private struct ItemNode {
         let layer: CALayer
@@ -83,11 +73,23 @@ final class CashSceneCanvas: UIView {
             sceneSize = bounds.size
             rebuild(source: lastSource, mode: lastMode)
         }
+        signalReadyIfNeeded()
+    }
+
+    private func signalReadyIfNeeded() {
+        guard !readySignaled, hasSource, bounds.width > 1, bounds.height > 1 else { return }
+        readySignaled = true
+        DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async {
+                self?.onReady?()
+            }
+        }
     }
 
     func update(source: CashSceneSource, mode: Int, yaw: Double, pitch: Double, isDark: Bool) {
         self.yaw = yaw
         self.pitch = pitch
+        hasSource = true
         let nextKey = "\(source.key)|\(mode)"
         if nextKey != sceneKey || bounds.size != sceneSize {
             sceneKey = nextKey
@@ -96,6 +98,7 @@ final class CashSceneCanvas: UIView {
             rebuild(source: source, mode: mode)
         }
         updateTransforms()
+        signalReadyIfNeeded()
     }
 
     private func rebuild(source: CashSceneSource, mode: Int) {
