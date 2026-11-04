@@ -35,6 +35,7 @@ final class AppModel {
     private let usernameKey = "h2ning_username"
 
     let previewMode: Bool
+    let previewProbe: Bool
 
     var bills: [Bill] = []
     var user: AccountUser?
@@ -137,6 +138,7 @@ final class AppModel {
     init() {
         let arguments = ProcessInfo.processInfo.arguments
         previewMode = arguments.contains("--preview")
+        previewProbe = arguments.contains("--preview-probe")
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
@@ -156,6 +158,9 @@ final class AppModel {
         bootstrapped = true
         if previewMode {
             authReady = true
+            if previewProbe {
+                await runNetworkProbe()
+            }
             return
         }
         await checkAuth()
@@ -205,6 +210,24 @@ final class AppModel {
             return nil
         }
         return arguments[index + 1]
+    }
+
+    func runNetworkProbe() async {
+        authLoading = true
+        authMessage = ""
+        authMessageIsError = false
+        defer { authLoading = false }
+        do {
+            let user = try await api.me()
+            authMessage = "网络连接正常" + (user.map { "，已登录 \($0.name)" } ?? "，未登录")
+            authMessageIsError = true
+            authRetryable = false
+        } catch {
+            let reason = (error as? AccountError)?.failureReason ?? error.localizedDescription
+            authMessage = "\(error.localizedDescription)｜\(reason)"
+            authMessageIsError = true
+            authRetryable = true
+        }
     }
 
     func checkAuth() async {
