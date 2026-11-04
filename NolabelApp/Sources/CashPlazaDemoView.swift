@@ -124,18 +124,10 @@ struct CashPlazaDemoView: View {
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 7) {
-                    Text("现金广场")
-                        .font(.system(size: 28, weight: .bold))
-                        .tracking(-0.5)
-                        .foregroundStyle(palette.ink)
-                    Text("演示")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(palette.accent)
-                        .padding(.horizontal, 6)
-                        .frame(height: 17)
-                        .background(palette.accent.opacity(0.12), in: Capsule())
-                }
+                Text("现金广场")
+                    .font(.system(size: 28, weight: .bold))
+                    .tracking(-0.5)
+                    .foregroundStyle(palette.ink)
                 Text("\(monthTitle) · \(expenseBills.count) 笔 · \(totalNotes) 张现钞")
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
@@ -208,15 +200,6 @@ struct CashPlazaDemoView: View {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
-        .overlay(alignment: .topLeading) {
-            Text("按每笔账单的实际面额合计")
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(palette.muted)
-                .padding(.horizontal, 8)
-                .frame(height: 20)
-                .background(palette.isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.36), in: Capsule())
-                .padding(11)
-        }
     }
 
     private var chartCard: some View {
