@@ -9,7 +9,7 @@ struct EntryView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let stageHeight = max(184, min(320, proxy.size.height - 382))
+            let stageHeight = max(184, min(360, proxy.size.height - 382))
             VStack(spacing: 0) {
                 HStack {
                     Button(action: { model.closeEntry() }) {

@@ -20,7 +20,7 @@ struct CashScene3DView: UIViewRepresentable {
 }
 
 final class CashSceneCanvas: UIView {
-    private let contentLayer = CALayer()
+    private let contentLayer = CATransformLayer()
     private var nodes: [ItemNode] = []
     private var sceneKey = ""
     private var sceneSize: CGSize = .zero
@@ -40,8 +40,10 @@ final class CashSceneCanvas: UIView {
         backgroundColor = .clear
         isOpaque = false
         layer.masksToBounds = true
-        contentLayer.masksToBounds = true
-        contentLayer.anchorPoint = .zero
+        contentLayer.masksToBounds = false
+        contentLayer.anchorPoint = CGPoint(x: 0.5, y: 0.44)
+        contentLayer.sublayerTransform = CATransform3DIdentity
+        contentLayer.sublayerTransform.m34 = -1 / CashSceneLayout.perspective
         contentLayer.actions = [
             "bounds": NSNull(),
             "position": NSNull(),
@@ -60,7 +62,7 @@ final class CashSceneCanvas: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         contentLayer.bounds = CGRect(origin: .zero, size: bounds.size)
-        contentLayer.position = .zero
+        contentLayer.position = CGPoint(x: bounds.width / 2, y: bounds.height * 0.44)
         if bounds.size != sceneSize {
             sceneSize = bounds.size
             rebuild(cents: lastCents, mode: lastMode)
@@ -116,7 +118,7 @@ final class CashSceneCanvas: UIView {
     // MARK: - Item construction
 
     private func makeNode(for item: CashItemSpec) -> ItemNode? {
-        let container = CALayer()
+        let container = CATransformLayer()
         container.bounds = .zero
         container.position = .zero
         container.anchorPoint = .zero
@@ -694,19 +696,8 @@ final class CashSceneCanvas: UIView {
     // MARK: - 3D math
 
     private func worldTransform(x: CGFloat, y: CGFloat) -> CATransform3D {
-        let originX = sceneSize.width / 2
-        let originY = sceneSize.height * 0.44
-
-        var perspective = CATransform3DIdentity
-        perspective.m34 = -1 / CashSceneLayout.perspective
-
         let rotation = multiply(rotationZ(yaw * .pi / 180), rotationX(pitch * .pi / 180))
-        let localToStage = multiply(rotation, translation(x, y, 0))
-        let projection = multiply(
-            multiply(translation(-originX, -originY, 0), perspective),
-            translation(originX, originY, 0)
-        )
-        return multiply(localToStage, projection)
+        return multiply(rotation, translation(x, y, 0))
     }
 
     private func translation(_ x: CGFloat, _ y: CGFloat, _ z: CGFloat) -> CATransform3D {
