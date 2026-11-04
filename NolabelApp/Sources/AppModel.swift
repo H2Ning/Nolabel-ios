@@ -72,6 +72,8 @@ final class AppModel {
     var cashMode = 1
 
     private var bootstrapped = false
+    private var autoRetryUsed = false
+    private var autoRetryTask: Task<Void, Never>?
     var palette: AppPalette {
         AppPalette.palette(themeMode == .system ? currentSystemScheme : (themeMode == .dark ? .dark : .light))
     }
@@ -241,6 +243,9 @@ final class AppModel {
             let user = try await api.me()
             self.user = user
             authReady = true
+            autoRetryUsed = false
+            autoRetryTask?.cancel()
+            autoRetryTask = nil
             if user != nil {
                 await loadAccount()
             } else {
@@ -253,10 +258,14 @@ final class AppModel {
             authMessage = (error as? LocalizedError)?.errorDescription ?? "网络错误，暂未连接账号"
             authMessageIsError = true
             authRetryable = (error as? AccountError)?.isNetwork == true
+            scheduleAutoRetryIfNeeded()
         }
     }
 
     func retryConnection() async {
+        autoRetryUsed = false
+        autoRetryTask?.cancel()
+        autoRetryTask = nil
         if user == nil {
             await checkAuth()
         } else {
@@ -299,6 +308,9 @@ final class AppModel {
             selectedMonth = DateHelp.monthStart(Date())
             persistCache(bills: result, owner: user.name)
             authMessage = ""
+            autoRetryUsed = false
+            autoRetryTask?.cancel()
+            autoRetryTask = nil
         } catch AccountError.unauthorized {
             self.user = nil
             accountLoaded = false
@@ -310,6 +322,24 @@ final class AppModel {
             authMessage = (error as? LocalizedError)?.errorDescription ?? "账号数据加载失败"
             authMessageIsError = true
             authRetryable = (error as? AccountError)?.isNetwork == true
+            scheduleAutoRetryIfNeeded()
+        }
+    }
+
+    private func scheduleAutoRetryIfNeeded() {
+        guard authRetryable, !autoRetryUsed, !previewMode else { return }
+        autoRetryUsed = true
+        autoRetryTask?.cancel()
+        autoRetryTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            guard let self, !Task.isCancelled else { return }
+            self.autoRetryTask = nil
+            guard self.authMessageIsError, !self.authLoading else { return }
+            if self.user == nil {
+                await self.checkAuth()
+            } else {
+                await self.loadAccount()
+            }
         }
     }
 

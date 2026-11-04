@@ -63,8 +63,8 @@ struct AccountAPI {
         configuration.httpShouldSetCookies = true
         configuration.httpCookieAcceptPolicy = .always
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        configuration.timeoutIntervalForRequest = 20
-        configuration.timeoutIntervalForResource = 30
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 45
         configuration.httpAdditionalHeaders = [
             "Accept-Language": "zh-CN,zh;q=0.9",
             "Referer": "https://h2ning.com/"
