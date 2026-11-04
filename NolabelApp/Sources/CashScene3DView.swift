@@ -2,11 +2,20 @@ import SwiftUI
 import UIKit
 
 struct CashScene3DView: UIViewRepresentable {
-    let cents: Int
+    let source: CashSceneSource
     let mode: Int
     let yaw: Double
     let pitch: Double
     let isDark: Bool
+    var onReady: (() -> Void)? = nil
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        var ready = false
+    }
 
     func makeUIView(context: Context) -> CashSceneCanvas {
         let view = CashSceneCanvas()
@@ -15,7 +24,14 @@ struct CashScene3DView: UIViewRepresentable {
     }
 
     func updateUIView(_ view: CashSceneCanvas, context: Context) {
-        view.update(cents: cents, mode: mode, yaw: yaw, pitch: pitch, isDark: isDark)
+        view.update(source: source, mode: mode, yaw: yaw, pitch: pitch, isDark: isDark)
+        if !context.coordinator.ready {
+            context.coordinator.ready = true
+            let ready = onReady
+            DispatchQueue.main.async {
+                ready?()
+            }
+        }
     }
 }
 
@@ -24,7 +40,7 @@ final class CashSceneCanvas: UIView {
     private var nodes: [ItemNode] = []
     private var sceneKey = ""
     private var sceneSize: CGSize = .zero
-    private var lastCents = 0
+    private var lastSource: CashSceneSource = .cents(0)
     private var lastMode = 1
     private var yaw: Double = Double(CashSceneLayout.defaultYaw)
     private var pitch: Double = Double(CashSceneLayout.packageTilt)
@@ -65,24 +81,24 @@ final class CashSceneCanvas: UIView {
         contentLayer.position = CGPoint(x: bounds.width / 2, y: bounds.height * 0.44)
         if bounds.size != sceneSize {
             sceneSize = bounds.size
-            rebuild(cents: lastCents, mode: lastMode)
+            rebuild(source: lastSource, mode: lastMode)
         }
     }
 
-    func update(cents: Int, mode: Int, yaw: Double, pitch: Double, isDark: Bool) {
+    func update(source: CashSceneSource, mode: Int, yaw: Double, pitch: Double, isDark: Bool) {
         self.yaw = yaw
         self.pitch = pitch
-        let nextKey = "\(cents)|\(mode)"
+        let nextKey = "\(source.key)|\(mode)"
         if nextKey != sceneKey || bounds.size != sceneSize {
             sceneKey = nextKey
-            lastCents = cents
+            lastSource = source
             lastMode = mode
-            rebuild(cents: cents, mode: mode)
+            rebuild(source: source, mode: mode)
         }
         updateTransforms()
     }
 
-    private func rebuild(cents: Int, mode: Int) {
+    private func rebuild(source: CashSceneSource, mode: Int) {
         let size = bounds.size
         sceneSize = size
         CATransaction.begin()
@@ -95,7 +111,7 @@ final class CashSceneCanvas: UIView {
             return
         }
 
-        let spec = CashSceneLayout.spec(cents: cents, mode: mode, size: size)
+        let spec = CashSceneLayout.spec(source: source, mode: mode, size: size)
         for item in spec.items {
             guard let node = makeNode(for: item) else { continue }
             contentLayer.addSublayer(node.layer)

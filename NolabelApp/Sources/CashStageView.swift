@@ -9,8 +9,10 @@ struct CashStageView: View {
     @Binding var pitch: Double
     let mode: Int
     let onCycle: () -> Void
+    let onReady: () -> Void
 
     @StateObject private var momentum = CashRotationMomentum()
+    @State private var didSignalReady = false
     @State private var dragOrigin: (yaw: Double, pitch: Double)?
     @State private var lastDragTime: CFTimeInterval = 0
     @State private var lastDragX: CGFloat = 0
@@ -32,11 +34,12 @@ struct CashStageView: View {
                             .transition(.opacity)
                     } else {
                         CashScene3DView(
-                            cents: cents,
+                            source: .cents(cents),
                             mode: mode,
                             yaw: yaw,
                             pitch: pitch,
-                            isDark: palette.isDark
+                            isDark: palette.isDark,
+                            onReady: signalReady
                         )
                         .transition(.opacity)
                     }
@@ -69,12 +72,18 @@ struct CashStageView: View {
                 momentum.onDelta = { delta in
                     yaw += delta
                 }
+                if groups.isEmpty || mode == 3 {
+                    signalReady()
+                }
             }
             .onDisappear {
                 momentum.stop()
             }
-            .onChange(of: mode) { _, _ in
+            .onChange(of: mode) { _, newMode in
                 momentum.stop()
+                if newMode == 3 {
+                    signalReady()
+                }
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityLabel)
@@ -132,6 +141,12 @@ struct CashStageView: View {
             .padding(.horizontal, 8)
             .frame(height: 20)
             .background(palette.isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.36), in: Capsule())
+    }
+
+    private func signalReady() {
+        guard !didSignalReady else { return }
+        didSignalReady = true
+        onReady()
     }
 
     private var modeLabel: String {

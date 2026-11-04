@@ -37,6 +37,8 @@ final class AppModel {
 
     let previewMode: Bool
     let previewProbe: Bool
+    var deleteDemoOpen: Bool
+    var plazaDemoOpen: Bool
 
     var bills: [Bill] = []
     var user: AccountUser?
@@ -143,6 +145,8 @@ final class AppModel {
         let arguments = ProcessInfo.processInfo.arguments
         previewMode = arguments.contains("--preview")
         previewProbe = arguments.contains("--preview-probe")
+        deleteDemoOpen = arguments.contains("--preview-delete-confirm")
+        plazaDemoOpen = arguments.contains("--preview-plaza")
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true

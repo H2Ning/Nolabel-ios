@@ -56,6 +56,24 @@ struct RootView: View {
                     .transition(.opacity)
                     .zIndex(4)
             }
+
+            if model.deleteDemoOpen {
+                DeleteConfirmDemoView(
+                    bill: model.monthBills.first ?? SampleData.bills[0],
+                    palette: palette,
+                    onCancel: { model.deleteDemoOpen = false }
+                )
+                .zIndex(6)
+            }
+
+            if model.plazaDemoOpen {
+                CashPlazaDemoView(
+                    bills: CashPlazaDemoData.bills,
+                    palette: palette,
+                    onClose: { model.plazaDemoOpen = false }
+                )
+                .zIndex(6)
+            }
         }
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.settingsOpen)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)

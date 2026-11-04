@@ -4,6 +4,7 @@ struct EntryView: View {
     @Bindable var model: AppModel
     let palette: AppPalette
     @FocusState private var noteFocused: Bool
+    @State private var contentReady = false
 
     private let keySpacing: CGFloat = 8
 
@@ -33,7 +34,8 @@ struct EntryView: View {
                     yaw: $model.cashYaw,
                     pitch: $model.cashPitch,
                     mode: model.cashMode,
-                    onCycle: { model.cycleCashMode() }
+                    onCycle: { model.cycleCashMode() },
+                    onReady: revealContent
                 )
                 .frame(height: stageHeight)
                 .padding(.horizontal, 20)
@@ -43,16 +45,29 @@ struct EntryView: View {
 
                 entryCard
                     .padding(.horizontal, 20)
+                    .opacity(contentReady ? 1 : 0)
 
                 keypad
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
                     .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
+                    .opacity(contentReady ? 1 : 0)
             }
             .background(palette.pageBG.ignoresSafeArea())
         }
         .onTapGesture {
             noteFocused = false
+        }
+        .task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            revealContent()
+        }
+    }
+
+    private func revealContent() {
+        guard !contentReady else { return }
+        withAnimation(AppMotion.quick) {
+            contentReady = true
         }
     }
 

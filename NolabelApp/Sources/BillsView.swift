@@ -396,53 +396,59 @@ struct SwipeBillRow: View {
             .allowsHitTesting(isOpen && !isDragging)
             .accessibilityLabel("删除 \(bill.title) \(Formats.money(bill.cents)) 元")
 
-            Button {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(bill.type == .expense ? palette.expense : palette.income)
+                    .frame(width: 6, height: 6)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(bill.title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(palette.ink)
+                        .lineLimit(1)
+                    Text(metaText)
+                        .font(.system(size: 12, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(palette.muted)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Text(bill.signedAmountText)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(bill.type == .expense ? palette.expense : palette.income)
+                    .lineLimit(1)
+            }
+            .padding(.leading, 16)
+            .padding(.trailing, 26)
+            .padding(.vertical, 13)
+            .frame(maxWidth: .infinity)
+            .background(palette.surface)
+            .overlay {
+                if model.lastSavedBillID == bill.id {
+                    Rectangle()
+                        .fill(palette.accent.opacity(palette.isDark ? 0.14 : 0.10))
+                        .allowsHitTesting(false)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
                 guard !suppressTap else { return }
                 if isOpen {
                     withAnimation(AppMotion.spring) { model.openBillID = nil }
                 } else {
                     model.openEntry(bill)
                 }
-            } label: {
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(bill.type == .expense ? palette.expense : palette.income)
-                        .frame(width: 6, height: 6)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(bill.title)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(palette.ink)
-                            .lineLimit(1)
-                        Text(metaText)
-                            .font(.system(size: 12, weight: .medium))
-                            .monospacedDigit()
-                            .foregroundStyle(palette.muted)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    Text(bill.signedAmountText)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(bill.type == .expense ? palette.expense : palette.income)
-                        .lineLimit(1)
-                }
-                .padding(.leading, 16)
-                .padding(.trailing, 26)
-                .padding(.vertical, 13)
-                .frame(maxWidth: .infinity)
-                .background(palette.surface)
-                .overlay {
-                    if model.lastSavedBillID == bill.id {
-                        Rectangle()
-                            .fill(palette.accent.opacity(palette.isDark ? 0.14 : 0.10))
-                            .allowsHitTesting(false)
-                    }
-                }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction {
+                guard !suppressTap else { return }
+                if isOpen {
+                    withAnimation(AppMotion.spring) { model.openBillID = nil }
+                } else {
+                    model.openEntry(bill)
+                }
+            }
             .offset(x: -offset)
-            .allowsHitTesting(!isDragging)
             .animation(AppMotion.grace, value: model.lastSavedBillID)
 
             if showDivider {

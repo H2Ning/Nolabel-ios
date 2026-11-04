@@ -37,6 +37,20 @@ struct CashSceneSpec {
     static let empty = CashSceneSpec(id: "empty", items: [])
 }
 
+enum CashSceneSource {
+    case cents(Int)
+    case groups([CashGroup])
+
+    var key: String {
+        switch self {
+        case .cents(let cents):
+            return "cents|\(cents)"
+        case .groups(let groups):
+            return "groups|" + groups.map { "\($0.denomination.id)x\($0.count)" }.joined(separator: ",")
+        }
+    }
+}
+
 enum CashSceneLayout {
     static let noteThicknessMM: CGFloat = 0.12
     static let packageVisibleLimit = 10
@@ -45,22 +59,35 @@ enum CashSceneLayout {
     static let defaultYaw: CGFloat = -30
     static let perspective: CGFloat = 620
 
-    static func spec(cents: Int, mode: Int, size: CGSize) -> CashSceneSpec {
+    static func spec(source: CashSceneSource, mode: Int, size: CGSize) -> CashSceneSpec {
         guard size.width > 1, size.height > 1 else { return .empty }
-        let groups = CashBreakdown.groups(for: cents)
-        guard !groups.isEmpty else { return .empty }
-        let id = "\(cents)|\(mode)|\(Int(size.width.rounded()))x\(Int(size.height.rounded()))"
-        switch mode {
-        case 2:
+        let sizeKey = "\(Int(size.width.rounded()))x\(Int(size.height.rounded()))"
+
+        switch source {
+        case .groups(let groups):
+            guard !groups.isEmpty else { return .empty }
+            let id = "groups|\(mode)|\(sizeKey)|" + groups.map { "\($0.denomination.id)x\($0.count)" }.joined(separator: ",")
             return CashSceneSpec(id: id, items: groupedItems(groups, size: size))
-        case 3:
-            return CashSceneSpec(id: id, items: [])
-        default:
-            if cents >= 1_000_000 {
-                return CashSceneSpec(id: id, items: packageItems(cents, size: size))
+        case .cents(let cents):
+            let groups = CashBreakdown.groups(for: cents)
+            guard !groups.isEmpty else { return .empty }
+            let id = "\(cents)|\(mode)|\(sizeKey)"
+            switch mode {
+            case 2:
+                return CashSceneSpec(id: id, items: groupedItems(groups, size: size))
+            case 3:
+                return CashSceneSpec(id: id, items: [])
+            default:
+                if cents >= 1_000_000 {
+                    return CashSceneSpec(id: id, items: packageItems(cents, size: size))
+                }
+                return CashSceneSpec(id: id, items: pileItems(groups, size: size))
             }
-            return CashSceneSpec(id: id, items: pileItems(groups, size: size))
         }
+    }
+
+    static func spec(cents: Int, mode: Int, size: CGSize) -> CashSceneSpec {
+        spec(source: .cents(cents), mode: mode, size: size)
     }
 
     // MARK: - Level 1: packaged cash
