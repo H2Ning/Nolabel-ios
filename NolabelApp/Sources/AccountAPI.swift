@@ -44,7 +44,17 @@ enum AccountError: Error, LocalizedError {
     var failureReason: String? {
         switch self {
         case .network(let error):
-            error.map { "URLError \($0.code.rawValue): \($0.localizedDescription)" }
+            guard let error else { return "URLError unknown" }
+            var parts = ["URLError \(error.code.rawValue)"]
+            if let url = error.failingURL?.absoluteString {
+                parts.append(url)
+            }
+            let nsError = error as NSError
+            if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+                parts.append("\(underlying.domain) \(underlying.code)")
+            }
+            parts.append(error.localizedDescription)
+            return parts.joined(separator: " · ")
         default:
             nil
         }
@@ -58,7 +68,7 @@ struct AccountAPI {
 
     private static let logger = Logger(subsystem: "com.h2ning.nolabel", category: "network")
 
-    private static let userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1"
+    private static let userAgent = "Nolabel-iOS/1.5"
 
     /// A fresh session per attempt. On a Chinese iPhone the first request can
     /// arrive while the system's "allow wireless data" sheet is up; a session
@@ -74,7 +84,6 @@ struct AccountAPI {
         configuration.waitsForConnectivity = true
         configuration.httpAdditionalHeaders = [
             "Accept-Language": "zh-CN,zh;q=0.9",
-            "Origin": "https://www.h2ning.com",
             "Referer": "https://www.h2ning.com/"
         ]
         return URLSession(

@@ -339,8 +339,8 @@ final class AppModel {
         }
 
         var details: [String] = []
-        if case .network(let urlError) = accountError, let urlError {
-            details.append("错误码 \(urlError.code.rawValue)")
+        if let reason = accountError.failureReason {
+            details.append(reason)
         }
         let address = AccountAPI.privateNetworkAddress()
         if let address {
