@@ -77,7 +77,11 @@ struct AccountAPI {
             "Origin": "https://www.h2ning.com",
             "Referer": "https://www.h2ning.com/"
         ]
-        return URLSession(configuration: configuration)
+        return URLSession(
+            configuration: configuration,
+            delegate: PinnedTrustDelegate.shared,
+            delegateQueue: nil
+        )
     }
 
     private func request(
