@@ -99,8 +99,13 @@ struct AccountAPI {
         body: [String: Any]? = nil,
         attempts: Int = 3
     ) async throws -> (Data, HTTPURLResponse) {
-        guard let url = URL(string: path, relativeTo: Self.baseURL) else {
+        guard let rawURL = URL(string: path, relativeTo: Self.baseURL) else {
             Self.logger.error("Could not build URL for \(path, privacy: .public)")
+            throw AccountError.network(nil)
+        }
+        let url = rawURL.absoluteURL
+        guard url.scheme != nil, url.host != nil else {
+            Self.logger.error("Relative URL without base: \(url.absoluteString, privacy: .public)")
             throw AccountError.network(nil)
         }
         var request = URLRequest(url: url)
@@ -241,14 +246,16 @@ struct AccountAPI {
 
     func fetchBills() async throws -> BillsEnvelope? {
         var components = URLComponents(
-            url: URL(string: "/api/user/get", relativeTo: Self.baseURL)!,
-            resolvingAgainstBaseURL: false
+            url: Self.baseURL.appendingPathComponent("api/user/get"),
+            resolvingAgainstBaseURL: true
         )
         components?.queryItems = [
             URLQueryItem(name: "app", value: Self.appKey),
             URLQueryItem(name: "key", value: Self.dataKey)
         ]
-        guard let url = components?.url else { throw AccountError.network(nil) }
+        guard let url = components?.url, url.scheme != nil, url.host != nil else {
+            throw AccountError.network(nil)
+        }
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")

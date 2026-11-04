@@ -226,7 +226,14 @@ final class AppModel {
         do {
             let user = try await api.me()
             let pin = PinnedTrustDelegate.lastPinUsed ? "，证书固定通过" : ""
-            authMessage = "网络连接正常" + (user.map { "，已登录 \($0.name)" } ?? "，未登录") + pin
+            var text = "网络连接正常" + (user.map { "，已登录 \($0.name)" } ?? "，未登录") + pin
+            do {
+                _ = try await api.fetchBills()
+                text += "，账单接口正常"
+            } catch AccountError.unauthorized {
+                text += "，账单接口正常（未登录）"
+            }
+            authMessage = text
             authMessageIsError = true
             authRetryable = false
         } catch {
