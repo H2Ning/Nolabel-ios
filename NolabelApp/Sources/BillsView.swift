@@ -362,7 +362,6 @@ struct SwipeBillRow: View {
     @State private var isDragging = false
     @State private var crossedReveal = false
     @State private var suppressTap = false
-    @State private var verticalDrag = false
 
     private let reveal: CGFloat = 68
     private let circleSize: CGFloat = 44
@@ -440,7 +439,15 @@ struct SwipeBillRow: View {
                 }
             }
             .contentShape(Rectangle())
-            .simultaneousGesture(swipeGesture)
+            .overlay {
+                HorizontalSwipeArea(
+                    onBegan: beginSwipe,
+                    onChanged: updateSwipe,
+                    onEnded: endSwipe,
+                    onTap: handleRowTap
+                )
+                .accessibilityHidden(true)
+            }
             .accessibilityAddTraits(.isButton)
             .accessibilityAction {
                 guard !suppressTap else { return }
@@ -489,62 +496,47 @@ struct SwipeBillRow: View {
         }
     }
 
-    private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                let dx = value.translation.width
-                let dy = value.translation.height
-                if !isDragging {
-                    if abs(dx) < 8 && abs(dy) < 8 {
-                        verticalDrag = false
-                        return
-                    }
-                    if abs(dy) >= abs(dx) {
-                        verticalDrag = true
-                        return
-                    }
-                    verticalDrag = false
-                    if model.openBillID != bill.id {
-                        model.openBillID = nil
-                    }
-                    isDragging = true
-                    crossedReveal = false
-                    startOffset = isOpen ? reveal : 0
-                    suppressTap = true
-                }
-                let next = startOffset - dx
-                if startOffset == 0 && next >= 34 && !crossedReveal {
-                    crossedReveal = true
-                    Haptics.detent()
-                }
-                dragOffset = min(reveal, max(0, next))
-            }
-            .onEnded { value in
-                guard isDragging else {
-                    if !verticalDrag {
-                        handleRowTap()
-                    }
-                    verticalDrag = false
-                    return
-                }
-                isDragging = false
-                verticalDrag = false
-                let projected = dragOffset + value.predictedEndTranslation.width * -0.22
-                let shouldOpen = projected > reveal * 0.42
-                if shouldOpen != isOpen {
-                    if shouldOpen {
-                        Haptics.swipeOpen()
-                    } else {
-                        Haptics.swipeClose()
-                    }
-                }
-                withAnimation(AppMotion.spring) {
-                    model.openBillID = shouldOpen ? bill.id : nil
-                }
-                dragOffset = 0
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-                    suppressTap = false
-                }
-            }
+    private func beginSwipe() {
+        guard !isDragging else { return }
+        if model.openBillID != bill.id {
+            model.openBillID = nil
+        }
+        isDragging = true
+        crossedReveal = false
+        startOffset = isOpen ? reveal : 0
+        suppressTap = true
     }
+
+    private func updateSwipe(_ translation: CGFloat) {
+        guard isDragging else { return }
+        let next = startOffset - translation
+        if startOffset == 0 && next >= 34 && !crossedReveal {
+            crossedReveal = true
+            Haptics.detent()
+        }
+        dragOffset = min(reveal, max(0, next))
+    }
+
+    private func endSwipe(_ translation: CGFloat, _ predictedTranslation: CGFloat) {
+        guard isDragging else { return }
+        isDragging = false
+        let projected = dragOffset + (-predictedTranslation) * 0.22
+        let shouldOpen = projected > reveal * 0.42
+        if shouldOpen != isOpen {
+            if shouldOpen {
+                Haptics.swipeOpen()
+            } else {
+                Haptics.swipeClose()
+            }
+        }
+        withAnimation(AppMotion.spring) {
+            model.openBillID = shouldOpen ? bill.id : nil
+        }
+        dragOffset = 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+            suppressTap = false
+        }
+    }
+
+
 }

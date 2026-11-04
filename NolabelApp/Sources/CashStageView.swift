@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 struct CashStageView: View {
-    let cents: Int
+    let source: CashSceneSource
     let palette: AppPalette
     @Binding var yaw: Double
     @Binding var pitch: Double
@@ -17,9 +17,13 @@ struct CashStageView: View {
     @State private var lastDragTime: CFTimeInterval = 0
     @State private var lastDragX: CGFloat = 0
     @State private var dragVelocityX: CGFloat = 0
+    @State private var lastDetentYaw: Double?
 
     private var groups: [CashGroup] {
-        CashBreakdown.groups(for: cents)
+        switch source {
+        case .cents(let cents): return CashBreakdown.groups(for: cents)
+        case .groups(let groups): return groups
+        }
     }
 
     var body: some View {
@@ -30,11 +34,11 @@ struct CashStageView: View {
 
                 if !groups.isEmpty {
                     if mode == 3 {
-                        CashNoteGrid(cents: cents, palette: palette)
+                        CashNoteGrid(source: source, palette: palette)
                             .transition(.opacity)
                     } else {
                         CashScene3DView(
-                            source: .cents(cents),
+                            source: source,
                             mode: mode,
                             yaw: yaw,
                             pitch: pitch,
@@ -71,6 +75,7 @@ struct CashStageView: View {
             .onAppear {
                 momentum.onDelta = { delta in
                     yaw += delta
+                    trackRotationDetents()
                 }
                 if groups.isEmpty || mode == 3 {
                     signalReady()
@@ -81,6 +86,7 @@ struct CashStageView: View {
             }
             .onChange(of: mode) { _, newMode in
                 momentum.stop()
+                lastDetentYaw = yaw
                 if newMode == 3 {
                     signalReady()
                 }
@@ -157,12 +163,27 @@ struct CashStageView: View {
         }
     }
 
+    private func trackRotationDetents() {
+        guard let last = lastDetentYaw else {
+            lastDetentYaw = yaw
+            return
+        }
+        let distance = abs(yaw - last)
+        guard distance >= 15 else { return }
+        let count = min(3, Int(distance / 15))
+        for _ in 0..<count {
+            Haptics.rotationDetent()
+        }
+        lastDetentYaw = yaw
+    }
+
     private var rotationGesture: some Gesture {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
                 if dragOrigin == nil {
                     momentum.stop()
                     dragOrigin = (yaw, pitch)
+                    lastDetentYaw = yaw
                     dragVelocityX = 0
                     lastDragX = 0
                     lastDragTime = CACurrentMediaTime()
@@ -181,6 +202,7 @@ struct CashStageView: View {
                 // Horizontal rotation is deliberately unbounded.
                 yaw = origin.yaw - Double(value.translation.width) * 0.55
                 pitch = max(26, min(66, origin.pitch - Double(value.translation.height) * 0.30))
+                trackRotationDetents()
             }
             .onEnded { _ in
                 dragOrigin = nil
@@ -208,11 +230,17 @@ struct CashStageView: View {
 }
 
 private struct CashNoteGrid: View {
-    let cents: Int
+    let source: CashSceneSource
     let palette: AppPalette
 
+    private var groups: [CashGroup] {
+        switch source {
+        case .cents(let cents): return CashBreakdown.groups(for: cents)
+        case .groups(let groups): return groups
+        }
+    }
+
     private var notes: [Denomination] {
-        let groups = CashBreakdown.groups(for: cents)
         var result: [Denomination] = []
         for group in groups {
             result.append(contentsOf: Array(repeating: group.denomination, count: group.count))

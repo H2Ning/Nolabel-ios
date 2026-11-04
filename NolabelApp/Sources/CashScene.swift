@@ -46,28 +46,16 @@ enum CashSceneSource {
         case .cents(let cents):
             return "cents|\(cents)"
         case .groups(let groups):
-            return "groups|" + groups.map { "\($0.denomination.id)x\($0.count)" }.joined(separator: ",")
-        }
-    }
-}
-
-enum CashSceneLayout {
-    static let noteThicknessMM: CGFloat = 0.12
-    static let packageVisibleLimit = 10
-    static let packageBoxDrawScale: CGFloat = 0.82
-    static let packageTilt: CGFloat = 46
-    static let defaultYaw: CGFloat = -30
-    static let perspective: CGFloat = 620
-
-    static func spec(source: CashSceneSource, mode: Int, size: CGSize) -> CashSceneSpec {
-        guard size.width > 1, size.height > 1 else { return .empty }
-        let sizeKey = "\(Int(size.width.rounded()))x\(Int(size.height.rounded()))"
-
-        switch source {
-        case .groups(let groups):
             guard !groups.isEmpty else { return .empty }
             let id = "groups|\(mode)|\(sizeKey)|" + groups.map { "\($0.denomination.id)x\($0.count)" }.joined(separator: ",")
-            return CashSceneSpec(id: id, items: groupedItems(groups, size: size))
+            switch mode {
+            case 2:
+                return CashSceneSpec(id: id, items: groupedItems(groups, size: size))
+            case 3:
+                return CashSceneSpec(id: id, items: [])
+            default:
+                return CashSceneSpec(id: id, items: pileItems(groups, size: size))
+            }
         case .cents(let cents):
             let groups = CashBreakdown.groups(for: cents)
             guard !groups.isEmpty else { return .empty }

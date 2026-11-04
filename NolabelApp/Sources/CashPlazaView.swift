@@ -2,10 +2,12 @@ import Charts
 import SwiftUI
 
 struct CashPlazaView: View {
-    let bills: [Bill]
-    let monthTitle: String
+    @Bindable var model: AppModel
     let palette: AppPalette
     let onClose: () -> Void
+
+    private var bills: [Bill] { model.monthBills }
+    private var monthTitle: String { model.monthTitle }
 
     private var expenseBills: [Bill] {
         bills.filter { $0.type == .expense }
@@ -135,6 +137,25 @@ struct CashPlazaView: View {
     }
 
     private var stage: some View {
+        Group {
+            if tallies.isEmpty {
+                emptyStage
+            } else {
+                CashStageView(
+                    source: .groups(tallies),
+                    palette: palette,
+                    yaw: $model.cashYaw,
+                    pitch: $model.cashPitch,
+                    mode: model.cashMode,
+                    onCycle: { model.cycleCashMode() },
+                    onReady: {}
+                )
+                .frame(height: 360)
+            }
+        }
+    }
+
+    private var emptyStage: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(
@@ -167,19 +188,9 @@ struct CashPlazaView: View {
             }
             .allowsHitTesting(false)
 
-            if tallies.isEmpty {
-                Text("这个月还没有支出")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(palette.muted)
-            } else {
-                CashScene3DView(
-                    source: .groups(tallies),
-                    mode: 2,
-                    yaw: -30,
-                    pitch: 46,
-                    isDark: palette.isDark
-                )
-            }
+            Text("这个月还没有支出")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(palette.muted)
         }
         .frame(height: 360)
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))

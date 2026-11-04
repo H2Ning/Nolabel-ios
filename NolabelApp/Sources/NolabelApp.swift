@@ -65,8 +65,7 @@ struct RootView: View {
 
             if model.cashPlazaOpen {
                 CashPlazaView(
-                    bills: model.monthBills,
-                    monthTitle: model.monthTitle,
+                    model: model,
                     palette: palette,
                     onClose: {
                         Haptics.lower()

@@ -29,7 +29,7 @@ struct EntryView: View {
                 .padding(.top, 6)
 
                 CashStageView(
-                    cents: model.entryCents,
+                    source: .cents(model.entryCents),
                     palette: palette,
                     yaw: $model.cashYaw,
                     pitch: $model.cashPitch,

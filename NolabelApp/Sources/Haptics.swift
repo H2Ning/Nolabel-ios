@@ -54,7 +54,13 @@ enum Haptics {
 
     private static var enabled: Bool { level != .off }
 
-    private static var scale: Double { level == .soft ? 0.6 : 1 }
+    private static var scale: Double {
+        switch level {
+        case .rich: return 1.18
+        case .soft: return 0.62
+        case .off: return 0
+        }
+    }
 
     private static func impact(_ generator: UIImpactFeedbackGenerator, _ intensity: Double) {
         guard enabled else { return }
@@ -117,6 +123,11 @@ enum Haptics {
     /// A small mechanical detent while swiping.
     static func detent() {
         selection()
+    }
+
+    /// A crisp timer-wheel detent while the cash model rotates.
+    static func rotationDetent() {
+        impact(lightGenerator, 0.34)
     }
 
     /// First beat after equals; the button itself supplies the firmer press.
@@ -219,7 +230,12 @@ struct HapticKeyStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let active = level != .off
-        let resolved = level == .soft ? intensity * 0.6 : intensity
+        let resolved: Double
+        switch level {
+        case .rich: resolved = min(1, intensity * 1.12)
+        case .soft: resolved = intensity * 0.62
+        case .off: resolved = 0
+        }
         return configuration.label
             .scaleEffect(configuration.isPressed ? 0.94 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
