@@ -60,8 +60,10 @@ struct CashPlazaView: View {
         while day <= end {
             let value = daily[day] ?? 0
             cumulative += value
+            let components = calendar.dateComponents([.month, .day], from: day)
             result.append(PlazaDay(
                 date: day,
+                label: "\(components.month ?? 0)/\(components.day ?? 0)",
                 daily: Double(value) / 100,
                 cumulative: Double(cumulative) / 100
             ))
@@ -69,15 +71,6 @@ struct CashPlazaView: View {
             day = next
         }
         return result
-    }
-
-    private var xStart: Date {
-        points.first?.date ?? Date()
-    }
-
-    private var xEnd: Date {
-        guard let last = points.last?.date else { return xStart }
-        return Calendar.current.date(byAdding: .day, value: 1, to: last) ?? last
     }
 
     private var chartMax: Double {
@@ -89,8 +82,11 @@ struct CashPlazaView: View {
         return ceil(maximum / step) * step
     }
 
-    private var tickStride: Int {
-        max(1, Int(ceil(Double(points.count) / 6.0)))
+    private var tickLabels: [String] {
+        let stride = max(1, Int(ceil(Double(points.count) / 6.0)))
+        return points.enumerated().compactMap { index, point in
+            index % stride == 0 ? point.label : nil
+        }
     }
 
     var body: some View {
@@ -224,7 +220,7 @@ struct CashPlazaView: View {
                     dailyBar(point)
 
                     LineMark(
-                        x: .value("日期", point.date),
+                        x: .value("日期", point.label),
                         y: .value("累计支出", point.cumulative)
                     )
                     .foregroundStyle(palette.accent)
@@ -232,19 +228,19 @@ struct CashPlazaView: View {
                     .interpolationMethod(.monotone)
 
                     PointMark(
-                        x: .value("日期", point.date),
+                        x: .value("日期", point.label),
                         y: .value("累计支出", point.cumulative)
                     )
                     .foregroundStyle(palette.accent)
                     .symbolSize(18)
                 }
-                .chartXScale(domain: xStart...xEnd)
                 .chartYScale(domain: 0...chartMax)
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: .day, count: tickStride)) { _ in
+                    AxisMarks(values: tickLabels) { _ in
                         AxisGridLine().foregroundStyle(palette.line.opacity(0.4))
                         AxisTick().foregroundStyle(palette.line)
-                        AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
+                        AxisValueLabel()
+                            .font(.system(size: 9, weight: .medium))
                             .foregroundStyle(palette.muted)
                     }
                 }
@@ -278,7 +274,7 @@ struct CashPlazaView: View {
     private func dailyBar(_ point: PlazaDay) -> some ChartContent {
         if points.count <= 6 {
             BarMark(
-                x: .value("日期", point.date, unit: .day),
+                x: .value("日期", point.label),
                 y: .value("每日支出", point.daily),
                 width: .fixed(22)
             )
@@ -286,8 +282,9 @@ struct CashPlazaView: View {
             .cornerRadius(2)
         } else {
             BarMark(
-                x: .value("日期", point.date, unit: .day),
-                y: .value("每日支出", point.daily)
+                x: .value("日期", point.label),
+                y: .value("每日支出", point.daily),
+                width: .ratio(0.55)
             )
             .foregroundStyle(palette.expense.opacity(0.55))
             .cornerRadius(2)
@@ -314,6 +311,7 @@ struct CashPlazaView: View {
 
 private struct PlazaDay: Identifiable {
     let date: Date
+    let label: String
     let daily: Double
     let cumulative: Double
     var id: Date { date }
