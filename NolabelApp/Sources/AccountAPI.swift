@@ -293,7 +293,9 @@ struct AccountAPI {
                     )
                 }
                 if status == 0 {
-                    let ip = String(cString: buffer)
+                    let ip = buffer.withUnsafeBufferPointer { raw in
+                        String(cString: raw.baseAddress!)
+                    }
                     if isPrivateAddress(ip) {
                         return ip
                     }

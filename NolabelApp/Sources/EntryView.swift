@@ -32,7 +32,8 @@ struct EntryView: View {
                     palette: palette,
                     yaw: $model.cashYaw,
                     pitch: $model.cashPitch,
-                    mode: $model.cashMode
+                    mode: model.cashMode,
+                    onCycle: { model.cycleCashMode() }
                 )
                 .frame(height: stageHeight)
                 .padding(.horizontal, 20)

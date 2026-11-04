@@ -1,3 +1,4 @@
+import QuartzCore
 import SwiftUI
 import UIKit
 
@@ -6,9 +7,14 @@ struct CashStageView: View {
     let palette: AppPalette
     @Binding var yaw: Double
     @Binding var pitch: Double
-    @Binding var mode: Int
+    let mode: Int
+    let onCycle: () -> Void
 
+    @StateObject private var momentum = CashRotationMomentum()
     @State private var dragOrigin: (yaw: Double, pitch: Double)?
+    @State private var lastDragTime: CFTimeInterval = 0
+    @State private var lastDragX: CGFloat = 0
+    @State private var dragVelocityX: CGFloat = 0
 
     private var groups: [CashGroup] {
         CashBreakdown.groups(for: cents)
@@ -52,10 +58,24 @@ struct CashStageView: View {
             .gesture(rotationGesture, including: mode == 3 || groups.isEmpty ? .none : .all)
             .simultaneousGesture(
                 TapGesture().onEnded {
-                    if !groups.isEmpty { cycleMode() }
+                    if !groups.isEmpty {
+                        momentum.stop()
+                        onCycle()
+                    }
                 }
             )
             .animation(.easeOut(duration: 0.18), value: mode)
+            .onAppear {
+                momentum.onDelta = { delta in
+                    yaw += delta
+                }
+            }
+            .onDisappear {
+                momentum.stop()
+            }
+            .onChange(of: mode) { _, _ in
+                momentum.stop()
+            }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityLabel)
             .accessibilityHint("轻点切换现金摆放方式")
@@ -106,21 +126,12 @@ struct CashStageView: View {
     }
 
     private var modeBadge: some View {
-        HStack(spacing: 5) {
-            HStack(spacing: 4) {
-                ForEach(1...3, id: \.self) { value in
-                    Circle()
-                        .fill(value == mode ? palette.ink2 : palette.muted.opacity(0.35))
-                        .frame(width: value == mode ? 5 : 4, height: value == mode ? 5 : 4)
-                }
-            }
-            Text(modeLabel + " · 轻点")
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(palette.muted)
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 20)
-        .background(palette.isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.36), in: Capsule())
+        Text(modeLabel)
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(palette.muted)
+            .padding(.horizontal, 8)
+            .frame(height: 20)
+            .background(palette.isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.36), in: Capsule())
     }
 
     private var modeLabel: String {
@@ -135,26 +146,36 @@ struct CashStageView: View {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
                 if dragOrigin == nil {
+                    momentum.stop()
                     dragOrigin = (yaw, pitch)
+                    dragVelocityX = 0
+                    lastDragX = 0
+                    lastDragTime = CACurrentMediaTime()
                 }
                 guard let origin = dragOrigin else { return }
-                yaw = max(-80, min(80, origin.yaw - Double(value.translation.width) * 0.55))
+
+                let now = CACurrentMediaTime()
+                let deltaTime = now - lastDragTime
+                if deltaTime > 0.006 {
+                    let instant = Double(value.translation.width - lastDragX) / deltaTime
+                    dragVelocityX = dragVelocityX * 0.55 + CGFloat(instant) * 0.45
+                    lastDragX = value.translation.width
+                    lastDragTime = now
+                }
+
+                // Horizontal rotation is deliberately unbounded.
+                yaw = origin.yaw - Double(value.translation.width) * 0.55
                 pitch = max(26, min(66, origin.pitch - Double(value.translation.height) * 0.30))
             }
             .onEnded { _ in
                 dragOrigin = nil
-                withAnimation(AppMotion.spring) {
-                    yaw = max(-80, min(80, yaw))
-                    pitch = max(26, min(66, pitch))
+                let idle = CACurrentMediaTime() - lastDragTime
+                guard idle < 0.12 else {
+                    dragVelocityX = 0
+                    return
                 }
+                momentum.start(velocity: -Double(dragVelocityX) * 0.55)
             }
-    }
-
-    private func cycleMode() {
-        withAnimation(AppMotion.quick) {
-            mode = mode % 3 + 1
-        }
-        Haptics.pick()
     }
 
     private var accessibilityLabel: String {

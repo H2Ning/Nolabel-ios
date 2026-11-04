@@ -32,6 +32,7 @@ final class AppModel {
     private let cacheOwnerKey = "nolabel-cache-owner"
     private let themeKey = "nolabel-theme"
     private let sortKey = "nolabel-sort-desc"
+    private let cashModeKey = "nolabel-cash-mode"
     private let usernameKey = "h2ning_username"
 
     let previewMode: Bool
@@ -144,6 +145,8 @@ final class AppModel {
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
+        let storedCashMode = defaults.integer(forKey: cashModeKey)
+        cashMode = (1...3).contains(storedCashMode) ? storedCashMode : 1
         selectedMonth = DateHelp.monthStart(Date())
 
         if let raw = BillStore.shared.loadRaw(), let envelope = BillsCodec.parse(raw) {
@@ -480,6 +483,12 @@ final class AppModel {
         Haptics.pick()
     }
 
+    func cycleCashMode() {
+        cashMode = cashMode % 3 + 1
+        defaults.set(cashMode, forKey: cashModeKey)
+        Haptics.pick()
+    }
+
     var csvExportText: String {
         CSVCodec.csv(for: bills)
     }
@@ -568,7 +577,6 @@ final class AppModel {
         entryError = ""
         cashYaw = Double(CashSceneLayout.defaultYaw)
         cashPitch = Double(CashSceneLayout.packageTilt)
-        cashMode = 1
         entryOpen = true
         Haptics.soft()
     }
