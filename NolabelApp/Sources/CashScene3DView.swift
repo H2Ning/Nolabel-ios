@@ -198,6 +198,18 @@ final class CashSceneCanvas: UIView {
             rotation: rotationY(-.pi / 2)
         )
         container.addSublayer(left)
+        if showBand && isBundle {
+            let leftWrap = sideFace(
+                image: nil,
+                width: thickness,
+                height: depth,
+                center: CGPoint(x: -width / 2 - 0.06, y: 0),
+                z: zCenter,
+                rotation: rotationY(-.pi / 2)
+            )
+            leftWrap.backgroundColor = UIColor(white: 0.985, alpha: 0.99).cgColor
+            container.addSublayer(leftWrap)
+        }
 
         let right = sideFace(
             image: side,
@@ -286,6 +298,15 @@ final class CashSceneCanvas: UIView {
         0.479, 0.518, 0.494, 0.501, 0.489
     ]
 
+    private func addBundleWrapper(to face: CALayer, width: CGFloat, height: CGFloat) {
+        let wrapper = CALayer()
+        wrapper.bounds = CGRect(x: 0, y: 0, width: width * 0.38, height: height)
+        wrapper.position = CGPoint(x: width * 0.19, y: height / 2)
+        wrapper.backgroundColor = UIColor(white: 0.985, alpha: 0.985).cgColor
+        wrapper.actions = Self.noActions
+        face.addSublayer(wrapper)
+    }
+
     private func addBand(to face: CALayer, width: CGFloat, depth: CGFloat, isBundle: Bool) {
         let bandWidth = max(2, width * 0.10)
         let ratio = isBundle ? Self.bandJitter[Self.bandJitter.count - 1] : 0.5
@@ -349,6 +370,8 @@ final class CashSceneCanvas: UIView {
         container.addSublayer(back)
 
         if isBundle {
+            addBundleWrapper(to: front, width: width, height: height)
+            addBundleWrapper(to: back, width: width, height: height)
             let layerHeight = height / CGFloat(Self.bandJitter.count)
             for (index, ratio) in Self.bandJitter.enumerated() {
                 addFrontBand(
@@ -405,46 +428,103 @@ final class CashSceneCanvas: UIView {
     }
 
     private func addSeal(to face: CALayer, width: CGFloat, depth: CGFloat) {
-        let sealWidth = max(14, width * 0.36)
-        let sealHeight = sealWidth * 314.0 / 640.0
+        let marginX = width * 0.035
+        let marginY = depth * 0.055
+        let sealWidth = max(24, width - marginX * 2)
+        let sealHeight = max(18, depth - marginY * 2)
         let seal = CALayer()
         seal.bounds = CGRect(x: 0, y: 0, width: sealWidth, height: sealHeight)
-        seal.position = CGPoint(x: width * 0.5, y: depth * 0.5)
-        seal.backgroundColor = UIColor(white: 0.985, alpha: 0.97).cgColor
+        seal.position = CGPoint(x: width / 2, y: depth / 2)
+        seal.backgroundColor = UIColor(white: 0.988, alpha: 0.985).cgColor
         seal.cornerRadius = 1
-        seal.borderWidth = 0.5
-        seal.borderColor = UIColor(hex: 0xB2443A).withAlphaComponent(0.55).cgColor
+        seal.borderWidth = 0.6
+        seal.borderColor = UIColor(hex: 0xB2443A).withAlphaComponent(0.42).cgColor
         seal.zPosition = 0.5
         seal.actions = Self.noActions
         face.addSublayer(seal)
 
+        let ink = UIColor(hex: 0x33302B)
         let red = UIColor(hex: 0xB2443A)
+        let blue = UIColor(hex: 0x3A5C86)
+
+        if let icon = noteImage("100") {
+            let iconWidth = sealWidth * 0.17
+            let iconHeight = iconWidth * 314.0 / 640.0
+            let iconLayer = CALayer()
+            iconLayer.bounds = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
+            iconLayer.position = CGPoint(x: sealWidth * 0.14, y: sealHeight * 0.58)
+            iconLayer.contents = icon.cgImage
+            iconLayer.contentsGravity = .resizeAspectFill
+            iconLayer.contentsScale = UIScreen.main.scale
+            iconLayer.borderWidth = 0.4
+            iconLayer.borderColor = UIColor.black.withAlphaComponent(0.18).cgColor
+            iconLayer.actions = Self.noActions
+            seal.addSublayer(iconLayer)
+        }
+
         let bank = textLayer(
             "\u{4E2D}\u{56FD}\u{94F6}\u{884C}",
-            size: max(3.2, sealWidth * 0.10),
-            color: red,
+            size: max(3.6, sealWidth * 0.050),
+            color: blue,
             weight: .semibold
         )
-        bank.frame = CGRect(x: 0, y: sealHeight * 0.10, width: sealWidth, height: sealHeight * 0.22)
+        bank.frame = CGRect(x: 0, y: sealHeight * 0.07, width: sealWidth, height: sealHeight * 0.16)
         seal.addSublayer(bank)
 
         let amount = textLayer(
             "\u{58F9}\u{62FE}\u{4E07}\u{5143}\u{6574}",
-            size: max(4.4, sealWidth * 0.16),
-            color: red,
+            size: max(8, sealWidth * 0.125),
+            color: ink,
             weight: .bold
         )
-        amount.frame = CGRect(x: 0, y: sealHeight * 0.40, width: sealWidth, height: sealHeight * 0.28)
+        amount.frame = CGRect(x: 0, y: sealHeight * 0.27, width: sealWidth, height: sealHeight * 0.36)
         seal.addSublayer(amount)
 
+        let stamp = textLayer(
+            "\u{5C01}\u{7B7E}",
+            size: max(3.4, sealWidth * 0.045),
+            color: red,
+            weight: .semibold
+        )
+        stamp.frame = CGRect(x: sealWidth * 0.72, y: sealHeight * 0.06, width: sealWidth * 0.24, height: sealHeight * 0.15)
+        seal.addSublayer(stamp)
+
         let foot = textLayer(
-            "\u{5E74} \u{6708} \u{65E5}   \u{5C01}\u{7B7E}",
-            size: max(2.6, sealWidth * 0.075),
+            "\u{5E74}  \u{6708}  \u{65E5}    \u{590D}\u{6838}\u{5458} 07225    \u{5C01}\u{6346}\u{5458} 04325",
+            size: max(2.6, sealWidth * 0.034),
             color: UIColor(hex: 0x6B5B4B),
             weight: .regular
         )
-        foot.frame = CGRect(x: 0, y: sealHeight * 0.78, width: sealWidth, height: sealHeight * 0.16)
+        foot.frame = CGRect(x: 0, y: sealHeight * 0.80, width: sealWidth, height: sealHeight * 0.13)
         seal.addSublayer(foot)
+
+        let round = CAShapeLayer()
+        let diameter = min(sealHeight * 0.34, sealWidth * 0.18)
+        round.path = UIBezierPath(ovalIn: CGRect(
+            x: sealWidth * 0.74,
+            y: sealHeight * 0.48,
+            width: diameter,
+            height: diameter
+        )).cgPath
+        round.fillColor = UIColor.clear.cgColor
+        round.strokeColor = red.withAlphaComponent(0.55).cgColor
+        round.lineWidth = max(0.6, diameter * 0.06)
+        round.actions = Self.noActions
+        seal.addSublayer(round)
+
+        let sterile = textLayer(
+            "\u{5DF2}\u{6D88}\u{6BD2}",
+            size: max(2.8, diameter * 0.22),
+            color: red.withAlphaComponent(0.72),
+            weight: .medium
+        )
+        sterile.frame = CGRect(
+            x: sealWidth * 0.74,
+            y: sealHeight * 0.48 + diameter * 0.38,
+            width: diameter,
+            height: diameter * 0.30
+        )
+        seal.addSublayer(sterile)
     }
 
     private func addBox(to container: CALayer, item: CashItemSpec) {
@@ -462,6 +542,9 @@ final class CashSceneCanvas: UIView {
         top.position = .zero
         top.zPosition = height
         top.backgroundColor = topColor.cgColor
+        top.contents = cardboardImage(width: width, height: depth, vertical: false)
+        top.contentsGravity = .resize
+        top.contentsScale = UIScreen.main.scale
         top.borderWidth = 0.6
         top.borderColor = UIColor.black.withAlphaComponent(0.18).cgColor
         top.isDoubleSided = false
@@ -473,6 +556,9 @@ final class CashSceneCanvas: UIView {
         front.position = CGPoint(x: 0, y: depth / 2)
         front.zPosition = height / 2
         front.backgroundColor = frontColor.cgColor
+        front.contents = cardboardImage(width: width, height: height, vertical: true)
+        front.contentsGravity = .resize
+        front.contentsScale = UIScreen.main.scale
         front.transform = rotationX(-.pi / 2)
         front.isDoubleSided = false
         front.actions = Self.noActions
@@ -483,6 +569,9 @@ final class CashSceneCanvas: UIView {
         back.position = CGPoint(x: 0, y: -depth / 2)
         back.zPosition = height / 2
         back.backgroundColor = backColor.cgColor
+        back.contents = cardboardImage(width: width, height: height, vertical: true)
+        back.contentsGravity = .resize
+        back.contentsScale = UIScreen.main.scale
         back.transform = rotationX(.pi / 2)
         back.isDoubleSided = false
         back.actions = Self.noActions
@@ -493,6 +582,9 @@ final class CashSceneCanvas: UIView {
         left.position = CGPoint(x: -width / 2, y: 0)
         left.zPosition = height / 2
         left.backgroundColor = sideColor.cgColor
+        left.contents = cardboardImage(width: height, height: depth, vertical: true)
+        left.contentsGravity = .resize
+        left.contentsScale = UIScreen.main.scale
         left.transform = rotationY(-.pi / 2)
         left.isDoubleSided = false
         left.actions = Self.noActions
@@ -503,6 +595,9 @@ final class CashSceneCanvas: UIView {
         right.position = CGPoint(x: width / 2, y: 0)
         right.zPosition = height / 2
         right.backgroundColor = sideColor.cgColor
+        right.contents = cardboardImage(width: height, height: depth, vertical: true)
+        right.contentsGravity = .resize
+        right.contentsScale = UIScreen.main.scale
         right.transform = rotationY(.pi / 2)
         right.isDoubleSided = false
         right.actions = Self.noActions
@@ -543,6 +638,65 @@ final class CashSceneCanvas: UIView {
         sticker.zPosition = 0.3
         sticker.actions = Self.noActions
         front.addSublayer(sticker)
+    }
+
+    private func cardboardImage(width: CGFloat, height: CGFloat, vertical: Bool) -> CGImage? {
+        let scale = UIScreen.main.scale
+        let pixelWidth = max(1, Int((width * scale).rounded()))
+        let pixelHeight = max(1, Int((height * scale).rounded()))
+        let key = "box|\(pixelWidth)|\(pixelHeight)|\(vertical)" as NSString
+        if let cached = Self.boxImages.object(forKey: key) {
+            return cached.cgImage
+        }
+
+        let size = CGSize(width: CGFloat(pixelWidth) / scale, height: CGFloat(pixelHeight) / scale)
+        let base = UIColor(hex: 0xBE8F56)
+        let line = UIColor(hex: 0x8C673E)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        let image = renderer.image { context in
+            let cg = context.cgContext
+            cg.setFillColor(base.cgColor)
+            cg.fill(CGRect(origin: .zero, size: size))
+
+            let colors = [
+                UIColor.white.withAlphaComponent(0.14).cgColor,
+                UIColor.clear.cgColor,
+                UIColor.black.withAlphaComponent(0.12).cgColor
+            ] as CFArray
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.4, 1]) {
+                cg.drawLinearGradient(
+                    gradient,
+                    start: CGPoint(x: 0, y: 0),
+                    end: CGPoint(x: 0, y: size.height),
+                    options: []
+                )
+            }
+
+            cg.setStrokeColor(line.withAlphaComponent(0.18).cgColor)
+            cg.setLineWidth(0.5)
+            let step: CGFloat = 3
+            if vertical {
+                var x: CGFloat = 0
+                while x <= size.width {
+                    cg.move(to: CGPoint(x: x, y: 0))
+                    cg.addLine(to: CGPoint(x: x, y: size.height))
+                    x += step
+                }
+            } else {
+                var y: CGFloat = 0
+                while y <= size.height {
+                    cg.move(to: CGPoint(x: 0, y: y))
+                    cg.addLine(to: CGPoint(x: size.width, y: y))
+                    y += step
+                }
+            }
+            cg.strokePath()
+        }
+        Self.boxImages.setObject(image, forKey: key)
+        return image.cgImage
     }
 
     private func addGroundShadow(to container: CALayer, width: CGFloat, depth: CGFloat) {
@@ -654,6 +808,7 @@ final class CashSceneCanvas: UIView {
 
     private static let noteImages = NSCache<NSString, UIImage>()
     private static let sideImages = NSCache<NSString, UIImage>()
+    private static let boxImages = NSCache<NSString, UIImage>()
 
     private static let shadowImage: CGImage? = {
         let size = CGSize(width: 128, height: 96)
