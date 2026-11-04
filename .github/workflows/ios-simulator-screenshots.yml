@@ -78,7 +78,7 @@ jobs:
             shift
             xcrun simctl terminate "$DEVICE_ID" "$BUNDLE_ID" >/dev/null 2>&1 || true
             xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID" "$@" >/dev/null
-            sleep 3.5
+            sleep 6
             xcrun simctl io "$DEVICE_ID" screenshot "screenshots/$NAME.png"
           }
           capture bills-dark --preview --preview-screen bills --preview-theme dark

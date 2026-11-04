@@ -135,7 +135,8 @@ final class CashSceneCanvas: UIView {
                     spec: layerSpec,
                     isTopLayer: index == item.layers.count - 1,
                     showBand: item.showBand,
-                    showSeal: item.showSeal
+                    showSeal: item.showSeal,
+                    isBundle: item.kind == .bundle
                 )
             }
         }
@@ -148,7 +149,8 @@ final class CashSceneCanvas: UIView {
         spec: CashLayerSpec,
         isTopLayer: Bool,
         showBand: Bool,
-        showSeal: Bool
+        showSeal: Bool,
+        isBundle: Bool
     ) {
         let denom = spec.denomination
         let width = spec.width
@@ -241,8 +243,15 @@ final class CashSceneCanvas: UIView {
         container.addSublayer(face)
 
         if showBand {
-            addBand(to: face, width: width, depth: depth, height: thickness, showsLayers: false)
-            addBandEdges(to: container, width: width, height: thickness, depth: depth, zCenter: zCenter)
+            addBand(to: face, width: width, depth: depth, isBundle: isBundle)
+            addBandEdges(
+                to: container,
+                width: width,
+                height: thickness,
+                depth: depth,
+                zCenter: zCenter,
+                isBundle: isBundle
+            )
         }
         if showSeal, isTopLayer {
             addSeal(to: face, width: width, depth: depth)
@@ -270,11 +279,17 @@ final class CashSceneCanvas: UIView {
         return layer
     }
 
-    private func addBand(to face: CALayer, width: CGFloat, depth: CGFloat, height: CGFloat, showsLayers: Bool) {
+    private static let bandJitter: [CGFloat] = [
+        0.500, 0.486, 0.512, 0.492, 0.505,
+        0.479, 0.518, 0.494, 0.501, 0.489
+    ]
+
+    private func addBand(to face: CALayer, width: CGFloat, depth: CGFloat, isBundle: Bool) {
         let bandWidth = max(2, width * 0.10)
+        let ratio = isBundle ? Self.bandJitter[Self.bandJitter.count - 1] : 0.5
         let topBand = CALayer()
         topBand.bounds = CGRect(x: 0, y: 0, width: bandWidth, height: depth)
-        topBand.position = CGPoint(x: width * 0.5, y: depth * 0.5)
+        topBand.position = CGPoint(x: width * ratio, y: depth * 0.5)
         topBand.backgroundColor = UIColor(white: 0.965, alpha: 0.97).cgColor
         topBand.shadowColor = UIColor.black.cgColor
         topBand.shadowOpacity = 0.16
@@ -283,9 +298,33 @@ final class CashSceneCanvas: UIView {
         topBand.zPosition = 0.2
         topBand.actions = Self.noActions
         face.addSublayer(topBand)
+
+        // The bound edge of a paper bundle is a little lighter than the printed face.
+        let leftMargin = CALayer()
+        leftMargin.bounds = CGRect(x: 0, y: 0, width: 1, height: depth)
+        leftMargin.position = CGPoint(x: 0.75, y: depth / 2)
+        leftMargin.backgroundColor = UIColor(white: 0.99, alpha: 0.72).cgColor
+        leftMargin.zPosition = 0.12
+        leftMargin.actions = Self.noActions
+        face.addSublayer(leftMargin)
+
+        let rightMargin = CALayer()
+        rightMargin.bounds = CGRect(x: 0, y: 0, width: 1, height: depth)
+        rightMargin.position = CGPoint(x: width - 0.75, y: depth / 2)
+        rightMargin.backgroundColor = UIColor(white: 0.99, alpha: 0.72).cgColor
+        rightMargin.zPosition = 0.12
+        rightMargin.actions = Self.noActions
+        face.addSublayer(rightMargin)
     }
 
-    private func addBandEdges(to container: CALayer, width: CGFloat, height: CGFloat, depth: CGFloat, zCenter: CGFloat) {
+    private func addBandEdges(
+        to container: CALayer,
+        width: CGFloat,
+        height: CGFloat,
+        depth: CGFloat,
+        zCenter: CGFloat,
+        isBundle: Bool
+    ) {
         let bandWidth = max(2, width * 0.10)
         let faceSize = CGRect(x: 0, y: 0, width: width, height: height)
 
@@ -298,13 +337,6 @@ final class CashSceneCanvas: UIView {
         front.actions = Self.noActions
         container.addSublayer(front)
 
-        let frontBand = CALayer()
-        frontBand.bounds = CGRect(x: 0, y: 0, width: bandWidth, height: height)
-        frontBand.position = CGPoint(x: width / 2, y: height / 2)
-        frontBand.backgroundColor = UIColor(white: 0.965, alpha: 0.96).cgColor
-        frontBand.actions = Self.noActions
-        front.addSublayer(frontBand)
-
         let back = CALayer()
         back.bounds = faceSize
         back.position = CGPoint(x: 0, y: -(depth / 2 + 0.05))
@@ -314,12 +346,60 @@ final class CashSceneCanvas: UIView {
         back.actions = Self.noActions
         container.addSublayer(back)
 
-        let backBand = CALayer()
-        backBand.bounds = CGRect(x: 0, y: 0, width: bandWidth, height: height)
-        backBand.position = CGPoint(x: width / 2, y: height / 2)
-        backBand.backgroundColor = UIColor(white: 0.965, alpha: 0.96).cgColor
-        backBand.actions = Self.noActions
-        back.addSublayer(backBand)
+        if isBundle {
+            let layerHeight = height / CGFloat(Self.bandJitter.count)
+            for (index, ratio) in Self.bandJitter.enumerated() {
+                addFrontBand(
+                    to: front,
+                    width: width,
+                    bandWidth: bandWidth,
+                    ratio: ratio,
+                    y: (CGFloat(index) + 0.5) * layerHeight,
+                    height: layerHeight
+                )
+                addFrontBand(
+                    to: back,
+                    width: width,
+                    bandWidth: bandWidth,
+                    ratio: ratio,
+                    y: (CGFloat(index) + 0.5) * layerHeight,
+                    height: layerHeight
+                )
+            }
+        } else {
+            addFrontBand(
+                to: front,
+                width: width,
+                bandWidth: bandWidth,
+                ratio: 0.5,
+                y: height / 2,
+                height: height
+            )
+            addFrontBand(
+                to: back,
+                width: width,
+                bandWidth: bandWidth,
+                ratio: 0.5,
+                y: height / 2,
+                height: height
+            )
+        }
+    }
+
+    private func addFrontBand(
+        to face: CALayer,
+        width: CGFloat,
+        bandWidth: CGFloat,
+        ratio: CGFloat,
+        y: CGFloat,
+        height: CGFloat
+    ) {
+        let band = CALayer()
+        band.bounds = CGRect(x: 0, y: 0, width: bandWidth, height: height)
+        band.position = CGPoint(x: width * ratio, y: y)
+        band.backgroundColor = UIColor(white: 0.965, alpha: 0.96).cgColor
+        band.actions = Self.noActions
+        face.addSublayer(band)
     }
 
     private func addSeal(to face: CALayer, width: CGFloat, depth: CGFloat) {

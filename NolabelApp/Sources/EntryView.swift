@@ -209,7 +209,7 @@ struct EntryView: View {
                         .stroke(palette.line, lineWidth: 1)
                 )
         }
-        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.65))
+        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.82))
     }
 
     private var backspaceKey: some View {
@@ -227,7 +227,7 @@ struct EntryView: View {
                         .stroke(palette.line, lineWidth: 1)
                 )
         }
-        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.65))
+        .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.82))
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.55).onEnded { _ in
                 model.clearEntry()
@@ -256,7 +256,7 @@ struct EntryView: View {
                     .stroke(palette.line, lineWidth: 1)
             )
         }
-        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.5))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.68))
         .accessibilityLabel("选择运算")
     }
 
@@ -271,7 +271,7 @@ struct EntryView: View {
                 .frame(height: 52)
                 .background(Color(hex: 0x2E9F5B), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.6))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.76))
     }
 
     private var saveKey: some View {
@@ -286,7 +286,7 @@ struct EntryView: View {
                 .background(Color(hex: 0x3B7BE8), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .opacity(model.entryCents > 0 ? 1 : 0.55)
         }
-        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.7))
+        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86))
         .disabled(model.entryCents <= 0 || model.writing)
         .accessibilityLabel("保存这笔账")
     }
