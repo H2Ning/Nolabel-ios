@@ -136,6 +136,7 @@ struct BillsView: View {
                     .foregroundStyle(palette.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
+                    .contentTransition(.numericText())
             }
             .padding(.top, 4)
 
@@ -155,6 +156,7 @@ struct BillsView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(palette.income)
+                    .contentTransition(.numericText())
                 Spacer()
                 Text("\(model.monthBills.count) 笔 · \(model.monthNotes) 张现钞")
                     .font(.system(size: 12, weight: .medium))
@@ -428,11 +430,19 @@ struct SwipeBillRow: View {
                 .padding(.vertical, 13)
                 .frame(maxWidth: .infinity)
                 .background(palette.surface)
+                .overlay {
+                    if model.lastSavedBillID == bill.id {
+                        Rectangle()
+                            .fill(palette.accent.opacity(palette.isDark ? 0.14 : 0.10))
+                            .allowsHitTesting(false)
+                    }
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .offset(x: -offset)
             .allowsHitTesting(!isDragging)
+            .animation(AppMotion.grace, value: model.lastSavedBillID)
 
             if showDivider {
                 VStack {

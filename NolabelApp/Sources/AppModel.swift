@@ -423,7 +423,9 @@ final class AppModel {
     }
 
     func setTheme(_ mode: ThemeMode) {
-        themeMode = mode
+        withAnimation(AppMotion.grace) {
+            themeMode = mode
+        }
         defaults.set(mode.rawValue, forKey: themeKey)
     }
 

@@ -176,14 +176,9 @@ struct SettingsOverlay: View {
                         .foregroundStyle(palette.accentInk)
                         .frame(width: 36, height: 36)
                         .background(palette.accent, in: Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(user.name)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(palette.ink)
-                        Text("诺诺账号")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(palette.muted)
-                    }
+                    Text(user.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(palette.ink)
                     Spacer()
                     if model.authLoading {
                         ProgressView().tint(palette.muted)

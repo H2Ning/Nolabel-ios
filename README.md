@@ -1,100 +1,88 @@
-# Nolabel iOS（免费签名版）
+# Nolabel iOS（纯 SwiftUI 原生版）
 
-这是只给自己用的 iOS 壳：启动时加载 `https://h2ning.com/Nolabel/`，登录 h2ning 账号后账单保存到账号，本机 `Application Support/Nolabel` 作为缓存和备份；用免费 Apple ID 侧载，不需要 Apple Developer Program，也不需要 Mac。
+这是诺诺的 iOS 原生版本，使用 SwiftUI 构建，不再使用 WKWebView 或网页套壳。
 
-## 先确认网页源
-
-网页源和 iOS 工程都在 `clock` 镜像里：
-
-```text
-C:\Users\34851\Desktop\clock\Nolabel
-```
-
-App 在线时直接加载 server 上的网页；`Nolabel/ios/NolabelApp/Resources/www` 是网络失败时使用的内置回退页面。以后改了回退网页，在 `Nolabel` 目录运行：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\ios\sync-web.ps1
-```
-
-也可以指定源目录：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\ios\sync-web.ps1 -Source "C:\Users\34851\Desktop\clock\Nolabel"
-```
+- 最低 iOS 26，使用 Liquid Glass 材质，运行在 iOS 27 上使用系统最新玻璃效果。
+- 账单页、记账页、3D 现钞舞台、键盘、计算器、设置、登录和导入导出全部是原生 SwiftUI。
+- 账号优先：登录 h2ning 账号后账单保存到账号；本机 JSON 只作为缓存和备份。
+- 未登录可以查看缓存，但不能保存或删除。
+- 支持浅色、深色和跟随系统。
 
 ## 目录
 
 ```text
-clock/
-  Nolabel/
-    ios/
-      project.yml                 XcodeGen 工程定义
-      NolabelApp/
-        Sources/
-          NolabelApp.swift    SwiftUI 入口
-          WebView.swift          WKWebView + JS bridge
-          BillStore.swift        Application Support 下的账单文件
-        Resources/
-          Info.plist
-          Assets.xcassets        App 图标、启动背景
-          www/                   打包进去的网页
-      ci/build-unsigned-ipa.sh   云端 macOS 构建脚本
-      sync-web.ps1               同步网页文件
-      .github/workflows/
-        ios-unsigned-ipa.yml     GitHub Actions 构建
+ios/
+  project.yml                   XcodeGen 工程定义
+  NolabelApp/
+    Sources/
+      NolabelApp.swift          App 入口和根视图
+      Models.swift              账单、面额、金额和日期模型
+      AccountAPI.swift          h2ning 账号和账号账单 API
+      AppModel.swift            状态、登录、保存、月份和计算器
+      BillsView.swift           账单页、日期胶囊和左滑删除
+      EntryView.swift           记账页和键盘
+      CashStageView.swift       原生 3D 现钞舞台
+      SettingsView.swift        设置、登录、外观和日期弹层
+      CSVDocument.swift         CSV 导入导出
+      Theme.swift               颜色、字体和 Liquid Glass 辅助
+      BillStore.swift           本地 JSON 缓存、备份和快照
+    Resources/
+      Info.plist
+      Notes/                    纸钞图片资源
+      Assets.xcassets           App 图标和启动背景
+  ci/build-unsigned-ipa.sh      云端 macOS 未签名 IPA 构建
+  .github/workflows/            GitHub Actions
 ```
 
-## 云端构建
+## 账号和数据
 
-不需要 Mac，用 GitHub Actions 的 macOS 机器构建：
+- API 地址：`https://h2ning.com`
+- 账号数据键：`app=nolabel`、`key=bills`
+- 登录使用 h2ning 原生 JSON API，Cookie 由 URLSession 持久化。
+- 登录后账单写入账号，成功后写入本机 JSON 缓存。
+- 首次登录会把本机旧缓存中不在账号里的账单合并到账号；退出登录会清空本机缓存，账号里的数据保留。
+- 本机缓存位于 `Application Support/Nolabel/bills.json`，并保留备份和最近 30 份快照。
+- `Documents/Nolabel-backup.json` 可在“文件”App 中复制到 iCloud Drive 或电脑。
+- 免费签名刷新使用同一个 Bundle ID，正常刷新不会丢数据；删除 App 或重置手机才会丢本地缓存。
 
-1. 在 `clock/Nolabel/ios` 里新建一个独立的 GitHub 私有仓库，只推送这个 `ios` 目录；**不要推送整个 `clock`**，那里有 `.env`、`data.db`、`users.json` 等服务器数据。
-2. 打开仓库的 **Actions → Build unsigned iOS IPA → Run workflow**。
-3. 构建完成后下载 **Nolabel-unsigned-ipa** artifact，解压得到 `Nolabel-unsigned.ipa`。
+## 记账页
 
-这个 IPA 是未签名的，不能直接安装；下一步用 AltStore 或 Sideloadly 用你的免费 Apple ID 签名。构建过程不需要 Apple 账号。
+- 数字键盘支持小数、00、退格、长按退格清空、四则运算和等号。
+- 金额实时拆分为 1–2–5 面额组合，并渲染为原生 SwiftUI 现钞舞台。
+- 现钞舞台支持左右旋转和上下俯仰；金额变化时使用弹簧动画重新布局。
+- 备注、日期和时间可以修改；保存后回到账单页，取消保持原样。
 
-## 安装（Windows）
+## 构建
 
-### 方式一：Sideloadly
+不需要 Mac，使用 GitHub Actions 的 macOS 机器构建：
 
-1. 在 Windows 安装 Apple Devices 或 iTunes（Sideloadly 依赖它识别 iPhone）。
-2. 安装 Sideloadly，连接 iPhone，信任电脑。
-3. 把 `Nolabel-unsigned.ipa` 拖进 Sideloadly，输入你的 Apple ID，开始。
-4. iPhone 上按提示开启开发者模式、信任开发者。
+1. 把本目录推送到 GitHub 私有仓库。
+2. 打开 **Actions → Build unsigned iOS IPA → Run workflow**。
+3. 下载 **Nolabel-unsigned-ipa** artifact，解压得到 `Nolabel-unsigned.ipa`。
+4. 在 Windows 用 Sideloadly 或 AltStore 使用免费 Apple ID 签名安装。
 
-Sideloadly 每次签名有效期 7 天，到期后重新连电脑签一次。
+签名有效期 7 天，到期后重新签名。免费签名不能绕过 7 天限制。
 
-### 方式二：AltStore + AltServer
+## 截图和视觉检查
 
-1. Windows 安装 AltServer 和 iTunes/iCloud，iPhone 安装 AltStore。
-2. 手机和电脑在同一 Wi-Fi，AltStore 登录同一个 Apple ID。
-3. 在 AltStore 的 My Apps 里用 “+” 选择 IPA 安装。
-4. AltServer 保持运行时可从手机刷新，7 天一次。
+仓库另有 **Build and screenshot iOS app** workflow：
 
-AltStore 和 Sideloadly 都不需要越狱。
+- 构建模拟器版本。
+- 以预览数据启动并截取账单、记账、设置、登录、左滑删除等状态。
+- 上传 `ios-screenshots` artifact。
 
-## 首次打开
+预览参数只用于 CI 截图，不影响正式 App：
 
-- iOS 16 及以上：设置 → 隐私与安全性 → 开发者模式，打开并重启。
-- 如果提示不受信任：设置 → 通用 → VPN 与设备管理 → 开发者 App → 信任。
-- 7 天到期后 App 可能打不开，重新签名/刷新即可，数据一般还在。
-
-## 数据
-
-- h2ning 账号是主数据源。未登录不能保存和删除，登录后账单写入账号。
-- 本机 `Application Support/Nolabel/bills.json` 是缓存，同时保留 `bills.backup.json` 和最近 30 份 `Snapshots/bills-*.json`。
-- 启动时依次回退：主文件 → 备份 → 最新快照 → `Documents/Nolabel-backup.json`，避免单文件损坏直接丢账。
-- 每次保存还会写一份 `Documents/Nolabel-backup.json`。Info.plist 已开启文件共享，可以在 iPhone 的“文件”App → 我的 iPhone → 诺诺 里找到，复制到 iCloud Drive 或电脑。
-- 网页 localStorage 和原生 JSON 都只作缓存；退出登录会清空本机账单缓存，账号里的数据仍保留。
-- Application Support 和 Documents 默认进入 iCloud/iTunes 备份；请保持系统备份开启。
-- 免费签名刷新使用同一个 Bundle ID，正常刷新不会丢数据；删除 App 或重置手机才会丢本地文件，所以重要账目要额外导出。
-- 导出的 JSON 是明文，放在网盘/电脑上时注意访问权限。
+```text
+--preview --preview-screen bills --preview-theme dark
+--preview --preview-screen entry --preview-theme dark --preview-amount 52145
+--preview --preview-screen settings --preview-theme dark --preview-user
+```
 
 ## 注意
 
-- 当前是 **unsigned IPA**，只用于你自己的设备，不要公开分发。
-- Bundle ID 是 `com.h2ning.nolabel`，最低 iOS 16.0；设备系统更低时告诉我调整。
-- 不要用企业签、超级签；掉签和隐私风险不值得。
-- Apple ID 密码不要交给第三方签名服务，也不要提交到仓库。
-- 没有 GitHub 账号的话，可以用 Codemagic 建同样的 macOS 构建，但需要把仓库接过去。
+- 这是纯原生 SwiftUI App，不再需要把网页文件同步到 iOS 目录。
+- Server 上的网页版本仍然独立存在；iOS App 只调用账号 API。
+- 大额现钞舞台是 SwiftUI 原生近似实现，使用真实纸钞图片和 3D 变换，不包含网页版的全部包装箱细节。
+- Bundle ID：`com.h2ning.nolabel`。
+- 不要使用企业签、超级签或第三方签名服务；Apple ID 密码不要提交到仓库。
