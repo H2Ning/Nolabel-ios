@@ -96,6 +96,7 @@ jobs:
           capture settings-appearance --preview --preview-screen settings --preview-theme dark --preview-settings appearance
           capture account-dark --preview --preview-screen account --preview-theme dark
           capture network-probe --preview --preview-screen settings --preview-theme dark --preview-probe
+          capture network-probe-pin --preview --preview-screen settings --preview-theme dark --preview-probe --force-pin
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4

@@ -225,7 +225,8 @@ final class AppModel {
         defer { authLoading = false }
         do {
             let user = try await api.me()
-            authMessage = "网络连接正常" + (user.map { "，已登录 \($0.name)" } ?? "，未登录")
+            let pin = PinnedTrustDelegate.lastPinUsed ? "，证书固定通过" : ""
+            authMessage = "网络连接正常" + (user.map { "，已登录 \($0.name)" } ?? "，未登录") + pin
             authMessageIsError = true
             authRetryable = false
         } catch {
