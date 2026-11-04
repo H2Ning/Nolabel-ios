@@ -83,6 +83,10 @@ struct HorizontalSwipeArea: UIViewRepresentable {
                   let view = pan.view else {
                 return true
             }
+            let translation = pan.translation(in: view)
+            if abs(translation.x) > 1 || abs(translation.y) > 1 {
+                return abs(translation.x) >= abs(translation.y)
+            }
             let velocity = pan.velocity(in: view)
             return abs(velocity.x) >= abs(velocity.y)
         }
