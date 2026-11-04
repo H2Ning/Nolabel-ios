@@ -221,12 +221,7 @@ struct CashPlazaView: View {
                     .frame(height: 190)
             } else {
                 Chart(points) { point in
-                    BarMark(
-                        x: .value("日期", point.date, unit: .day),
-                        y: .value("每日支出", point.daily)
-                    )
-                    .foregroundStyle(palette.expense.opacity(0.55))
-                    .cornerRadius(2)
+                    dailyBar(point)
 
                     LineMark(
                         x: .value("日期", point.date),
@@ -277,6 +272,26 @@ struct CashPlazaView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
+    }
+
+    @ChartContentBuilder
+    private func dailyBar(_ point: PlazaDay) -> some ChartContent {
+        if points.count <= 6 {
+            BarMark(
+                x: .value("日期", point.date, unit: .day),
+                y: .value("每日支出", point.daily),
+                width: .fixed(22)
+            )
+            .foregroundStyle(palette.expense.opacity(0.55))
+            .cornerRadius(2)
+        } else {
+            BarMark(
+                x: .value("日期", point.date, unit: .day),
+                y: .value("每日支出", point.daily)
+            )
+            .foregroundStyle(palette.expense.opacity(0.55))
+            .cornerRadius(2)
+        }
     }
 
     private func legend(color: Color, text: String, isLine: Bool) -> some View {
