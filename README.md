@@ -40,6 +40,7 @@ ios/
 - 账号数据键：`app=nolabel`、`key=bills`
 - 登录使用 h2ning 原生 JSON API，Cookie 由 URLSession 持久化。
 - 网络请求会自动重试；冷启动断网时会在 2.5 秒后再试一次，设置页也提供手动“重试”。
+- API 使用 `www.h2ning.com`；首次请求会等待 iOS 本地网络授权完成。如果 Wi-Fi/VPN/Tailscale 的 DNS 把域名解析到内网地址，设置页会直接显示该地址并提示关闭 VPN 或切换网络。
 - 登录后账单写入账号，成功后写入本机 JSON 缓存。
 - 首次登录会把本机旧缓存中不在账号里的账单合并到账号；退出登录会清空本机缓存，账号里的数据保留。
 - 本机缓存位于 `Application Support/Nolabel/bills.json`，并保留备份和最近 30 份快照。

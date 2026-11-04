@@ -20,6 +20,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>&#x8BFA;&#x8BFA;&#x9700;&#x8981;&#x8FDE;&#x63A5;&#x7F51;&#x7EDC;&#x4EE5;&#x540C;&#x6B65; h2ning &#x8D26;&#x5355;&#x3002;</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationCategoryType</key>

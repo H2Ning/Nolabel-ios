@@ -255,7 +255,7 @@ final class AppModel {
             user = nil
             authReady = true
             accountLoaded = false
-            authMessage = (error as? LocalizedError)?.errorDescription ?? "网络错误，暂未连接账号"
+            authMessage = networkMessage(for: error, fallback: "网络错误，暂未连接账号")
             authMessageIsError = true
             authRetryable = (error as? AccountError)?.isNetwork == true
             scheduleAutoRetryIfNeeded()
@@ -319,11 +319,19 @@ final class AppModel {
             authRetryable = false
         } catch {
             accountLoaded = false
-            authMessage = (error as? LocalizedError)?.errorDescription ?? "账号数据加载失败"
+            authMessage = networkMessage(for: error, fallback: "账号数据加载失败")
             authMessageIsError = true
             authRetryable = (error as? AccountError)?.isNetwork == true
             scheduleAutoRetryIfNeeded()
         }
+    }
+
+    private func networkMessage(for error: Error, fallback: String) -> String {
+        if (error as? AccountError)?.isNetwork == true,
+           let address = AccountAPI.privateNetworkAddress() {
+            return "当前网络把 h2ning.com 解析到内网地址 \(address)。请关闭 VPN/Tailscale，或切换 Wi-Fi/蜂窝后重试。"
+        }
+        return (error as? LocalizedError)?.errorDescription ?? fallback
     }
 
     private func scheduleAutoRetryIfNeeded() {
@@ -389,7 +397,7 @@ final class AppModel {
             Haptics.success()
             await loadAccount()
         } catch {
-            authMessage = (error as? LocalizedError)?.errorDescription ?? "登录失败"
+            authMessage = networkMessage(for: error, fallback: "登录失败")
             authMessageIsError = true
             authRetryable = (error as? AccountError)?.isNetwork == true
             Haptics.error()
@@ -450,7 +458,7 @@ final class AppModel {
             Haptics.error()
             return false
         } catch {
-            authMessage = (error as? LocalizedError)?.errorDescription ?? "保存失败，请检查网络后重试"
+            authMessage = networkMessage(for: error, fallback: "保存失败，请检查网络后重试")
             authMessageIsError = true
             authRetryable = (error as? AccountError)?.isNetwork == true
             Haptics.error()

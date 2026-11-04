@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import OSLog
 
@@ -51,7 +52,7 @@ enum AccountError: Error, LocalizedError {
 }
 
 struct AccountAPI {
-    static let baseURL = URL(string: "https://h2ning.com")!
+    static let baseURL = URL(string: "https://www.h2ning.com")!
     static let appKey = "nolabel"
     static let dataKey = "bills"
 
@@ -65,9 +66,12 @@ struct AccountAPI {
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 45
+        // The first request may arrive while iOS is showing the local-network
+        // permission sheet. Wait for that decision instead of failing instantly.
+        configuration.waitsForConnectivity = true
         configuration.httpAdditionalHeaders = [
             "Accept-Language": "zh-CN,zh;q=0.9",
-            "Referer": "https://h2ning.com/"
+            "Referer": "https://www.h2ning.com/"
         ]
         return URLSession(configuration: configuration)
     }()
@@ -254,6 +258,67 @@ struct AccountAPI {
             return BillsCodec.parse(raw)
         }
         return nil
+    }
+
+    /// The system may answer with a private address when a VPN, Tailscale,
+    /// captive portal or router DNS rewrites the host name. iOS then shows the
+    /// local-network permission sheet and the public API is unreachable.
+    static func privateNetworkAddress() -> String? {
+        var hints = addrinfo()
+        hints.ai_family = AF_UNSPEC
+        hints.ai_socktype = SOCK_STREAM
+        hints.ai_protocol = IPPROTO_TCP
+
+        var head: UnsafeMutablePointer<addrinfo>?
+        guard let host = baseURL.host,
+              getaddrinfo(host, "443", &hints, &head) == 0,
+              let head else {
+            return nil
+        }
+        defer { freeaddrinfo(head) }
+
+        var pointer: UnsafeMutablePointer<addrinfo>? = head
+        while let info = pointer {
+            if let address = info.pointee.ai_addr {
+                var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                let status = buffer.withUnsafeMutableBufferPointer { raw in
+                    getnameinfo(
+                        address,
+                        info.pointee.ai_addrlen,
+                        raw.baseAddress,
+                        socklen_t(raw.count),
+                        nil,
+                        0,
+                        NI_NUMERICHOST
+                    )
+                }
+                if status == 0 {
+                    let ip = String(cString: buffer)
+                    if isPrivateAddress(ip) {
+                        return ip
+                    }
+                }
+            }
+            pointer = info.pointee.ai_next
+        }
+        return nil
+    }
+
+    private static func isPrivateAddress(_ ip: String) -> Bool {
+        let value = ip.lowercased()
+        if value.hasPrefix("fe80:") || value.hasPrefix("fc") || value.hasPrefix("fd") {
+            return true
+        }
+        let ipv4 = value.split(separator: ":").last.map(String.init) ?? value
+        let parts = ipv4.split(separator: ".").compactMap { Int($0) }
+        guard parts.count == 4 else { return false }
+        let (a, b) = (parts[0], parts[1])
+        if a == 10 { return true }
+        if a == 172, (16...31).contains(b) { return true }
+        if a == 192, b == 168 { return true }
+        if a == 169, b == 254 { return true }
+        if a == 100, (64...127).contains(b) { return true }
+        return false
     }
 
     func saveBills(_ bills: [Bill], updatedAt: Double) async throws {
