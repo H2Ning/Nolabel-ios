@@ -6,6 +6,10 @@ struct CashPlazaView: View {
     let palette: AppPalette
     let onClose: () -> Void
 
+    @State private var stageMode = 2
+    @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
+    @State private var stagePitch = Double(CashSceneLayout.packageTilt)
+
     private var bills: [Bill] { model.monthBills }
     private var monthTitle: String { model.monthTitle }
 
@@ -144,10 +148,13 @@ struct CashPlazaView: View {
                 CashStageView(
                     source: .groups(tallies),
                     palette: palette,
-                    yaw: $model.cashYaw,
-                    pitch: $model.cashPitch,
-                    mode: model.cashMode,
-                    onCycle: { model.cycleCashMode() },
+                    yaw: $stageYaw,
+                    pitch: $stagePitch,
+                    mode: stageMode,
+                    onCycle: {
+                        stageMode = stageMode % 3 + 1
+                        Haptics.cashMode(stageMode)
+                    },
                     onReady: {}
                 )
                 .frame(height: 360)
