@@ -37,7 +37,9 @@ struct DeleteConfirmDemoView: View {
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(palette.ink)
                                 .lineLimit(1)
-                            Text(bill.time.isEmpty ? bill.iso : "\(bill.iso) · \(bill.time)")
+                            Text(bill.time.isEmpty
+                                 ? DateHelp.dayTitle(bill.iso)
+                                 : "\(DateHelp.dayTitle(bill.iso)) · \(bill.time)")
                                 .font(.system(size: 11, weight: .medium))
                                 .monospacedDigit()
                                 .foregroundStyle(palette.muted)
