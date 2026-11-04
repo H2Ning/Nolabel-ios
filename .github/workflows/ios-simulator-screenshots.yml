@@ -2,12 +2,8 @@ name: Build and screenshot iOS app
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "NolabelApp/**"
-      - "ci/**"
-      - "project.yml"
-      - ".github/workflows/ios-simulator-screenshots.yml"
+  # Screenshot capture is manual: the unsigned IPA workflow still runs on
+  # every code push, while this slower simulator gallery runs on demand.
 
 jobs:
   screenshots:

@@ -513,7 +513,7 @@ struct SwipeBillRow: View {
                     suppressTap = true
                 }
                 let next = startOffset - dx
-                if next >= 34 && !crossedReveal {
+                if startOffset == 0 && next >= 34 && !crossedReveal {
                     crossedReveal = true
                     Haptics.detent()
                 }
