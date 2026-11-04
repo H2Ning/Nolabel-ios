@@ -8,69 +8,69 @@ import UIKit
 /// latency that made the keypad feel inert.
 @MainActor
 enum Haptics {
-    private static let light = UIImpactFeedbackGenerator(style: .light)
-    private static let soft = UIImpactFeedbackGenerator(style: .soft)
-    private static let medium = UIImpactFeedbackGenerator(style: .medium)
-    private static let rigid = UIImpactFeedbackGenerator(style: .rigid)
-    private static let selection = UISelectionFeedbackGenerator()
-    private static let notification = UINotificationFeedbackGenerator()
+    private static let lightGenerator = UIImpactFeedbackGenerator(style: .light)
+    private static let softGenerator = UIImpactFeedbackGenerator(style: .soft)
+    private static let mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
+    private static let rigidGenerator = UIImpactFeedbackGenerator(style: .rigid)
+    private static let selectionGenerator = UISelectionFeedbackGenerator()
+    private static let notificationGenerator = UINotificationFeedbackGenerator()
 
     private static var prepared = false
 
     static func prepare() {
         guard !prepared else { return }
         prepared = true
-        light.prepare()
-        soft.prepare()
-        medium.prepare()
-        rigid.prepare()
-        selection.prepare()
-        notification.prepare()
+        lightGenerator.prepare()
+        softGenerator.prepare()
+        mediumGenerator.prepare()
+        rigidGenerator.prepare()
+        selectionGenerator.prepare()
+        notificationGenerator.prepare()
     }
 
     /// Numeric keys, backspace and other repeated, low-weight actions.
     static func key() {
-        light.impactOccurred(intensity: 0.72)
-        light.prepare()
+        lightGenerator.impactOccurred(intensity: 0.72)
+        lightGenerator.prepare()
     }
 
     /// Opening and closing a surface. Felt, but not distracting.
     static func soft() {
-        soft.impactOccurred(intensity: 0.65)
-        soft.prepare()
+        softGenerator.impactOccurred(intensity: 0.65)
+        softGenerator.prepare()
     }
 
     /// Operators and equals, slightly firmer than a digit.
     static func operatorKey() {
-        medium.impactOccurred(intensity: 0.55)
-        medium.prepare()
+        mediumGenerator.impactOccurred(intensity: 0.55)
+        mediumGenerator.prepare()
     }
 
     /// A committed change, such as switching month or appearance.
     static func pick() {
-        selection.selectionChanged()
-        selection.prepare()
+        selectionGenerator.selectionChanged()
+        selectionGenerator.prepare()
     }
 
     /// A destructive action that has just been confirmed.
     static func delete() {
-        rigid.impactOccurred(intensity: 0.9)
-        rigid.prepare()
+        rigidGenerator.impactOccurred(intensity: 0.9)
+        rigidGenerator.prepare()
     }
 
     static func success() {
-        notification.notificationOccurred(.success)
-        notification.prepare()
+        notificationGenerator.notificationOccurred(.success)
+        notificationGenerator.prepare()
     }
 
     static func warning() {
-        notification.notificationOccurred(.warning)
-        notification.prepare()
+        notificationGenerator.notificationOccurred(.warning)
+        notificationGenerator.prepare()
     }
 
     static func error() {
-        notification.notificationOccurred(.error)
-        notification.prepare()
+        notificationGenerator.notificationOccurred(.error)
+        notificationGenerator.prepare()
     }
 
     /// Kept for source compatibility with the first native build.
