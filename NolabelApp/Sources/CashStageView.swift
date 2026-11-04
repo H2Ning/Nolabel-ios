@@ -114,7 +114,7 @@ struct CashStageView: View {
                         .frame(width: value == mode ? 5 : 4, height: value == mode ? 5 : 4)
                 }
             }
-            Text(modeLabel)
+            Text(modeLabel + " · 轻点")
                 .font(.system(size: 9, weight: .medium))
                 .foregroundStyle(palette.muted)
         }
