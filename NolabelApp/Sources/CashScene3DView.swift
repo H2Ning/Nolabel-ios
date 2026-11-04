@@ -207,6 +207,9 @@ final class CashSceneCanvas: UIView {
                 z: zCenter,
                 rotation: rotationY(-.pi / 2)
             )
+            leftWrap.contents = wrapperImage(width: thickness, height: depth)
+            leftWrap.contentsGravity = .resize
+            leftWrap.contentsScale = UIScreen.main.scale
             leftWrap.backgroundColor = UIColor(white: 0.985, alpha: 0.99).cgColor
             container.addSublayer(leftWrap)
         }
@@ -302,6 +305,9 @@ final class CashSceneCanvas: UIView {
         let wrapper = CALayer()
         wrapper.bounds = CGRect(x: 0, y: 0, width: width * 0.38, height: height)
         wrapper.position = CGPoint(x: width * 0.19, y: height / 2)
+        wrapper.contents = wrapperImage(width: width * 0.38, height: height)
+        wrapper.contentsGravity = .resize
+        wrapper.contentsScale = UIScreen.main.scale
         wrapper.backgroundColor = UIColor(white: 0.985, alpha: 0.985).cgColor
         wrapper.actions = Self.noActions
         face.addSublayer(wrapper)
@@ -610,6 +616,7 @@ final class CashSceneCanvas: UIView {
         topTape.backgroundColor = tape.withAlphaComponent(0.96).cgColor
         topTape.zPosition = 0.2
         topTape.actions = Self.noActions
+        addTapeGloss(to: topTape)
         top.addSublayer(topTape)
 
         for isRight in [false, true] {
@@ -619,6 +626,7 @@ final class CashSceneCanvas: UIView {
             sideTape.backgroundColor = tape.withAlphaComponent(0.92).cgColor
             sideTape.zPosition = 0.2
             sideTape.actions = Self.noActions
+            addTapeGloss(to: sideTape)
             (isRight ? right : left).addSublayer(sideTape)
         }
 
@@ -638,6 +646,52 @@ final class CashSceneCanvas: UIView {
         sticker.zPosition = 0.3
         sticker.actions = Self.noActions
         front.addSublayer(sticker)
+    }
+
+    private func wrapperImage(width: CGFloat, height: CGFloat) -> CGImage? {
+        let scale = UIScreen.main.scale
+        let pixelWidth = max(1, Int((width * scale).rounded()))
+        let pixelHeight = max(1, Int((height * scale).rounded()))
+        let key = "wrap|\(pixelWidth)|\(pixelHeight)" as NSString
+        if let cached = Self.wrapperImages.object(forKey: key) {
+            return cached.cgImage
+        }
+
+        let size = CGSize(width: CGFloat(pixelWidth) / scale, height: CGFloat(pixelHeight) / scale)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        let image = renderer.image { context in
+            let cg = context.cgContext
+            cg.setFillColor(UIColor(white: 0.985, alpha: 1).cgColor)
+            cg.fill(CGRect(origin: .zero, size: size))
+            cg.setStrokeColor(UIColor(hex: 0xC98D9B).withAlphaComponent(0.13).cgColor)
+            cg.setLineWidth(0.4)
+            var y: CGFloat = 0
+            while y <= size.height {
+                cg.move(to: CGPoint(x: 0, y: y))
+                cg.addLine(to: CGPoint(x: size.width, y: y))
+                y += 3
+            }
+            cg.strokePath()
+
+            let colors = [
+                UIColor.white.withAlphaComponent(0.22).cgColor,
+                UIColor.clear.cgColor,
+                UIColor(hex: 0x6B5B4B).withAlphaComponent(0.06).cgColor
+            ] as CFArray
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.35, 1]) {
+                cg.drawLinearGradient(
+                    gradient,
+                    start: CGPoint(x: 0, y: 0),
+                    end: CGPoint(x: 0, y: size.height),
+                    options: []
+                )
+            }
+        }
+        Self.wrapperImages.setObject(image, forKey: key)
+        return image.cgImage
     }
 
     private func cardboardImage(width: CGFloat, height: CGFloat, vertical: Bool) -> CGImage? {
@@ -697,6 +751,21 @@ final class CashSceneCanvas: UIView {
         }
         Self.boxImages.setObject(image, forKey: key)
         return image.cgImage
+    }
+
+    private func addTapeGloss(to tape: CALayer) {
+        let gloss = CAGradientLayer()
+        gloss.frame = tape.bounds
+        gloss.colors = [
+            UIColor(hex: 0xF1D486).cgColor,
+            UIColor(hex: 0xFFEAB0).withAlphaComponent(0.96).cgColor,
+            UIColor(hex: 0xD8B05B).cgColor
+        ]
+        gloss.locations = [0, 0.45, 1]
+        gloss.startPoint = CGPoint(x: 0, y: 0)
+        gloss.endPoint = CGPoint(x: 0, y: 1)
+        gloss.actions = Self.noActions
+        tape.addSublayer(gloss)
     }
 
     private func addGroundShadow(to container: CALayer, width: CGFloat, depth: CGFloat) {
@@ -809,6 +878,7 @@ final class CashSceneCanvas: UIView {
     private static let noteImages = NSCache<NSString, UIImage>()
     private static let sideImages = NSCache<NSString, UIImage>()
     private static let boxImages = NSCache<NSString, UIImage>()
+    private static let wrapperImages = NSCache<NSString, UIImage>()
 
     private static let shadowImage: CGImage? = {
         let size = CGSize(width: 128, height: 96)
