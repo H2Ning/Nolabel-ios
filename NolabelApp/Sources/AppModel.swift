@@ -152,7 +152,6 @@ final class AppModel {
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
         hapticLevel = HapticLevel(rawValue: defaults.string(forKey: hapticKey) ?? "") ?? .rich
-        Haptics.setLevel(hapticLevel)
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
         let storedCashMode = defaults.integer(forKey: cashModeKey)
         cashMode = (1...3).contains(storedCashMode) ? storedCashMode : 1
@@ -165,6 +164,7 @@ final class AppModel {
         if previewMode {
             configurePreview(arguments: arguments)
         }
+        Haptics.setLevel(hapticLevel)
     }
 
     func bootstrap() async {
