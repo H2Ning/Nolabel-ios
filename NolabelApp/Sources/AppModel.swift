@@ -371,6 +371,18 @@ final class AppModel {
             numberFormat.separator = .tenThousand
             numberFormat.colorScheme = .redCyan
         }
+        if arguments.contains("--preview-autoplay-month") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
+                guard let self else { return }
+                withAnimation(AppMotion.spring) { self.shiftMonth(-1) }
+            }
+        }
+        if arguments.contains("--preview-autoplay-entry") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
+                guard let self else { return }
+                withAnimation(AppMotion.spring) { self.openEntry(self.bills.first) }
+            }
+        }
     }
 
     private func value(after flag: String, in arguments: [String]) -> String? {

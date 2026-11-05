@@ -111,6 +111,33 @@ jobs:
           capture cash-plaza-analysis-bottom --preview --preview-screen bills --preview-theme dark --preview-plaza --preview-plaza-analysis --preview-plaza-analysis-bottom
           capture cash-plaza-analysis-light --preview --preview-screen bills --preview-theme light --preview-plaza --preview-plaza-analysis
 
+      - name: Capture transitions
+        run: |
+          DEVICE_ID="${{ steps.simulator.outputs.id }}"
+          BUNDLE_ID="com.h2ning.nolabel"
+          mkdir -p transitions
+          record() {
+            NAME="$1"
+            shift
+            xcrun simctl terminate "$DEVICE_ID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+            xcrun simctl io "$DEVICE_ID" recordVideo --codec=h264 --force "transitions/$NAME.mp4" &
+            REC_PID=$!
+            sleep 1
+            xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID" "$@" >/dev/null
+            sleep 3
+            kill -INT "$REC_PID" >/dev/null 2>&1 || true
+            wait "$REC_PID" 2>/dev/null || true
+          }
+          record month-shift --preview --preview-screen bills --preview-theme dark --preview-autoplay-month
+          record entry-open --preview --preview-screen bills --preview-theme dark --preview-autoplay-entry
+
+      - name: Upload transitions
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-transitions
+          path: transitions
+          if-no-files-found: error
+
       - name: Make previews
         run: |
           mkdir -p previews
