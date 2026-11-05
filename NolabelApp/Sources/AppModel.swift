@@ -740,7 +740,11 @@ final class AppModel {
         guard let bill = pendingDeleteBill else { return }
         pendingDeleteBill = nil
         Haptics.deleteConfirm()
-        Task { await delete(bill) }
+        // Let the alert finish dismissing before the list mutates.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            await delete(bill)
+        }
     }
 
     func delete(_ bill: Bill) async {

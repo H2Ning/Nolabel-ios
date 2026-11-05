@@ -124,19 +124,7 @@ struct CashPlazaView: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(spacing: 14) {
-                            if !analysisOpen {
-                                stage(snapshot)
-                                    .transition(
-                                        .asymmetric(
-                                            insertion: .opacity.combined(with: .scale(scale: 0.98, anchor: .top)),
-                                            removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
-                                        )
-                                    )
-                            }
-
-                            chartButton(snapshot)
-
+                        Group {
                             if analysisOpen {
                                 VStack(spacing: 0) {
                                     CashPlazaAnalysisView(
@@ -147,20 +135,20 @@ struct CashPlazaView: View {
                                     .id("plazaAnalysis-\(model.monthDataVersion)")
                                 }
                                 .id("plazaAnalysisBottom")
-                                .transition(.opacity.combined(with: .scale(scale: 0.99, anchor: .top)))
+                            } else {
+                                VStack(spacing: 14) {
+                                    stage(snapshot)
+                                    chartCard(snapshot)
+                                }
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 2)
-                        .padding(.bottom, 36)
+                        .padding(.bottom, 72)
                         .id("plazaTop")
+                        .transition(.opacity)
                     }
                     .scrollIndicators(.hidden)
-                    .onChange(of: analysisOpen) { _, _ in
-                        withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                            proxy.scrollTo("plazaTop", anchor: .top)
-                        }
-                    }
                     .onAppear {
                         guard ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis-bottom") else {
                             return
@@ -292,28 +280,6 @@ struct CashPlazaView: View {
         )
     }
 
-    private func chartButton(_ snapshot: PlazaSnapshot) -> some View {
-        Button {
-            Haptics.pick()
-            toggleAnalysis()
-        } label: {
-            chartCard(snapshot)
-        }
-        .buttonStyle(PressableStyle(scale: 0.985))
-        .accessibilityLabel(
-            analysisOpen
-                ? "收起账单分析，返回现金广场"
-                : "每日支出与累计支出，共 \(Formats.money(snapshot.totalCents)) 元"
-        )
-        .accessibilityHint(
-            analysisOpen ? "轻点收起分析；也可向下拖动页面" : "轻点或向上拖动页面查看本月花费分析"
-        )
-    }
-
-    private func toggleAnalysis() {
-        detent = analysisOpen ? .medium : .large
-    }
-
     private func chartCard(_ snapshot: PlazaSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
@@ -391,22 +357,6 @@ struct CashPlazaView: View {
                 .animation(AppMotion.grace, value: snapshot.points.count)
             }
 
-            Rectangle()
-                .fill(palette.line)
-                .frame(height: 1)
-                .padding(.top, 2)
-
-            HStack(spacing: 6) {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .scalableFont(9.5, weight: .semibold)
-                Text(analysisOpen ? "点击图表，收起账单分析" : "点击图表，查看本月账单分析")
-                    .scalableFont(10.5, weight: .medium)
-                Spacer()
-                Image(systemName: analysisOpen ? "chevron.up" : "chevron.down")
-                    .scalableFont(8, weight: .bold)
-            }
-            .foregroundStyle(palette.muted)
-            .contentShape(Rectangle())
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

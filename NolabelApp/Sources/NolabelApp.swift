@@ -84,13 +84,12 @@ struct RootView: View {
             isPresented: Binding(
                 get: { model.pendingDeleteBill != nil },
                 set: { _ in }
-            ),
-            presenting: model.pendingDeleteBill
-        ) { _ in
+            )
+        ) {
             Button("删除", role: .destructive) { model.confirmDeletePrompt() }
             Button("取消", role: .cancel) { model.cancelDeletePrompt() }
-        } message: { bill in
-            Text("\(bill.title) · \(bill.signedAmountText)")
+        } message: {
+            Text(model.pendingDeleteBill.map { "\($0.title) · \($0.signedAmountText)" } ?? "")
         }
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.settingsOpen)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)

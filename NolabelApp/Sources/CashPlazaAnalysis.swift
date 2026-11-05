@@ -442,7 +442,7 @@ struct CashPlazaAnalysisView: View {
 
     private var incomeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("钱从哪来", detail: "收入")
+            sectionHeader("钱从哪来的", detail: "收入")
             if analysis.incomeItems.isEmpty {
                 Text("这个月没有收入记录。花的是之前的存量，或者你忘了记。")
                     .scalableFont(12.5, weight: .regular)
