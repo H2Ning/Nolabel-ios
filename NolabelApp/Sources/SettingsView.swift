@@ -740,6 +740,7 @@ struct DateOverlay: View {
     @State private var closing = false
     @State private var landed = false
     @State private var dim = 0.0
+    @State private var veilOut = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -764,6 +765,7 @@ struct DateOverlay: View {
                 .contentShape(Rectangle())
                 // Swallow taps so the keypad behind the sheet never fires.
                 .onTapGesture { }
+                .opacity(veilOut ? 0 : 1)
 
                 card(width: proxy.size.width)
                     // Genie in and out: the sheet leaves from and returns to the
@@ -916,7 +918,11 @@ struct DateOverlay: View {
         withAnimation(.timingCurve(0.9, 0.0, 1.0, 1.0, duration: 0.58)) {
             dim = 1
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.62) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.58) {
+            // The card is gone by now; dissolve the veil instead of cutting it.
+            withAnimation(.easeOut(duration: 0.2)) { veilOut = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             if confirmed {
                 model.confirmDate(date)
             } else {
