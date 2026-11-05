@@ -133,6 +133,8 @@ struct RootView: View {
         ) {
             EntryView(model: model, palette: palette)
         }
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationTitle("账单")
     }
 
     private var appAtmosphere: some View {

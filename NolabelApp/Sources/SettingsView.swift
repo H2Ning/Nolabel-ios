@@ -25,14 +25,6 @@ struct SettingsPage: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    pageHeader
-
-                    Text(settingsTitle)
-                        .scalableFont(36, weight: .bold)
-                        .tracking(-0.8)
-                        .foregroundStyle(palette.ink)
-                        .padding(.bottom, 2)
-
                     switch sub {
                     case .main:
                         mainView
@@ -51,11 +43,8 @@ struct SettingsPage: View {
             .scrollIndicators(.hidden)
         }
         .contentShape(Rectangle())
-        .toolbar(.hidden, for: .navigationBar)
-        .background(
-            InteractivePopGestureEnabler()
-                .frame(width: 0, height: 0)
-        )
+        .navigationTitle(settingsTitle)
+        .navigationBarTitleDisplayMode(sub == .main ? .large : .inline)
         .onAppear {
             username = model.savedUsername
         }
@@ -97,22 +86,6 @@ struct SettingsPage: View {
         }
     }
 
-    private var pageHeader: some View {
-        HStack {
-            Button(action: goBack) {
-                Image(systemName: "chevron.left")
-                    .scalableFont(16, weight: .semibold)
-                    .foregroundStyle(palette.ink2)
-                    .frame(width: 46, height: 46)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PressableStyle(scale: 0.92))
-            .glassCircle()
-            .accessibilityLabel(sub == .main ? "关闭设置" : "返回设置")
-            Spacer(minLength: 0)
-        }
-    }
-
     private var settingsAtmosphere: some View {
         RadialGradient(
             colors: [
@@ -125,15 +98,6 @@ struct SettingsPage: View {
             startRadius: 0,
             endRadius: 430
         )
-    }
-
-    private func goBack() {
-        if sub == .main {
-            model.closeSettings()
-            return
-        }
-        Haptics.soft()
-        model.settingsSubview = .main
     }
 
     private var mainView: some View {
@@ -737,7 +701,6 @@ struct DateOverlay: View {
             ZStack {
                 Color.black.opacity(palette.isDark ? 0.48 : 0.24)
                     .ignoresSafeArea()
-                    .background(.ultraThinMaterial)
                     .contentShape(Rectangle())
                     // Swallow taps so the keypad behind the sheet never fires.
                     .onTapGesture { }
@@ -804,12 +767,12 @@ struct DateOverlay: View {
         }
         .padding(18)
         .frame(maxWidth: min(360, width - 24))
-        .glassEffect(.regular, in: .rect(cornerRadius: 22))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
-        .shadow(color: palette.sheetShadow, radius: 30, y: 16)
+        .shadow(color: palette.sheetShadow, radius: 20, y: 12)
     }
 
     private func dismiss(confirmed: Bool) {

@@ -181,7 +181,7 @@ struct BillsView: View {
         .padding(.top, 18)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 22))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
@@ -277,7 +277,8 @@ struct BillsView: View {
                     .foregroundStyle(palette.ink)
                     .padding(.horizontal, 18)
                     .frame(minHeight: 44)
-                    .glassCapsule()
+                    .background(palette.surface, in: Capsule())
+                    .overlay(Capsule().stroke(palette.line, lineWidth: 1))
             }
             .buttonStyle(PressableStyle(scale: 0.96))
             .padding(.top, 18)

@@ -138,9 +138,9 @@ struct EntryView: View {
         .padding(.top, 15)
         .padding(.bottom, 10)
         .background(palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 21, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -288,7 +288,7 @@ struct EntryView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(Color(hex: 0x2E9F5B), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(palette.success, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.76, level: model.hapticLevel))
     }
@@ -302,7 +302,7 @@ struct EntryView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(Color(hex: 0x3B7BE8), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(palette.primaryAction, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .opacity(model.entryPreviewCents > 0 ? 1 : 0.55)
         }
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86, level: model.hapticLevel))

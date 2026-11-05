@@ -42,6 +42,8 @@ struct AppPalette {
     var expense: Color
     var income: Color
     let danger: Color
+    let primaryAction: Color
+    let success: Color
     let stage: Color
     let stageGrid: Color
     let glassTint: Color
@@ -76,6 +78,8 @@ struct AppPalette {
         expense: Color(hex: 0xEF6856),
         income: Color(hex: 0x72D699),
         danger: Color(hex: 0xEF6856),
+        primaryAction: Color(hex: 0x3B7BE8),
+        success: Color(hex: 0x2E9F5B),
         stage: Color(hex: 0x030804),
         stageGrid: Color(hex: 0x1A2B20).opacity(0.32),
         glassTint: Color.black.opacity(0.10),
@@ -100,6 +104,8 @@ struct AppPalette {
         expense: Color(hex: 0xAC1B18),
         income: Color(hex: 0x00672D),
         danger: Color(hex: 0xAC1B18),
+        primaryAction: Color(hex: 0x2F6FD0),
+        success: Color(hex: 0x1F7A45),
         stage: Color(hex: 0xE3EAE4),
         stageGrid: Color(hex: 0x536459).opacity(0.16),
         glassTint: Color.white.opacity(0.20),
