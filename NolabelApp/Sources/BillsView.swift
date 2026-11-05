@@ -4,6 +4,7 @@ struct BillsView: View {
     @Bindable var model: AppModel
     let palette: AppPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var monthShiftDirection = 1
 
     init(model: AppModel, palette: AppPalette) {
         self._model = Bindable(model)
@@ -60,13 +61,19 @@ struct BillsView: View {
             GlassEffectContainer(spacing: 0) {
                 HStack(spacing: 0) {
                     monthButton(systemName: "chevron.left", label: "上个月") {
-                        model.shiftMonth(-1)
+                        monthShiftDirection = -1
+                        withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                            model.shiftMonth(-1)
+                        }
                     }
                     Rectangle()
                         .fill(palette.line)
                         .frame(width: 1, height: 22)
                     monthButton(systemName: "chevron.right", label: "下个月") {
-                        model.shiftMonth(1)
+                        monthShiftDirection = 1
+                        withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                            model.shiftMonth(1)
+                        }
                     }
                 }
                 .frame(height: 46)
@@ -97,6 +104,7 @@ struct BillsView: View {
                     .font(.system(size: 12, weight: .medium))
                     .tracking(1.1)
                     .foregroundStyle(palette.muted)
+                    .contentTransition(.numericText())
                 Text("账单")
                     .font(.system(size: 36, weight: .bold))
                     .tracking(-0.8)
@@ -107,6 +115,7 @@ struct BillsView: View {
                 .font(.system(size: 13, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(palette.muted)
+                .contentTransition(.numericText())
                 .padding(.bottom, 4)
         }
         .padding(.top, 18)
@@ -124,6 +133,7 @@ struct BillsView: View {
                 Text(model.monthPeriod)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.muted)
+                    .contentTransition(.numericText())
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -163,6 +173,7 @@ struct BillsView: View {
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(palette.muted)
+                    .contentTransition(.numericText())
             }
             .padding(.top, 12)
         }
@@ -187,6 +198,15 @@ struct BillsView: View {
         .accessibilityLabel("该月支出 \(Formats.money(model.monthExpense)) 元，收入 \(Formats.money(model.monthIncome)) 元，\(model.monthBills.count) 笔，\(model.monthNotes) 张现钞")
     }
 
+    private var monthListTransition: AnyTransition {
+        let incoming: Edge = monthShiftDirection > 0 ? .trailing : .leading
+        let outgoing: Edge = monthShiftDirection > 0 ? .leading : .trailing
+        return .asymmetric(
+            insertion: .move(edge: incoming).combined(with: .opacity),
+            removal: .move(edge: outgoing).combined(with: .opacity)
+        )
+    }
+
     private var listSection: some View {
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
@@ -205,15 +225,20 @@ struct BillsView: View {
             .padding(.top, 24)
             .padding(.bottom, 8)
 
-            if model.monthBills.isEmpty {
-                emptyState
-            } else {
-                LazyVStack(spacing: 12) {
-                    ForEach(model.monthGroups()) { group in
-                        DayCapsuleView(model: model, group: group, palette: palette)
+            ZStack(alignment: .top) {
+                if model.monthBills.isEmpty {
+                    emptyState
+                        .id("empty-\(model.selectedMonthKey)")
+                        .transition(monthListTransition)
+                } else {
+                    LazyVStack(spacing: 12) {
+                        ForEach(model.monthGroups()) { group in
+                            DayCapsuleView(model: model, group: group, palette: palette)
+                        }
                     }
+                    .id(model.selectedMonthKey)
+                    .transition(monthListTransition)
                 }
-                .animation(reduceMotion ? nil : AppMotion.spring, value: model.monthDataVersion)
             }
         }
     }
@@ -436,7 +461,7 @@ struct SwipeBillRow: View {
             .padding(.vertical, 13)
             .frame(maxWidth: .infinity)
             .background(isTouching && !isDragging ? palette.surface2 : palette.surface)
-            .animation(.easeOut(duration: 0.12), value: isTouching)
+            .animation(.easeOut(duration: 0.06), value: isTouching)
             .overlay {
                 if model.lastSavedBillID == bill.id {
                     Rectangle()
