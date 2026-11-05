@@ -7,6 +7,8 @@ import UIKit
 /// inside a ScrollView feel stuck. This recognizer refuses vertical pans so the
 /// enclosing scroll view keeps ownership, while still forwarding taps.
 struct HorizontalSwipeArea: UIViewRepresentable {
+    var onTouchDown: () -> Void
+    var onTouchUp: () -> Void
     var onBegan: () -> Void
     var onChanged: (CGFloat) -> Void
     var onEnded: (CGFloat, CGFloat) -> Void
@@ -17,7 +19,9 @@ struct HorizontalSwipeArea: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> UIView {
-        let view = UIView()
+        let view = TouchReportingView()
+        view.onTouchDown = onTouchDown
+        view.onTouchUp = onTouchUp
         view.backgroundColor = .clear
         view.isOpaque = false
         view.isAccessibilityElement = false
@@ -46,6 +50,8 @@ struct HorizontalSwipeArea: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        (uiView as? TouchReportingView)?.onTouchDown = onTouchDown
+        (uiView as? TouchReportingView)?.onTouchUp = onTouchUp
         context.coordinator.parent = self
     }
 
@@ -61,6 +67,7 @@ struct HorizontalSwipeArea: UIViewRepresentable {
             let translation = pan.translation(in: view)
             switch pan.state {
             case .began:
+                parent.onTouchUp()
                 parent.onBegan()
             case .changed:
                 parent.onChanged(translation.x)
@@ -97,5 +104,25 @@ struct HorizontalSwipeArea: UIViewRepresentable {
         ) -> Bool {
             true
         }
+    }
+}
+
+private final class TouchReportingView: UIView {
+    var onTouchDown: (() -> Void)?
+    var onTouchUp: (() -> Void)?
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        onTouchDown?()
+        super.touchesBegan(touches, with: event)
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        onTouchUp?()
+        super.touchesEnded(touches, with: event)
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        onTouchUp?()
+        super.touchesCancelled(touches, with: event)
     }
 }

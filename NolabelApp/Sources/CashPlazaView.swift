@@ -12,10 +12,12 @@ struct CashPlazaView: View {
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
     @State private var analysisOpen = ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis")
+    @State private var analysisVisible = ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis")
 
     private var monthTitle: String { model.monthTitle }
 
     private struct PlazaSnapshot {
+        let incomeCount: Int
         let expenseCount: Int
         let totalCents: Int
         let tallies: [CashGroup]
@@ -26,6 +28,7 @@ struct CashPlazaView: View {
 
         init(bills: [Bill]) {
             let expenses = bills.filter { $0.type == .expense }
+            incomeCount = bills.filter { $0.type == .income }.count
             expenseCount = expenses.count
             totalCents = expenses.reduce(0) { $0 + $1.cents }
 
@@ -125,7 +128,7 @@ struct CashPlazaView: View {
 
                             chartButton(snapshot)
 
-                            if analysisOpen {
+                            if analysisOpen && analysisVisible {
                                 VStack(spacing: 0) {
                                     CashPlazaAnalysisView(
                                         bills: model.monthBills,
@@ -177,17 +180,36 @@ struct CashPlazaView: View {
             .accessibilityLabel("关闭现金广场")
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("现金广场")
+                Text(analysisOpen ? "本月账单分析" : "现金广场")
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(palette.ink)
-                Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
-                    .font(.system(size: 12, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(palette.muted)
+                if analysisOpen {
+                    analysisSubtitle(snapshot)
+                        .font(.system(size: 12, weight: .medium))
+                        .monospacedDigit()
+                } else {
+                    Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
+                        .font(.system(size: 12, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(palette.muted)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func analysisSubtitle(_ snapshot: PlazaSnapshot) -> Text {
+        Text("本月共 ")
+            .foregroundColor(palette.muted)
+            + Text("\(snapshot.incomeCount) 笔收入")
+                .foregroundColor(palette.income)
+                .fontWeight(.semibold)
+            + Text("，")
+                .foregroundColor(palette.muted)
+            + Text("\(snapshot.expenseCount) 笔支出")
+                .foregroundColor(palette.expense)
+                .fontWeight(.semibold)
     }
 
     private func stage(_ snapshot: PlazaSnapshot) -> some View {
@@ -260,8 +282,21 @@ struct CashPlazaView: View {
     private func chartButton(_ snapshot: PlazaSnapshot) -> some View {
         Button {
             Haptics.pick()
-            withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                analysisOpen.toggle()
+            if analysisOpen {
+                analysisVisible = false
+                withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                    analysisOpen = false
+                }
+            } else {
+                withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                    analysisOpen = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.36) {
+                    guard analysisOpen else { return }
+                    withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                        analysisVisible = true
+                    }
+                }
             }
         } label: {
             chartCard(snapshot)
@@ -357,7 +392,7 @@ struct CashPlazaView: View {
             HStack(spacing: 6) {
                 Image(systemName: "chart.line.uptrend.xyaxis")
                     .font(.system(size: 9.5, weight: .semibold))
-                Text(analysisOpen ? "收起分析，回到现金展示" : "看看这个月的钱怎么没的")
+                Text(analysisOpen ? "收起分析，回到现金展示" : "点击图表，查看本月账单分析")
                     .font(.system(size: 10.5, weight: .medium))
                 Spacer()
                 Image(systemName: analysisOpen ? "chevron.up" : "chevron.down")

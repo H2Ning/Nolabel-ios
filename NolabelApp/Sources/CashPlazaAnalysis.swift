@@ -313,7 +313,6 @@ struct CashPlazaAnalysisView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            intro
             flowCard
             incomeSection
             expenseSection
@@ -325,50 +324,16 @@ struct CashPlazaAnalysisView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var intro: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("账单解剖")
-                .font(.system(size: 25, weight: .bold))
-                .tracking(-0.6)
-                .foregroundStyle(palette.ink)
-            flowSentence
-                .font(.system(size: 13.5, weight: .medium))
-                .lineSpacing(3)
-        }
-    }
-
-    private var flowSentence: Text {
-        if analysis.expenseCount == 0 && analysis.incomeCount == 0 {
-            return Text("这个月还没有账单。").foregroundColor(palette.muted)
-        }
-        if analysis.incomeCount == 0 {
-            return Text("没有收入记录，").foregroundColor(palette.muted)
-                + Text("\(analysis.expenseCount) 笔支出").foregroundColor(palette.expense).fontWeight(.semibold)
-                + Text("全从存量里出。").foregroundColor(palette.muted)
-        }
-        if analysis.expenseCount == 0 {
-            return Text("\(analysis.incomeCount) 笔收入").foregroundColor(palette.income).fontWeight(.semibold)
-                + Text("进来了，这个月一分没花。").foregroundColor(palette.muted)
-        }
-        return Text("钱从 ").foregroundColor(palette.muted)
-            + Text("\(analysis.incomeCount) 笔收入").foregroundColor(palette.income).fontWeight(.semibold)
-            + Text("进来，从 ").foregroundColor(palette.muted)
-            + Text("\(analysis.expenseCount) 笔支出").foregroundColor(palette.expense).fontWeight(.semibold)
-            + Text("出去。").foregroundColor(palette.muted)
-    }
-
     private var flowCard: some View {
         VStack(spacing: 14) {
             HStack(alignment: .top, spacing: 16) {
                 flowColumn(
-                    label: "进来",
                     cents: analysis.incomeTotal,
                     meta: "\(analysis.incomeCount) 笔收入",
                     color: palette.income
                 )
                 Spacer(minLength: 8)
                 flowColumn(
-                    label: "出去",
                     cents: analysis.expenseTotal,
                     meta: "\(analysis.expenseCount) 笔支出",
                     color: palette.expense
@@ -412,12 +377,8 @@ struct CashPlazaAnalysisView: View {
         )
     }
 
-    private func flowColumn(label: String, cents: Int, meta: String, color: Color) -> some View {
+    private func flowColumn(cents: Int, meta: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(.system(size: 10, weight: .semibold))
-                .tracking(0.8)
-                .foregroundStyle(palette.muted)
             Text("¥\(Formats.money(cents))")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .tracking(-0.5)

@@ -364,6 +364,7 @@ struct SwipeBillRow: View {
     @State private var isDragging = false
     @State private var crossedReveal = false
     @State private var suppressTap = false
+    @State private var isTouching = false
 
     private let reveal: CGFloat = 68
     private let circleSize: CGFloat = 44
@@ -432,7 +433,8 @@ struct SwipeBillRow: View {
             .padding(.trailing, 26)
             .padding(.vertical, 13)
             .frame(maxWidth: .infinity)
-            .background(palette.surface)
+            .background(isTouching && !isDragging ? palette.surface2 : palette.surface)
+            .animation(.easeOut(duration: 0.12), value: isTouching)
             .overlay {
                 if model.lastSavedBillID == bill.id {
                     Rectangle()
@@ -443,7 +445,12 @@ struct SwipeBillRow: View {
             .contentShape(Rectangle())
             .overlay {
                 HorizontalSwipeArea(
-                    onBegan: beginSwipe,
+                    onTouchDown: { isTouching = true },
+                    onTouchUp: { isTouching = false },
+                    onBegan: {
+                        isTouching = false
+                        beginSwipe()
+                    },
                     onChanged: updateSwipe,
                     onEnded: endSwipe,
                     onTap: handleRowTap
@@ -500,6 +507,7 @@ struct SwipeBillRow: View {
 
     private func beginSwipe() {
         guard !isDragging else { return }
+        isTouching = false
         if model.openBillID != bill.id {
             model.openBillID = nil
         }
