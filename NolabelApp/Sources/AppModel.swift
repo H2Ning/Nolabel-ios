@@ -15,6 +15,15 @@ enum EntryOperator: String, CaseIterable {
     case multiply = "×"
     case divide = "÷"
 
+    var next: EntryOperator {
+        switch self {
+        case .add: .subtract
+        case .subtract: .multiply
+        case .multiply: .divide
+        case .divide: .add
+        }
+    }
+
     var label: String {
         switch self {
         case .add: "加"
@@ -864,6 +873,10 @@ final class AppModel {
         entryWaitingForOperand = false
     }
 
+    func cycleOperator() {
+        selectOperator(entryOperator?.next ?? .add)
+    }
+
     func selectOperator(_ op: EntryOperator) {
         if let pending = entryOperator, !entryWaitingForOperand, let left = entryAccumulator {
             guard let result = calculate(left, pending, entryCents) else { return }
@@ -876,7 +889,6 @@ final class AppModel {
         entryWaitingForOperand = true
         entryTrailingDecimal = false
         entryJustEvaluated = false
-        Haptics.operatorKey()
     }
 
     func pressEquals() {
