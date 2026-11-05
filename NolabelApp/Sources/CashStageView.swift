@@ -49,8 +49,8 @@ struct CashStageView: View {
 
                 if !groups.isEmpty {
                     modeBadge
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                        .padding(.top, 5)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .padding(.bottom, 5)
                         .padding(.trailing, 12)
                 }
             }
@@ -90,7 +90,7 @@ struct CashStageView: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint("轻点停止旋转，右上角按钮切换摆放方式")
+            .accessibilityHint("轻点停止旋转，右下角按钮切换摆放方式")
             .accessibilityAction {
                 momentum.stop()
             }
@@ -245,7 +245,7 @@ struct CashStageView: View {
         case 3: modeText = "全部展开"
         default: modeText = "整叠摆放"
         }
-        return "共 \(total) 张：\(pieces)。当前\(modeText)。左右拖动可旋转，轻点停止旋转，右上角切换摆放方式。"
+        return "共 \(total) 张：\(pieces)。当前\(modeText)。左右拖动可旋转，轻点停止旋转，右下角切换摆放方式。"
     }
 }
 
@@ -279,8 +279,8 @@ private struct CashNoteGrid: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 60)
-            .padding(.bottom, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 56)
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
