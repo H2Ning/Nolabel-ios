@@ -889,9 +889,9 @@ struct DateOverlay: View {
     }
 
     private var tiltDegrees: Double {
-        if !appeared || landed { return -30 }
-        if arrived { return -24 }
-        return closing ? -9 : 0
+        if !appeared || landed { return 30 }
+        if arrived { return 24 }
+        return closing ? 9 : 0
     }
 
     private func dismiss(confirmed: Bool) {
