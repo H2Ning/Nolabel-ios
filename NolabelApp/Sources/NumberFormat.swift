@@ -8,8 +8,8 @@ enum IncomeFormat: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .plain: "1.00"
-        case .plus: "+1.00"
+        case .plain: "普通"
+        case .plus: "正号"
         }
     }
 }
@@ -22,8 +22,8 @@ enum ExpenseFormat: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .minus: "-1.00"
-        case .bracket: "[1.00]"
+        case .minus: "减号"
+        case .bracket: "括号"
         }
     }
 }

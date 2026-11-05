@@ -394,35 +394,50 @@ struct SettingsPage: View {
     private var formatCard: some View {
         VStack(spacing: 0) {
             formatRow(title: "收入格式") {
-                SegmentPicker(
-                    options: IncomeFormat.allCases,
-                    selection: model.numberFormat.incomeFormat,
-                    palette: palette,
-                    label: { $0.label }
-                ) { value in
-                    model.updateNumberFormat { $0.incomeFormat = value }
+                Picker("收入格式", selection: incomeFormatBinding) {
+                    ForEach(IncomeFormat.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 150)
             }
             formatDivider
             formatRow(title: "支出格式") {
-                SegmentPicker(
-                    options: ExpenseFormat.allCases,
-                    selection: model.numberFormat.expenseFormat,
-                    palette: palette,
-                    label: { $0.label }
-                ) { value in
-                    model.updateNumberFormat { $0.expenseFormat = value }
+                Picker("支出格式", selection: expenseFormatBinding) {
+                    ForEach(ExpenseFormat.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 150)
             }
             formatDivider
             formatRow(title: "分隔符") {
-                SegmentPicker(
-                    options: AmountSeparator.allCases,
-                    selection: model.numberFormat.separator,
-                    palette: palette,
-                    label: { $0.label }
-                ) { value in
-                    model.updateNumberFormat { $0.separator = value }
+                Menu {
+                    ForEach(AmountSeparator.allCases) { option in
+                        Button {
+                            model.updateNumberFormat { $0.separator = option }
+                        } label: {
+                            if model.numberFormat.separator == option {
+                                Label(option.summaryLabel, systemImage: "checkmark")
+                            } else {
+                                Text(option.summaryLabel)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(model.numberFormat.separator.summaryLabel)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .scalableFont(9, weight: .semibold)
+                    }
+                    .scalableFont(15, weight: .medium)
+                    .foregroundStyle(palette.accent)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
             }
         }
@@ -431,6 +446,20 @@ struct SettingsPage: View {
         .overlay(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
+        )
+    }
+
+    private var incomeFormatBinding: Binding<IncomeFormat> {
+        Binding(
+            get: { model.numberFormat.incomeFormat },
+            set: { value in model.updateNumberFormat { $0.incomeFormat = value } }
+        )
+    }
+
+    private var expenseFormatBinding: Binding<ExpenseFormat> {
+        Binding(
+            get: { model.numberFormat.expenseFormat },
+            set: { value in model.updateNumberFormat { $0.expenseFormat = value } }
         )
     }
 
@@ -635,60 +664,6 @@ struct SettingsPage: View {
     }
 }
 
-private struct SegmentPicker<Option: Hashable & Identifiable>: View where Option.ID == String {
-    let options: [Option]
-    let selection: Option
-    let palette: AppPalette
-    let label: (Option) -> String
-    let onSelect: (Option) -> Void
-
-    @Namespace private var namespace
-
-    private var thumbFill: Color {
-        palette.isDark ? Color.white.opacity(0.09) : palette.surface
-    }
-
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(options) { option in
-                Button {
-                    guard option != selection else { return }
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.88)) {
-                        onSelect(option)
-                    }
-                } label: {
-                    Text(label(option))
-                        .scalableFont(10.5, weight: .semibold)
-                        .foregroundStyle(option == selection ? palette.ink : palette.muted)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background {
-                            if option == selection {
-                                Capsule()
-                                    .fill(thumbFill)
-                                    .matchedGeometryEffect(id: "segment-thumb", in: namespace)
-                                    .shadow(
-                                        color: .black.opacity(palette.isDark ? 0.24 : 0.08),
-                                        radius: 4,
-                                        y: 2
-                                    )
-                            }
-                        }
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(label(option))
-                .accessibilityValue(option == selection ? "已选择" : "")
-            }
-        }
-        .padding(3)
-        .background(Capsule().fill(palette.surface2))
-        .overlay(Capsule().stroke(palette.line, lineWidth: 1))
-        .frame(maxWidth: 196)
-    }
-}
 
 struct DateOverlay: View {
     @Bindable var model: AppModel

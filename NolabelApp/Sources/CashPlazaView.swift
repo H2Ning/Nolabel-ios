@@ -13,6 +13,7 @@ struct CashPlazaView: View {
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
     @State private var showingAnalysisSection = false
+    @State private var analysisHeaderY: CGFloat = .greatestFiniteMagnitude
 
     /// Large detent shows the analysis; medium shows the cash display.
     private var analysisOpen: Bool { detent == .large }
@@ -142,7 +143,7 @@ struct CashPlazaView: View {
                                     GeometryReader { geo in
                                         Color.clear.preference(
                                             key: AnalysisHeaderOffsetKey.self,
-                                            value: geo.frame(in: .named("plazaScroll")).minY
+                                            value: geo.frame(in: .named("plazaContent")).minY
                                         )
                                     }
                                 )
@@ -166,12 +167,21 @@ struct CashPlazaView: View {
                         .padding(.top, 2)
                         .padding(.bottom, 72)
                         .id("plazaTop")
+                        .coordinateSpace(name: "plazaContent")
                         .transition(.opacity)
                     }
                     .scrollIndicators(.hidden)
-                    .coordinateSpace(name: "plazaScroll")
                     .onPreferenceChange(AnalysisHeaderOffsetKey.self) { minY in
-                        let shouldShow = analysisOpen && minY < 110
+                        if minY.isFinite {
+                            analysisHeaderY = minY
+                        }
+                    }
+                    .onScrollGeometryChange(for: Bool.self) { geometry in
+                        guard analysisOpen, analysisHeaderY.isFinite else { return false }
+                        // Visible top of the content, in content coordinates.
+                        let top = geometry.contentOffset.y + geometry.contentInsets.top
+                        return top >= analysisHeaderY - 8
+                    } action: { _, shouldShow in
                         if shouldShow != showingAnalysisSection {
                             showingAnalysisSection = shouldShow
                         }
