@@ -35,6 +35,7 @@ struct CashStageView: View {
                 if !groups.isEmpty {
                     if mode == 3 {
                         CashNoteGrid(source: source, palette: palette)
+                            .padding(.bottom, 48)
                     } else {
                         CashScene3DView(
                             source: source,
@@ -280,7 +281,7 @@ private struct CashNoteGrid: View {
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
-            .padding(.bottom, 56)
+            .padding(.bottom, 12)
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
