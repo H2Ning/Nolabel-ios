@@ -34,8 +34,7 @@ final class CashSceneCanvas: UIView {
     private var hasSource = false
     private var readySignaled = false
     private var isDark = false
-    private var sceneBounds = SceneBounds()
-    private var sceneOffsetY: CGFloat = 0
+    private var pileHeightCentroid: CGFloat = 0
     var onReady: (() -> Void)?
 
     private struct ItemNode {
@@ -51,15 +50,6 @@ final class CashSceneCanvas: UIView {
         case bottom
     }
 
-    private struct SceneBounds {
-        var minX: CGFloat = .greatestFiniteMagnitude
-        var maxX: CGFloat = -.greatestFiniteMagnitude
-        var minY: CGFloat = .greatestFiniteMagnitude
-        var maxY: CGFloat = -.greatestFiniteMagnitude
-        var minZ: CGFloat = .greatestFiniteMagnitude
-        var maxZ: CGFloat = -.greatestFiniteMagnitude
-        var isEmpty: Bool { minX > maxX }
-    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -88,7 +78,7 @@ final class CashSceneCanvas: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         contentLayer.bounds = CGRect(origin: .zero, size: bounds.size)
-        contentLayer.position = CGPoint(x: bounds.width / 2, y: bounds.height * 0.44 + sceneOffsetY)
+        contentLayer.position = CGPoint(x: bounds.width / 2, y: bounds.height * 0.44)
         if bounds.size != sceneSize {
             sceneSize = bounds.size
             rebuild(source: lastSource, mode: lastMode)
@@ -136,7 +126,7 @@ final class CashSceneCanvas: UIView {
         }
 
         let spec = CashSceneLayout.spec(source: source, mode: mode, size: size)
-        sceneBounds = Self.bounds(of: spec.items)
+        pileHeightCentroid = Self.heightCentroid(of: spec.items.filter { $0.kind == .pile })
         for item in spec.items {
             guard let node = makeNode(for: item) else { continue }
             contentLayer.addSublayer(node.layer)
@@ -148,19 +138,11 @@ final class CashSceneCanvas: UIView {
 
     private func updateTransforms() {
         guard !nodes.isEmpty, sceneSize.width > 1 else { return }
-        let rotation = multiply(rotationZ(yaw * .pi / 180), rotationX(pitch * .pi / 180))
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for node in nodes {
-            node.layer.transform = multiply(rotation, translation(node.x, node.y, 0))
+            node.layer.transform = worldTransform(x: node.x, y: node.y)
         }
-        // Shift the whole scene in screen space after the 3D transforms. This
-        // keeps the projected bounds centered without moving items sideways.
-        sceneOffsetY = sceneSize.height * 0.5 - projectedCenterY(for: rotation)
-        contentLayer.position = CGPoint(
-            x: sceneSize.width / 2,
-            y: sceneSize.height * 0.44 + sceneOffsetY
-        )
         CATransaction.commit()
     }
 
@@ -1113,58 +1095,26 @@ final class CashSceneCanvas: UIView {
 
     // MARK: - 3D math
 
-    private func projectedCenterY(for rotation: CATransform3D) -> CGFloat {
-        guard !sceneBounds.isEmpty else { return sceneSize.height * 0.44 }
-        var low = CGFloat.greatestFiniteMagnitude
-        var high = -CGFloat.greatestFiniteMagnitude
-        for x in [sceneBounds.minX, sceneBounds.maxX] {
-            for y in [sceneBounds.minY, sceneBounds.maxY] {
-                for z in [sceneBounds.minZ, sceneBounds.maxZ] {
-                    let projected = rotation.m12 * x + rotation.m22 * y + rotation.m32 * z
-                    low = min(low, projected)
-                    high = max(high, projected)
-                }
-            }
-        }
-        return (low + high) / 2
+    private func worldTransform(x: CGFloat, y: CGFloat) -> CATransform3D {
+        let rotation = multiply(rotationZ(yaw * .pi / 180), rotationX(pitch * .pi / 180))
+        // Loose piles keep their bottom note on z = 0 and grow upward. Move
+        // the pile down by its projected height centroid so the stack, not
+        // the bottom note, is what the viewer sees centered.
+        let lift = pileHeightCentroid * CGFloat(sin(pitch * .pi / 180))
+        return multiply(rotation, translation(x, y + lift, 0))
     }
 
-    private static func bounds(of items: [CashItemSpec]) -> SceneBounds {
-        var result = SceneBounds()
-        func include(x: CGFloat, y: CGFloat, width: CGFloat, depth: CGFloat, z: CGFloat, thickness: CGFloat) {
-            let halfWidth = max(0, width) / 2
-            let halfDepth = max(0, depth) / 2
-            result.minX = min(result.minX, x - halfWidth)
-            result.maxX = max(result.maxX, x + halfWidth)
-            result.minY = min(result.minY, y - halfDepth)
-            result.maxY = max(result.maxY, y + halfDepth)
-            result.minZ = min(result.minZ, z)
-            result.maxZ = max(result.maxZ, z + max(0, thickness))
-        }
+    private static func heightCentroid(of items: [CashItemSpec]) -> CGFloat {
+        var weighted: CGFloat = 0
+        var volume: CGFloat = 0
         for item in items {
-            if item.layers.isEmpty {
-                include(
-                    x: item.x,
-                    y: item.y,
-                    width: item.width,
-                    depth: item.depth,
-                    z: 0,
-                    thickness: item.height
-                )
-            } else {
-                for layer in item.layers {
-                    include(
-                        x: item.x,
-                        y: item.y,
-                        width: layer.width,
-                        depth: layer.depth,
-                        z: layer.z,
-                        thickness: layer.thickness
-                    )
-                }
+            for layer in item.layers {
+                let cubic = max(0, layer.width * layer.depth * layer.thickness)
+                weighted += cubic * (layer.z + layer.thickness / 2)
+                volume += cubic
             }
         }
-        return result
+        return volume > 0 ? weighted / volume : 0
     }
 
     private func translation(_ x: CGFloat, _ y: CGFloat, _ z: CGFloat) -> CATransform3D {
