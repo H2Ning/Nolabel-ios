@@ -745,7 +745,12 @@ struct DateOverlay: View {
             let frame = proxy.frame(in: .global)
             let center = CGPoint(x: frame.midX, y: frame.midY)
             let target = genieTarget ?? CGPoint(x: frame.maxX - 56, y: frame.maxY - 150)
-            let travel = CGSize(width: target.x - center.x, height: target.y - center.y)
+            let dx = target.x - center.x
+            let dy = target.y - center.y
+            let distance = max((dx * dx + dy * dy).squareRoot(), 1)
+            // Tilt around the axis perpendicular to the travel direction so the
+            // perspective points straight at the date/time convergence point.
+            let tiltAxis = (x: -dy / distance, y: dx / distance, z: 0.0)
 
             ZStack {
                 Color.black.opacity(palette.isDark ? 0.48 : 0.24)
@@ -754,37 +759,29 @@ struct DateOverlay: View {
                     .contentShape(Rectangle())
                     // Swallow taps so the keypad behind the sheet never fires.
                     .onTapGesture { }
-                    .opacity(landed ? 0 : 1)
+                    .opacity(appeared ? (landed ? 0 : 1) : 0)
 
                 card(width: proxy.size.width)
-                    // Two-stage genie: the sheet is pulled sideways first, then
-                    // stretched and crushed into the date pill on a curved path.
-                    .offset(
-                        x: landed ? travel.width : (closing ? travel.width * 0.55 : 0),
-                        y: landed ? travel.height : (closing ? travel.height * 0.08 : 0)
-                    )
-                    .scaleEffect(
-                        x: landed ? 0.02 : (closing ? 0.92 : (appeared ? 1 : 0.9)),
-                        y: landed ? 0.05 : (closing ? 1.08 : (appeared ? 1 : 0.9))
-                    )
+                    // Genie in and out: the sheet leaves from and returns to the
+                    // date pill, arcing sideways before it is crushed in.
+                    .offset(x: offsetX(dx), y: offsetY(dy))
+                    .scaleEffect(x: scaleX, y: scaleY)
                     .rotation3DEffect(
-                        .degrees(landed ? -32 : (closing ? -9 : 0)),
-                        axis: (x: 1, y: 0, z: 0),
+                        .degrees(tiltDegrees),
+                        axis: tiltAxis,
                         anchor: .center,
                         perspective: 0.6
                     )
-                    .rotation3DEffect(
-                        .degrees(landed ? 30 : (closing ? 16 : 0)),
-                        axis: (x: 0, y: 1, z: 0),
-                        anchor: .center,
-                        perspective: 0.6
-                    )
-                    .blur(radius: landed ? 2.5 : 0)
+                    .blur(radius: collapsed ? 1.5 : 0)
             }
         }
         .onAppear {
             date = model.entryDate
-            withAnimation(AppMotion.spring) { appeared = true }
+            DispatchQueue.main.async {
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.82)) {
+                    appeared = true
+                }
+            }
         }
         .task {
             let arguments = ProcessInfo.processInfo.arguments
@@ -858,6 +855,33 @@ struct DateOverlay: View {
                 .stroke(palette.line, lineWidth: 1)
         )
         .shadow(color: palette.sheetShadow, radius: 30, y: 16)
+    }
+
+    private var collapsed: Bool { !appeared || landed }
+
+    private func offsetX(_ dx: CGFloat) -> CGFloat {
+        if collapsed { return dx }
+        return closing ? dx * 0.55 : 0
+    }
+
+    private func offsetY(_ dy: CGFloat) -> CGFloat {
+        if collapsed { return dy }
+        return closing ? dy * 0.08 : 0
+    }
+
+    private var scaleX: CGFloat {
+        if collapsed { return 0.015 }
+        return closing ? 0.9 : 1
+    }
+
+    private var scaleY: CGFloat {
+        if collapsed { return 0.03 }
+        return closing ? 1.1 : 1
+    }
+
+    private var tiltDegrees: Double {
+        if collapsed { return -30 }
+        return closing ? -9 : 0
     }
 
     private func dismiss(confirmed: Bool) {
