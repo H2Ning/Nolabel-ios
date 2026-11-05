@@ -734,10 +734,19 @@ private struct SegmentPicker<Option: Hashable & Identifiable>: View where Option
 struct DateOverlay: View {
     @Bindable var model: AppModel
     let palette: AppPalette
+    var genieTarget: CGPoint? = nil
     @State private var date = Date()
+    @State private var appeared = false
+    @State private var closing = false
+    @State private var landed = false
 
     var body: some View {
         GeometryReader { proxy in
+            let frame = proxy.frame(in: .global)
+            let center = CGPoint(x: frame.midX, y: frame.midY)
+            let target = genieTarget ?? CGPoint(x: frame.maxX - 56, y: frame.maxY - 150)
+            let travel = CGSize(width: target.x - center.x, height: target.y - center.y)
+
             ZStack {
                 Color.black.opacity(palette.isDark ? 0.48 : 0.24)
                     .ignoresSafeArea()
@@ -745,64 +754,108 @@ struct DateOverlay: View {
                     .contentShape(Rectangle())
                     // Swallow taps so the keypad behind the sheet never fires.
                     .onTapGesture { }
+                    .opacity(closing ? 0 : 1)
 
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("修改时间")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(palette.ink)
-                        .padding(.bottom, 18)
-
-                    DatePicker("日期", selection: $date, displayedComponents: .date)
-                        .datePickerStyle(.compact)
-                        .tint(palette.accent)
-                        .font(.system(size: 16, weight: .medium))
-                        .padding(.vertical, 8)
-
-                    Rectangle().fill(palette.line).frame(height: 1)
-
-                    DatePicker("时间", selection: $date, displayedComponents: .hourAndMinute)
-                        .datePickerStyle(.compact)
-                        .tint(palette.accent)
-                        .font(.system(size: 16, weight: .medium))
-                        .padding(.vertical, 8)
-
-                    HStack(spacing: 10) {
-                        Button {
-                            model.dateSheetOpen = false
-                        } label: {
-                            Text("取消")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(palette.ink2)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 46)
-                                .background(palette.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(PressableStyle(scale: 0.98))
-
-                        Button {
-                            model.confirmDate(date)
-                        } label: {
-                            Text("完成")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(palette.accentInk)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 46)
-                                .background(palette.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(PressableStyle(scale: 0.98))
-                    }
-                    .padding(.top, 18)
-                }
-                .padding(18)
-                .frame(maxWidth: min(360, proxy.size.width - 24))
-                .glassEffect(.regular, in: .rect(cornerRadius: 22))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(palette.line, lineWidth: 1)
-                )
-                .shadow(color: palette.sheetShadow, radius: 30, y: 16)
+                card(width: proxy.size.width)
+                    // Two-stage path: the sheet arcs out first, then gets pulled
+                    // into the date pill, so the motion curves instead of sliding.
+                    .offset(
+                        x: landed ? travel.width : (closing ? travel.width * 0.34 : 0),
+                        y: landed ? travel.height : (closing ? travel.height * 0.12 : 0)
+                    )
+                    .scaleEffect(landed ? 0.04 : (closing ? 0.6 : (appeared ? 1 : 0.9)))
+                    .rotation3DEffect(
+                        .degrees(landed ? -38 : (closing ? -12 : 0)),
+                        axis: (x: 1, y: 0, z: 0),
+                        anchor: .center,
+                        perspective: 0.55
+                    )
+                    .rotation3DEffect(
+                        .degrees(landed ? 10 : (closing ? 3 : 0)),
+                        axis: (x: 0, y: 1, z: 0),
+                        anchor: .center,
+                        perspective: 0.55
+                    )
+                    .opacity(landed ? 0 : 1)
+                    .blur(radius: landed ? 5 : 0)
             }
         }
-        .onAppear { date = model.entryDate }
+        .onAppear {
+            date = model.entryDate
+            withAnimation(AppMotion.spring) { appeared = true }
+        }
+    }
+
+    private func card(width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("修改时间")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(palette.ink)
+                .padding(.bottom, 18)
+
+            DatePicker("日期", selection: $date, displayedComponents: .date)
+                .datePickerStyle(.compact)
+                .tint(palette.accent)
+                .font(.system(size: 16, weight: .medium))
+                .padding(.vertical, 8)
+
+            Rectangle().fill(palette.line).frame(height: 1)
+
+            DatePicker("时间", selection: $date, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.compact)
+                .tint(palette.accent)
+                .font(.system(size: 16, weight: .medium))
+                .padding(.vertical, 8)
+
+            HStack(spacing: 10) {
+                Button {
+                    dismiss(confirmed: false)
+                } label: {
+                    Text("取消")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(palette.ink2)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background(palette.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(PressableStyle(scale: 0.98))
+
+                Button {
+                    dismiss(confirmed: true)
+                } label: {
+                    Text("完成")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(palette.accentInk)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background(palette.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(PressableStyle(scale: 0.98))
+            }
+            .padding(.top, 18)
+        }
+        .padding(18)
+        .frame(maxWidth: min(360, width - 24))
+        .glassEffect(.regular, in: .rect(cornerRadius: 22))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(palette.line, lineWidth: 1)
+        )
+        .shadow(color: palette.sheetShadow, radius: 30, y: 16)
+    }
+
+    private func dismiss(confirmed: Bool) {
+        guard !closing else { return }
+        withAnimation(.easeOut(duration: 0.16)) { closing = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+            withAnimation(.easeIn(duration: 0.32)) { landed = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if confirmed {
+                model.confirmDate(date)
+            } else {
+                model.dateSheetOpen = false
+            }
+        }
     }
 }

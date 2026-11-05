@@ -4,6 +4,7 @@ struct EntryView: View {
     @Bindable var model: AppModel
     let palette: AppPalette
     @FocusState private var noteFocused: Bool
+    @State private var dateLabelFrame: CGRect = .zero
 
     private let keySpacing: CGFloat = 8
 
@@ -60,10 +61,17 @@ struct EntryView: View {
         .onTapGesture {
             noteFocused = false
         }
+        .onPreferenceChange(DateLabelFrameKey.self) { dateLabelFrame = $0 }
         .overlay {
             if model.dateSheetOpen {
-                DateOverlay(model: model, palette: palette)
-                    .transition(.opacity)
+                DateOverlay(
+                    model: model,
+                    palette: palette,
+                    genieTarget: dateLabelFrame == .zero
+                        ? nil
+                        : CGPoint(x: dateLabelFrame.midX, y: dateLabelFrame.midY)
+                )
+                .transition(.opacity)
             }
         }
     }
@@ -128,6 +136,14 @@ struct EntryView: View {
                 }
                 .buttonStyle(PressableStyle(scale: 0.96))
                 .accessibilityLabel("修改日期和时间")
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: DateLabelFrameKey.self,
+                            value: geo.frame(in: .global)
+                        )
+                    }
+                )
             }
             .padding(.top, 12)
             .padding(.bottom, 2)
@@ -306,5 +322,13 @@ struct EntryView: View {
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86, level: model.hapticLevel))
         .disabled(model.entryPreviewCents <= 0 || model.writing)
         .accessibilityLabel("保存这笔账")
+    }
+}
+
+private struct DateLabelFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
     }
 }
