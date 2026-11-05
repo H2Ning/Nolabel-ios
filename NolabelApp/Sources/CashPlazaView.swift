@@ -12,6 +12,7 @@ struct CashPlazaView: View {
     @State private var stageMode = 2
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
+    @State private var showingAnalysisSection = false
 
     /// Large detent shows the analysis; medium shows the cash display.
     private var analysisOpen: Bool { detent == .large }
@@ -137,6 +138,15 @@ struct CashPlazaView: View {
                                         .monospacedDigit()
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    GeometryReader { geo in
+                                        Color.clear.preference(
+                                            key: AnalysisHeaderOffsetKey.self,
+                                            value: geo.frame(in: .named("plazaScroll")).minY
+                                        )
+                                    }
+                                )
+                                .opacity(showingAnalysisSection ? 0 : 1)
                             }
                             chartCard(snapshot)
                             if analysisOpen {
@@ -159,6 +169,13 @@ struct CashPlazaView: View {
                         .transition(.opacity)
                     }
                     .scrollIndicators(.hidden)
+                    .coordinateSpace(name: "plazaScroll")
+                    .onPreferenceChange(AnalysisHeaderOffsetKey.self) { minY in
+                        let shouldShow = analysisOpen && minY < 110
+                        if shouldShow != showingAnalysisSection {
+                            showingAnalysisSection = shouldShow
+                        }
+                    }
                     .onAppear {
                         guard ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis-bottom") else {
                             return
@@ -171,9 +188,12 @@ struct CashPlazaView: View {
             }
         }
         .animation(reduceMotion ? nil : AppMotion.spring, value: analysisOpen)
-        .onChange(of: detent) { _, _ in
+        .onChange(of: detent) { _, newValue in
             // The system sheet owns the drag; a detent change is the threshold.
             Haptics.detent()
+            if newValue != .large {
+                showingAnalysisSection = false
+            }
         }
     }
 
@@ -191,15 +211,22 @@ struct CashPlazaView: View {
             .accessibilityLabel("关闭现金广场")
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("现金广场")
+                Text(showingAnalysisSection ? "本月账单分析" : "现金广场")
                     .scalableFont(28, weight: .bold)
                     .tracking(-0.5)
                     .foregroundStyle(palette.ink)
-                Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
-                    .scalableFont(12, weight: .medium)
-                    .monospacedDigit()
-                    .foregroundStyle(palette.muted)
+                if showingAnalysisSection {
+                    analysisSubtitle(snapshot)
+                        .scalableFont(12, weight: .medium)
+                        .monospacedDigit()
+                } else {
+                    Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
+                        .scalableFont(12, weight: .medium)
+                        .monospacedDigit()
+                        .foregroundStyle(palette.muted)
+                }
             }
+            .animation(AppMotion.grace, value: showingAnalysisSection)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -417,4 +444,12 @@ private struct PlazaDay: Identifiable {
     let daily: Double
     let cumulative: Double
     var id: Date { date }
+}
+
+private struct AnalysisHeaderOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = .greatestFiniteMagnitude
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = min(value, nextValue())
+    }
 }

@@ -68,10 +68,13 @@ struct HorizontalSwipeArea: UIViewRepresentable {
             switch pan.state {
             case .began:
                 parent.onTouchUp()
+                // Keep the enclosing list still while the row swipe is active.
+                (view as? TouchReportingView)?.enclosingScrollView()?.isScrollEnabled = false
                 parent.onBegan()
             case .changed:
                 parent.onChanged(translation.x)
             case .ended, .cancelled:
+                (view as? TouchReportingView)?.enclosingScrollView()?.isScrollEnabled = true
                 let velocity = pan.velocity(in: view)
                 let predicted = translation.x + velocity.x * 0.22
                 parent.onEnded(translation.x, predicted)
@@ -154,7 +157,7 @@ private final class TouchReportingView: UIView {
         super.touchesBegan(touches, with: event)
     }
 
-    private func enclosingScrollView() -> UIScrollView? {
+    func enclosingScrollView() -> UIScrollView? {
         var current = superview
         while let view = current {
             if let scrollView = view as? UIScrollView {
