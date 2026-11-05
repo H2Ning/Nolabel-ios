@@ -92,7 +92,7 @@ struct CashPlazaView: View {
                 chartMax = 100
             }
 
-            let tickCount = min(4, points.count)
+            let tickCount = min(6, points.count)
             if tickCount <= 1 {
                 tickLabels = points.map(\.label)
             } else {
