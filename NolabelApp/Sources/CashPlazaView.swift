@@ -5,18 +5,16 @@ import SwiftUI
 struct CashPlazaView: View {
     @Bindable var model: AppModel
     let palette: AppPalette
+    @Binding var detent: PresentationDetent
     let onClose: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var stageMode = 2
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
-    @State private var analysisOpen = ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis")
-    @State private var analysisVisible = ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis")
-    @State private var pullOffset: CGFloat = 0
-    @State private var pullArmed = false
 
-    private let pullThreshold: CGFloat = 52
+    /// Large detent shows the analysis; medium shows the cash display.
+    private var analysisOpen: Bool { detent == .large }
 
     private var monthTitle: String { model.monthTitle }
 
@@ -139,7 +137,7 @@ struct CashPlazaView: View {
 
                             chartButton(snapshot)
 
-                            if analysisOpen && analysisVisible {
+                            if analysisOpen {
                                 VStack(spacing: 0) {
                                     CashPlazaAnalysisView(
                                         bills: model.monthBills,
@@ -175,6 +173,10 @@ struct CashPlazaView: View {
             }
         }
         .animation(reduceMotion ? nil : AppMotion.spring, value: analysisOpen)
+        .onChange(of: detent) { _, _ in
+            // The system sheet owns the drag; a detent change is the threshold.
+            Haptics.detent()
+        }
     }
 
     private func header(_ snapshot: PlazaSnapshot) -> some View {
@@ -298,84 +300,18 @@ struct CashPlazaView: View {
             chartCard(snapshot)
         }
         .buttonStyle(PressableStyle(scale: 0.985))
-        .offset(y: pullOffset)
-        .highPriorityGesture(pullGesture)
-        .overlay(alignment: .top) {
-            if pullArmed {
-                Text(analysisOpen ? "松手退出分析" : "松手进入分析")
-                    .scalableFont(12, weight: .semibold)
-                    .foregroundStyle(palette.accentInk)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(palette.accent, in: Capsule())
-                    .offset(y: -16)
-                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                    .allowsHitTesting(false)
-            }
-        }
         .accessibilityLabel(
             analysisOpen
                 ? "收起账单分析，返回现金广场"
                 : "每日支出与累计支出，共 \(Formats.money(snapshot.totalCents)) 元"
         )
         .accessibilityHint(
-            analysisOpen ? "轻点或下拉返回现金展示" : "轻点或上拉查看本月花费分析"
+            analysisOpen ? "轻点收起分析；也可向下拖动页面" : "轻点或向上拖动页面查看本月花费分析"
         )
     }
 
-    /// Damped pull that arms once it passes a threshold; releasing past the
-    /// threshold commits, with a detent exactly when it arms.
-    private var pullGesture: some Gesture {
-        DragGesture(minimumDistance: 10)
-            .onChanged { value in
-                let raw = value.translation.height
-                let directional = analysisOpen ? max(0, raw) : min(0, raw)
-                let damped = rubberBand(directional)
-                pullOffset = damped
-                let armed = abs(damped) >= pullThreshold
-                if armed != pullArmed {
-                    pullArmed = armed
-                    if armed { Haptics.detent() }
-                }
-            }
-            .onEnded { _ in
-                let commit = pullArmed
-                pullArmed = false
-                withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                    pullOffset = 0
-                }
-                if commit {
-                    Haptics.pick()
-                    toggleAnalysis()
-                }
-            }
-    }
-
-    private func rubberBand(_ translation: CGFloat) -> CGFloat {
-        let limit: CGFloat = 90
-        let magnitude = abs(translation)
-        guard magnitude > 0 else { return 0 }
-        let damped = (1 - 1 / (magnitude / limit + 1)) * limit
-        return translation < 0 ? -damped : damped
-    }
-
     private func toggleAnalysis() {
-        if analysisOpen {
-            analysisVisible = false
-            withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                analysisOpen = false
-            }
-        } else {
-            withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                analysisOpen = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.36) {
-                guard analysisOpen else { return }
-                withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                    analysisVisible = true
-                }
-            }
-        }
+        detent = analysisOpen ? .medium : .large
     }
 
     private func chartCard(_ snapshot: PlazaSnapshot) -> some View {
@@ -463,7 +399,7 @@ struct CashPlazaView: View {
             HStack(spacing: 6) {
                 Image(systemName: "chart.line.uptrend.xyaxis")
                     .scalableFont(9.5, weight: .semibold)
-                Text(analysisOpen ? "点击或下拉，收起账单分析" : "点击或上拉，查看本月账单分析")
+                Text(analysisOpen ? "点击图表，收起账单分析" : "点击图表，查看本月账单分析")
                     .scalableFont(10.5, weight: .medium)
                 Spacer()
                 Image(systemName: analysisOpen ? "chevron.up" : "chevron.down")

@@ -18,6 +18,8 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var plazaDetent: PresentationDetent =
+        ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis") ? .large : .medium
 
     private var palette: AppPalette {
         .palette(colorScheme).withNumberColors(model.numberFormat.colorScheme)
@@ -41,28 +43,7 @@ struct RootView: View {
                 .allowsHitTesting(false)
 
             BillsView(model: model, palette: palette)
-                .opacity(model.cashPlazaOpen ? 0.36 : 1)
-                .scaleEffect(model.cashPlazaOpen ? 0.988 : 1)
-                .allowsHitTesting(!model.settingsOpen && !model.cashPlazaOpen && model.pendingDeleteBill == nil)
-                .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
-
-            if model.cashPlazaOpen {
-                CashPlazaView(
-                    model: model,
-                    palette: palette,
-                    onClose: {
-                        Haptics.lower()
-                        model.cashPlazaOpen = false
-                    }
-                )
-                .transition(
-                    .asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .move(edge: .bottom).combined(with: .opacity)
-                    )
-                )
-                .zIndex(5)
-            }
+                .allowsHitTesting(!model.settingsOpen && model.pendingDeleteBill == nil)
 
             if let title = model.undoDeleteTitle {
                 VStack {
@@ -129,6 +110,24 @@ struct RootView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationTitle("账单")
+        .sheet(
+            isPresented: Binding(
+                get: { model.cashPlazaOpen },
+                set: { if !$0 { model.cashPlazaOpen = false } }
+            )
+        ) {
+            CashPlazaView(
+                model: model,
+                palette: palette,
+                detent: $plazaDetent,
+                onClose: {
+                    Haptics.lower()
+                    model.cashPlazaOpen = false
+                }
+            )
+            .presentationDetents([.medium, .large], selection: $plazaDetent)
+            .presentationDragIndicator(.visible)
+        }
     }
 
     private var appAtmosphere: some View {
