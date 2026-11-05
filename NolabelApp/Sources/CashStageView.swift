@@ -39,22 +39,33 @@ struct CashStageView: View {
                     if mode == 3 {
                         CashNoteGrid(source: source, palette: palette)
                     } else {
-                        CashScene3DView(
-                            source: source,
-                            mode: mode,
-                            yaw: yaw,
-                            pitch: pitch,
-                            isDark: palette.isDark,
-                            onReady: signalReady
-                        )
-                        .layerEffect(
-                            ShaderLibrary.motionBlur(
-                                .float2(proxy.size.width, proxy.size.height),
-                                .float(motionBlur)
-                            ),
-                            maxSampleOffset: CGSize(width: 8, height: 0),
-                            isEnabled: motionBlur > 0.01
-                        )
+                        ZStack {
+                            CashScene3DView(
+                                source: source,
+                                mode: mode,
+                                yaw: yaw,
+                                pitch: pitch,
+                                isDark: palette.isDark,
+                                onReady: signalReady
+                            )
+
+                            // A blurred copy, masked to the outer parts of the
+                            // stage: the notes stay sharp on the rotation axis
+                            // and smear more the farther they are from it.
+                            CashScene3DView(
+                                source: source,
+                                mode: mode,
+                                yaw: yaw,
+                                pitch: pitch,
+                                isDark: palette.isDark,
+                                onReady: {}
+                            )
+                            .blur(radius: motionBlur)
+                            .mask(motionBlurMask)
+                            .opacity(motionBlur > 0.01 ? 1 : 0)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                        }
                     }
                 }
 
@@ -110,6 +121,19 @@ struct CashStageView: View {
                 momentum.stop()
             }
         }
+    }
+
+    private var motionBlurMask: some View {
+        LinearGradient(
+            stops: [
+                .init(color: .white, location: 0.0),
+                .init(color: .clear, location: 0.24),
+                .init(color: .clear, location: 0.76),
+                .init(color: .white, location: 1.0)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
 
     private var stageBackground: some View {
