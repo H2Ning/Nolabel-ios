@@ -302,7 +302,7 @@ struct CashPlazaView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.muted)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 140)
+                    .frame(height: 124)
             } else {
                 Chart(snapshot.points) { point in
                     dailyBar(point, count: snapshot.points.count)
@@ -345,7 +345,7 @@ struct CashPlazaView: View {
                         }
                     }
                 }
-                .frame(height: 140)
+                .frame(height: 124)
                 .animation(AppMotion.grace, value: snapshot.points.count)
             }
 
