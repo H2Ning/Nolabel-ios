@@ -781,6 +781,7 @@ struct DateOverlay: View {
 
             HStack(spacing: 10) {
                 Button {
+                    Haptics.soft()
                     dismiss(confirmed: false)
                 } label: {
                     Text("取消")
