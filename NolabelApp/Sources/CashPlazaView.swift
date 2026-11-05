@@ -9,11 +9,11 @@ struct CashPlazaView: View {
     let onClose: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var stageMode = 2
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
     @State private var showingAnalysisSection = false
     @State private var analysisHeaderY: CGFloat = .greatestFiniteMagnitude
+    @State private var selectedDayLabel: String?
 
     /// Large detent shows the analysis; medium shows the cash display.
     private var analysisOpen: Bool { detent == .large }
@@ -272,10 +272,10 @@ struct CashPlazaView: View {
                     palette: palette,
                     yaw: $stageYaw,
                     pitch: $stagePitch,
-                    mode: stageMode,
+                    mode: model.plazaStageMode,
                     onCycle: {
-                        stageMode = stageMode % 3 + 1
-                        Haptics.cashMode(stageMode)
+                        model.plazaStageMode = model.plazaStageMode % 3 + 1
+                        Haptics.cashMode(model.plazaStageMode)
                     },
                     onReady: {}
                 )
@@ -349,6 +349,22 @@ struct CashPlazaView: View {
                 }
             }
 
+            HStack(spacing: 10) {
+                if let label = selectedDayLabel,
+                   let point = snapshot.points.first(where: { $0.label == label }) {
+                    Text(label)
+                        .foregroundStyle(palette.ink2)
+                    Text("支出 ¥\(Formats.money(Int((point.daily * 100).rounded())))")
+                        .foregroundStyle(palette.expense)
+                    Text("累计 ¥\(Formats.money(Int((point.cumulative * 100).rounded())))")
+                        .foregroundStyle(palette.accent)
+                }
+            }
+            .scalableFont(11, weight: .medium)
+            .monospacedDigit()
+            .frame(height: 15, alignment: .leading)
+            .opacity(selectedDayLabel == nil ? 0 : 1)
+
             if snapshot.points.isEmpty {
                 Text("暂无支出")
                     .scalableFont(12, weight: .medium)
@@ -358,6 +374,12 @@ struct CashPlazaView: View {
             } else {
                 Chart(snapshot.points) { point in
                     dailyBar(point, count: snapshot.points.count)
+
+                    if let selectedDayLabel {
+                        RuleMark(x: .value("日期", selectedDayLabel))
+                            .foregroundStyle(palette.accent.opacity(0.35))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    }
 
                     LineMark(
                         x: .value("日期", point.label),
@@ -374,6 +396,7 @@ struct CashPlazaView: View {
                     .foregroundStyle(palette.accent)
                     .symbolSize(18)
                 }
+                .chartXSelection(value: $selectedDayLabel)
                 .chartYScale(domain: 0...snapshot.chartMax)
                 .chartXAxis {
                     AxisMarks(preset: .aligned, values: snapshot.tickLabels) { value in
@@ -404,6 +427,7 @@ struct CashPlazaView: View {
                 }
                 .frame(height: 124)
                 .animation(AppMotion.grace, value: snapshot.points.count)
+                .accessibilityLabel("每日支出与累计支出图，本月共 \(Formats.money(snapshot.totalCents)) 元")
             }
 
         }

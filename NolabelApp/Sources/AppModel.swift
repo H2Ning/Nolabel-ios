@@ -44,6 +44,7 @@ final class AppModel {
     private let themeKey = "nolabel-theme"
     private let sortKey = "nolabel-sort-desc"
     private let cashModeKey = "nolabel-cash-mode"
+    private let plazaStageModeKey = "nolabel-plaza-stage-mode"
     private let hapticKey = "nolabel-haptic-level"
     private let numberFormatKey = "nolabel-number-format"
     private let deleteConfirmKey = "nolabel-delete-confirm"
@@ -122,6 +123,9 @@ final class AppModel {
     var cashYaw: Double = Double(CashSceneLayout.defaultYaw)
     var cashPitch: Double = Double(CashSceneLayout.packageTilt)
     var cashMode = 1
+    var plazaStageMode: Int {
+        didSet { defaults.set(plazaStageMode, forKey: plazaStageModeKey) }
+    }
 
     private var bootstrapped = false
     private var autoRetryUsed = false
@@ -287,6 +291,8 @@ final class AppModel {
         deleteConfirmEnabled = defaults.object(forKey: deleteConfirmKey) as? Bool ?? true
         let storedCashMode = defaults.integer(forKey: cashModeKey)
         cashMode = (1...3).contains(storedCashMode) ? storedCashMode : 1
+        let storedPlazaMode = defaults.integer(forKey: plazaStageModeKey)
+        plazaStageMode = (1...3).contains(storedPlazaMode) ? storedPlazaMode : 2
         selectedMonth = DateHelp.monthStart(Date())
 
         if let raw = BillStore.shared.loadRaw(), let envelope = BillsCodec.parse(raw) {

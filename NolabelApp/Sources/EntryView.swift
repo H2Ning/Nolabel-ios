@@ -6,6 +6,7 @@ struct EntryView: View {
     @FocusState private var noteFocused: Bool
 
     private let keySpacing: CGFloat = 8
+    @State private var backspaceRepeatTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { proxy in
@@ -49,17 +50,22 @@ struct EntryView: View {
                     .padding(.horizontal, 20)
                     .layoutPriority(1)
 
-                keypad
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
-                    .layoutPriority(1)
+                if !noteFocused {
+                    keypad
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
+                        .layoutPriority(1)
+                        .transition(.opacity)
+                }
                 }
             }
         }
         .onTapGesture {
             noteFocused = false
         }
+        .animation(.easeOut(duration: 0.18), value: noteFocused)
+        .onDisappear { stopBackspaceRepeat() }
         .overlay {
             // Always mounted so the sheet can be reopened while its close
             // animation is still running; closed state ignores touches.
@@ -69,6 +75,23 @@ struct EntryView: View {
                 .accessibilityHidden(!model.dateSheetOpen)
                 .animation(AppMotion.spring, value: model.dateSheetOpen)
         }
+    }
+
+    private func startBackspaceRepeat() {
+        guard backspaceRepeatTask == nil else { return }
+        Haptics.detent()
+        backspaceRepeatTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 60_000_000)
+            while !Task.isCancelled {
+                model.pressBackspace()
+                try? await Task.sleep(nanoseconds: 90_000_000)
+            }
+        }
+    }
+
+    private func stopBackspaceRepeat() {
+        backspaceRepeatTask?.cancel()
+        backspaceRepeatTask = nil
     }
 
     private var entryCard: some View {
@@ -250,12 +273,14 @@ struct EntryView: View {
         }
         .buttonStyle(HapticKeyStyle(weight: .light, intensity: 0.82, level: model.hapticLevel))
         .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.55).onEnded { _ in
-                model.clearEntry()
-                Haptics.warning()
-            }
+            LongPressGesture(minimumDuration: 0.45)
+                .onEnded { _ in startBackspaceRepeat() }
         )
-        .accessibilityLabel("退格，长按清空")
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onEnded { _ in stopBackspaceRepeat() }
+        )
+        .accessibilityLabel("退格，长按连续删除")
     }
 
     private var operatorKey: some View {
