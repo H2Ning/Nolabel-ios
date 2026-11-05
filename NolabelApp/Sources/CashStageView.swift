@@ -49,22 +49,9 @@ struct CashStageView: View {
                                 onReady: signalReady
                             )
 
-                            // A blurred copy, masked to the outer parts of the
-                            // stage: the notes stay sharp on the rotation axis
-                            // and smear more the farther they are from it.
-                            CashScene3DView(
-                                source: source,
-                                mode: mode,
-                                yaw: yaw,
-                                pitch: pitch,
-                                isDark: palette.isDark,
-                                onReady: {}
-                            )
-                            .blur(radius: motionBlur)
-                            .mask(motionBlurMask(in: proxy.size))
-                            .opacity(motionBlur > 0.01 ? 1 : 0)
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
+                            // Blurred copies, each masked so a stack stays
+                            // sharp on its own axis and smears outward.
+                            blurredOverlay(in: proxy.size)
                         }
                     }
                 }
@@ -123,59 +110,109 @@ struct CashStageView: View {
         }
     }
 
-    /// Grouped layouts get one sharp axis per stack, each with its own fade
-    /// toward the edges; a single stack keeps the stage-wide gradient.
+    private struct GroupAxis {
+        let x: CGFloat
+        let count: Int
+    }
+
+    private struct BlurTier: Identifiable {
+        let id: Int
+        let scale: Double
+        let centers: [CGFloat]
+    }
+
+    /// Blurred copies of the scene. Grouped stacks are split into size tiers
+    /// so a taller stack gets a wider smear; every tier is masked to its own
+    /// stacks' bands, keeping each one sharp on its own axis.
     @ViewBuilder
-    private func motionBlurMask(in size: CGSize) -> some View {
-        let centers = projectedGroupCenters(in: size)
-        if centers.count > 1 {
-            Canvas { context, canvasSize in
-                for (index, center) in centers.enumerated() {
-                    let left = index == 0 ? 0 : (centers[index - 1] + center) / 2
-                    let right = index == centers.count - 1
-                        ? canvasSize.width
-                        : (center + centers[index + 1]) / 2
-                    let width = max(right - left, 1)
-                    let clearHalf = min(0.30, max(0.10, 34 / width))
-                    let gradient = Gradient(stops: [
-                        .init(color: .white, location: 0),
-                        .init(color: .white, location: 0.18),
-                        .init(color: .clear, location: 0.5 - clearHalf),
-                        .init(color: .clear, location: 0.5 + clearHalf),
-                        .init(color: .white, location: 0.82),
-                        .init(color: .white, location: 1)
-                    ])
-                    context.fill(
-                        Path(CGRect(x: left, y: 0, width: width, height: canvasSize.height)),
-                        with: .linearGradient(
-                            gradient,
-                            startPoint: CGPoint(x: left, y: 0),
-                            endPoint: CGPoint(x: right, y: 0)
-                        )
-                    )
-                }
-            }
-            .allowsHitTesting(false)
+    private func blurredOverlay(in size: CGSize) -> some View {
+        let axes = groupAxes(in: size)
+        let tiers = blurTiers(axes: axes)
+        let boost = blurSizeBoost
+        if tiers.isEmpty {
+            blurredScene(radius: motionBlur * boost, mask: globalMotionBlurMask)
         } else {
-            LinearGradient(
-                stops: [
-                    .init(color: .white, location: 0.0),
-                    .init(color: .white, location: 0.20),
-                    .init(color: .clear, location: 0.42),
-                    .init(color: .clear, location: 0.58),
-                    .init(color: .white, location: 0.80),
-                    .init(color: .white, location: 1.0)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
+            let all = axes.map(\.x)
+            ForEach(tiers) { tier in
+                blurredScene(
+                    radius: motionBlur * boost * tier.scale,
+                    mask: motionBlurMask(centers: tier.centers, all: all)
+                )
+            }
         }
+    }
+
+    private func blurredScene<M: View>(radius: Double, mask: M) -> some View {
+        CashScene3DView(
+            source: source,
+            mode: mode,
+            yaw: yaw,
+            pitch: pitch,
+            isDark: palette.isDark,
+            onReady: {}
+        )
+        .blur(radius: radius)
+        .mask(mask)
+        .opacity(motionBlur > 0.01 ? 1 : 0)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// Larger models move their outer edge farther at the same angular speed,
+    /// so the base radius grows with the tallest stack.
+    private var blurSizeBoost: Double {
+        guard let maxCount = groups.map(\.count).max(), maxCount > 0 else { return 1 }
+        return min(1.15, max(0.75, 0.75 + 0.4 * min(1, Double(maxCount) / 60)))
+    }
+
+    private func motionBlurMask(centers: [CGFloat], all: [CGFloat]) -> some View {
+        Canvas { context, canvasSize in
+            for center in centers {
+                guard let index = all.firstIndex(of: center) else { continue }
+                let left = index == 0 ? 0 : (all[index - 1] + center) / 2
+                let right = index == all.count - 1 ? canvasSize.width : (center + all[index + 1]) / 2
+                let width = max(right - left, 1)
+                let clearHalf = min(0.30, max(0.10, 34 / width))
+                let gradient = Gradient(stops: [
+                    .init(color: .white, location: 0),
+                    .init(color: .white, location: 0.18),
+                    .init(color: .clear, location: 0.5 - clearHalf),
+                    .init(color: .clear, location: 0.5 + clearHalf),
+                    .init(color: .white, location: 0.82),
+                    .init(color: .white, location: 1)
+                ])
+                context.fill(
+                    Path(CGRect(x: left, y: 0, width: width, height: canvasSize.height)),
+                    with: .linearGradient(
+                        gradient,
+                        startPoint: CGPoint(x: left, y: 0),
+                        endPoint: CGPoint(x: right, y: 0)
+                    )
+                )
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var globalMotionBlurMask: some View {
+        LinearGradient(
+            stops: [
+                .init(color: .white, location: 0.0),
+                .init(color: .white, location: 0.20),
+                .init(color: .clear, location: 0.42),
+                .init(color: .clear, location: 0.58),
+                .init(color: .white, location: 0.80),
+                .init(color: .white, location: 1.0)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
 
     /// Screen-space x of each group's own vertical axis, following the same
     /// yaw/pitch rotation the 3D canvas applies. Groups in different rows
     /// project differently, so each row is computed separately.
-    private func projectedGroupCenters(in size: CGSize) -> [CGFloat] {
+    private func groupAxes(in size: CGSize) -> [GroupAxis] {
         guard mode == 2, groups.count > 1, size.width > 1, size.height > 1 else {
             return []
         }
@@ -195,7 +232,7 @@ struct CashStageView: View {
         let sinYaw = CGFloat(sin(yawRad))
         let cosPitch = CGFloat(cos(pitchRad))
 
-        var centers: [CGFloat] = []
+        var axes: [GroupAxis] = []
         for index in 0..<count {
             let row = index / columns
             let column = index % columns
@@ -206,9 +243,30 @@ struct CashStageView: View {
             let baseY = size.height * (rowBase + CGFloat(row) * rowGap)
             let relX = cellCenter - anchor.x
             let relY = baseY - anchor.y
-            centers.append(anchor.x + relX * cosYaw - relY * cosPitch * sinYaw)
+            axes.append(GroupAxis(
+                x: anchor.x + relX * cosYaw - relY * cosPitch * sinYaw,
+                count: groups[index].count
+            ))
         }
-        return centers.sorted()
+        return axes.sorted { $0.x < $1.x }
+    }
+
+    /// Three size tiers by note count, each with its own radius scale.
+    private func blurTiers(axes: [GroupAxis]) -> [BlurTier] {
+        guard axes.count > 1, let maxCount = axes.map(\.count).max(), maxCount > 0 else {
+            return []
+        }
+        var buckets: [[CGFloat]] = [[], [], []]
+        for axis in axes {
+            let ratio = Double(axis.count) / Double(maxCount)
+            let bucket = ratio >= 2.0 / 3.0 ? 2 : (ratio >= 1.0 / 3.0 ? 1 : 0)
+            buckets[bucket].append(axis.x)
+        }
+        let scales = [0.55, 0.78, 1.0]
+        return (0..<3).compactMap { index in
+            guard !buckets[index].isEmpty else { return nil }
+            return BlurTier(id: index, scale: scales[index], centers: buckets[index].sorted())
+        }
     }
 
     private var stageBackground: some View {
