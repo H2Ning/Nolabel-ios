@@ -36,11 +36,13 @@ if [ -n "$DEVICE_ID" ]; then
     xcrun simctl boot "$DEVICE_ID" >/dev/null 2>&1 || true
     xcrun simctl bootstatus "$DEVICE_ID" -b >/dev/null 2>&1 || true
     xcrun simctl install "$DEVICE_ID" build-sim/Build/Products/Debug-iphonesimulator/Nolabel.app >/dev/null 2>&1 || true
-    xcrun simctl launch --console-pty "$DEVICE_ID" com.h2ning.nolabel --preview --preview-screen entry --preview-autoplay-entry > sim.log 2>&1 &
-    SIM_PID=$!
+    xcrun simctl launch "$DEVICE_ID" com.h2ning.nolabel --preview --preview-screen entry --preview-autoplay-entry >/dev/null 2>&1 || true
     sleep 8
-    kill "$SIM_PID" >/dev/null 2>&1 || true
-    grep NOLABEL_DEBUG sim.log || true
+    CONTAINER=$(xcrun simctl get_app_container "$DEVICE_ID" com.h2ning.nolabel data 2>/dev/null || true)
+    echo "container=$CONTAINER"
+    if [ -n "$CONTAINER" ]; then
+        cat "$CONTAINER/Documents/debug-geometry.txt" 2>/dev/null || true
+    fi
 fi
 
 echo "Built ios/Nolabel-unsigned.ipa"

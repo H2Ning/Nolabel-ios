@@ -139,9 +139,7 @@ struct EntryView: View {
                     geo.frame(in: .global)
                 } action: { frame in
                     dateLabelFrame = frame
-                    if ProcessInfo.processInfo.arguments.contains("--preview") {
-                        print("NOLABEL_DEBUG dateFrame=\(frame)")
-                    }
+                    nolabelDebugLog("dateFrame=\(frame)")
                 }
             }
             .padding(.top, 12)
@@ -321,5 +319,19 @@ struct EntryView: View {
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86, level: model.hapticLevel))
         .disabled(model.entryPreviewCents <= 0 || model.writing)
         .accessibilityLabel("保存这笔账")
+    }
+}
+
+func nolabelDebugLog(_ message: String) {
+    guard ProcessInfo.processInfo.arguments.contains("--preview") else { return }
+    let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("debug-geometry.txt")
+    let data = Data((message + "\n").utf8)
+    if let handle = try? FileHandle(forWritingTo: url) {
+        defer { try? handle.close() }
+        handle.seekToEndOfFile()
+        handle.write(data)
+    } else {
+        try? data.write(to: url)
     }
 }

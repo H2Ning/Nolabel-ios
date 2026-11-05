@@ -776,9 +776,7 @@ struct DateOverlay: View {
                     .blur(radius: collapsed ? 1.5 : 0)
             }
             .onAppear {
-                if ProcessInfo.processInfo.arguments.contains("--preview") {
-                    print("NOLABEL_DEBUG overlayFrame=\(frame) center=\(center) target=\(target) travel=\(dx),\(dy)")
-                }
+                nolabelDebugLog("overlayFrame=\(frame) center=\(center) target=\(target) travel=\(dx),\(dy) genieTarget=\(String(describing: genieTarget))")
             }
         }
         .onAppear {
