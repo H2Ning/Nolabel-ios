@@ -184,11 +184,7 @@ struct MonthAnalysis {
     }
 
     private static func noteCount(for bill: Bill) -> Int {
-        if bill.count > 0 { return bill.count }
-        if !bill.groups.isEmpty {
-            return bill.groups.reduce(0) { $0 + max(0, $1.count) }
-        }
-        return CashBreakdown.totalNotes(CashBreakdown.groups(for: bill.cents))
+        cashGroups(for: bill).reduce(0) { $0 + $1.count }
     }
 
     private static func cashGroups(for bill: Bill) -> [CashGroup] {
@@ -359,25 +355,29 @@ struct CashPlazaAnalysisView: View {
                 )
             }
 
-            ratioBar
+            VStack(spacing: 7) {
+                ratioBar
 
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(ratioCaption)
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(palette.muted)
-                Spacer(minLength: 8)
-                Text(netLabel)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(palette.muted)
-                Text(signedNet)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(netColor)
-                if let rateText {
-                    Text(rateText)
-                        .font(.system(size: 9.5, weight: .medium))
-                        .monospacedDigit()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(netLabel)
+                        .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(palette.muted)
+                    Spacer(minLength: 8)
+                    Text(signedNet)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(netColor)
+                    if let rateText {
+                        Text(rateText)
+                            .font(.system(size: 9.5, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(palette.muted)
+                    }
                 }
             }
         }

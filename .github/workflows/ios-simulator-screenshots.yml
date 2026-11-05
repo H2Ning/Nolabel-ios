@@ -97,6 +97,7 @@ jobs:
           capture delete-confirm --preview --preview-screen bills --preview-theme dark --preview-delete-confirm
           capture cash-plaza --preview --preview-screen bills --preview-theme dark --preview-plaza
           capture cash-plaza-analysis --preview --preview-screen bills --preview-theme dark --preview-plaza --preview-plaza-analysis
+          capture cash-plaza-analysis-bottom --preview --preview-screen bills --preview-theme dark --preview-plaza --preview-plaza-analysis --preview-plaza-analysis-bottom
 
       - name: Make previews
         run: |

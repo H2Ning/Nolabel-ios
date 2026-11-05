@@ -129,6 +129,7 @@ struct CashPlazaView: View {
                                     month: model.selectedMonth,
                                     palette: palette
                                 )
+                                .id("plazaAnalysisBottom")
                                 .transition(.opacity.combined(with: .scale(scale: 0.99, anchor: .top)))
                             }
                         }
@@ -141,6 +142,14 @@ struct CashPlazaView: View {
                     .onChange(of: analysisOpen) { _, _ in
                         withAnimation(reduceMotion ? nil : AppMotion.spring) {
                             proxy.scrollTo("plazaTop", anchor: .top)
+                        }
+                    }
+                    .onAppear {
+                        guard ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis-bottom") else {
+                            return
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                            proxy.scrollTo("plazaAnalysisBottom", anchor: .bottom)
                         }
                     }
                 }
@@ -341,14 +350,13 @@ struct CashPlazaView: View {
                 .padding(.top, 2)
 
             HStack(spacing: 6) {
-                Image(systemName: analysisOpen ? "chevron.up" : "chart.line.uptrend.xyaxis")
+                Image(systemName: "chart.line.uptrend.xyaxis")
                     .font(.system(size: 9.5, weight: .semibold))
                 Text(analysisOpen ? "收起分析，回到现金展示" : "看看这个月的钱怎么没的")
                     .font(.system(size: 10.5, weight: .medium))
                 Spacer()
-                Image(systemName: "chevron.right")
+                Image(systemName: analysisOpen ? "chevron.up" : "chevron.down")
                     .font(.system(size: 8, weight: .bold))
-                    .rotationEffect(.degrees(analysisOpen ? 90 : 0))
             }
             .foregroundStyle(palette.muted)
         }
