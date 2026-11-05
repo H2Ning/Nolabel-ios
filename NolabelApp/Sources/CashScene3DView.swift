@@ -33,6 +33,7 @@ final class CashSceneCanvas: UIView {
     private var pitch: Double = Double(CashSceneLayout.packageTilt)
     private var hasSource = false
     private var readySignaled = false
+    private var isDark = false
     var onReady: (() -> Void)?
 
     private struct ItemNode {
@@ -89,6 +90,7 @@ final class CashSceneCanvas: UIView {
     func update(source: CashSceneSource, mode: Int, yaw: Double, pitch: Double, isDark: Bool) {
         self.yaw = yaw
         self.pitch = pitch
+        self.isDark = isDark
         hasSource = true
         let nextKey = "\(source.key)|\(mode)"
         if nextKey != sceneKey || bounds.size != sceneSize {
@@ -789,12 +791,14 @@ final class CashSceneCanvas: UIView {
 
     private func addGroundShadow(to container: CALayer, width: CGFloat, depth: CGFloat) {
         let shadow = CALayer()
-        shadow.bounds = CGRect(x: 0, y: 0, width: max(20, width * 1.12), height: max(20, depth * 1.16))
+        // Keep it a narrow contact halo under the paper. A larger shadow looks
+        // like a second banknote when the scene is tilted in perspective.
+        shadow.bounds = CGRect(x: 0, y: 0, width: max(16, width * 0.84), height: max(16, depth * 0.88))
         shadow.position = .zero
         shadow.zPosition = -1
         shadow.contents = Self.shadowImage
         shadow.contentsGravity = .resize
-        shadow.opacity = 0.72
+        shadow.opacity = isDark ? 0.40 : 0.18
         shadow.actions = Self.noActions
         container.addSublayer(shadow)
     }
