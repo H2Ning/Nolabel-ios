@@ -825,6 +825,7 @@ final class AppModel {
     }
 
     func openEntry(_ bill: Bill? = nil) {
+        dateSheetOpen = false
         entryEditingID = bill?.id
         if let bill {
             entryInput = Formats.amountInput(bill.cents)
@@ -866,6 +867,7 @@ final class AppModel {
         entryAccumulator = nil
         entryWaitingForOperand = false
         resetOperatorCycle()
+        dateSheetOpen = false
         Haptics.soft()
     }
 

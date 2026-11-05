@@ -60,6 +60,12 @@ struct EntryView: View {
         .onTapGesture {
             noteFocused = false
         }
+        .overlay {
+            if model.dateSheetOpen {
+                DateOverlay(model: model, palette: palette)
+                    .transition(.opacity)
+            }
+        }
     }
 
     private var entryCard: some View {

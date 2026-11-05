@@ -47,7 +47,7 @@ struct RootView: View {
                     .zIndex(3)
             }
 
-            if model.dateSheetOpen {
+            if model.dateSheetOpen && !model.entryOpen {
                 DateOverlay(model: model, palette: palette)
                     .transition(.opacity)
                     .zIndex(4)
