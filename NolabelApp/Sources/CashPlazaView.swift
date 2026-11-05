@@ -126,6 +126,18 @@ struct CashPlazaView: View {
                     ScrollView {
                         VStack(spacing: 14) {
                             stage(snapshot)
+                            if analysisOpen {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text("本月账单分析")
+                                        .scalableFont(28, weight: .bold)
+                                        .tracking(-0.5)
+                                        .foregroundStyle(palette.ink)
+                                    analysisSubtitle(snapshot)
+                                        .scalableFont(12, weight: .medium)
+                                        .monospacedDigit()
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
                             chartCard(snapshot)
                             if analysisOpen {
                                 VStack(spacing: 0) {
@@ -179,20 +191,14 @@ struct CashPlazaView: View {
             .accessibilityLabel("关闭现金广场")
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(analysisOpen ? "本月账单分析" : "现金广场")
+                Text("现金广场")
                     .scalableFont(28, weight: .bold)
                     .tracking(-0.5)
                     .foregroundStyle(palette.ink)
-                if analysisOpen {
-                    analysisSubtitle(snapshot)
-                        .scalableFont(12, weight: .medium)
-                        .monospacedDigit()
-                } else {
-                    Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
-                        .scalableFont(12, weight: .medium)
-                        .monospacedDigit()
-                        .foregroundStyle(palette.muted)
-                }
+                Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
+                    .scalableFont(12, weight: .medium)
+                    .monospacedDigit()
+                    .foregroundStyle(palette.muted)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
