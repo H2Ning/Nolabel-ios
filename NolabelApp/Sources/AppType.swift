@@ -36,3 +36,18 @@ extension View {
         ))
     }
 }
+
+extension Text {
+    /// Songti for chapter-style headings; falls back to the system serif when
+    /// the font is unavailable.
+    func scalableSerif(
+        _ size: CGFloat,
+        weight: Font.Weight = .regular
+    ) -> Text {
+        let scaled = UIFontMetrics.default.scaledValue(for: size)
+        guard UIFont(name: "Songti SC", size: scaled) != nil else {
+            return font(.system(size: scaled, weight: weight, design: .serif))
+        }
+        return font(.custom("Songti SC", size: scaled)).fontWeight(weight)
+    }
+}

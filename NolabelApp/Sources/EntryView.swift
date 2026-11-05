@@ -53,7 +53,8 @@ struct EntryView: View {
                     .layoutPriority(2)
 
                 if noteFocused {
-                    Color.clear.frame(height: 28)
+                    // Same gap the keypad used, so the card keeps its place.
+                    Color.clear.frame(height: 12)
                 } else {
                     keypad
                         .padding(.horizontal, 20)

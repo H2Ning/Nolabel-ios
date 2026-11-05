@@ -53,7 +53,13 @@ struct MonthAnalysis {
     let averageExpense: Int
     let dailyAverage: Int
     let expensePerHundredIncome: Double?
-    let verdict: String
+    let verdict: Verdict
+
+    /// A chapter-title line plus the judgement itself.
+    struct Verdict {
+        let title: String
+        let text: String
+    }
 
     init(bills: [Bill], month: Date) {
         let expenses = bills.filter { $0.type == .expense && $0.cents > 0 }
@@ -151,12 +157,20 @@ struct MonthAnalysis {
             expenseTotal: expenseTotal,
             incomeTotal: incomeTotal,
             expenseCount: expenseCount,
+            incomeCount: incomeCount,
             hasNamedNotes: hasNamedNotes,
             net: net,
             savingsRate: savingsRate,
             expenseItems: expenseItems,
+            incomeItems: incomeItems,
+            biggestExpense: biggestExpense,
             biggestDay: biggestDay,
-            averageExpense: averageExpense
+            averageExpense: averageExpense,
+            spendingDays: spendingDays,
+            noSpendDays: noSpendDays,
+            timePeak: timePeak,
+            denominationPeak: denominationPeak,
+            noteTotal: noteTotal
         )
     }
 
@@ -244,54 +258,236 @@ struct MonthAnalysis {
         }
     }
 
+    /// The month reads like a chapter: a couplet title, then the judgement.
+    /// Rules run from hard facts to softer texture, so the strongest true
+    /// statement about the month always wins.
     private static func verdict(
         expenseTotal: Int,
         incomeTotal: Int,
         expenseCount: Int,
+        incomeCount: Int,
         hasNamedNotes: Bool,
         net: Int,
         savingsRate: Double?,
         expenseItems: [RankedItem],
+        incomeItems: [RankedItem],
+        biggestExpense: Bill?,
         biggestDay: DayPeak?,
-        averageExpense: Int
-    ) -> String {
+        averageExpense: Int,
+        spendingDays: Int,
+        noSpendDays: Int,
+        timePeak: TimePeak?,
+        denominationPeak: DenominationPeak?,
+        noteTotal: Int
+    ) -> Verdict {
+        func make(_ title: String, _ text: String) -> Verdict {
+            Verdict(title: title, text: text)
+        }
+
+        let topExpense = expenseItems.first
+        let namedExpense: RankedItem? = topExpense.flatMap { $0.label.hasPrefix("未备注") ? nil : $0 }
+        let namedIncome: RankedItem? = incomeItems.first.flatMap { $0.label.hasPrefix("未备注") ? nil : $0 }
+        let rate = savingsRate ?? 0
+
+        // MARK: Nothing on the ledger
+        if expenseTotal == 0 && incomeTotal == 0 {
+            return make(
+                "白纸一张，账册未开",
+                "这个月还没有一笔账。钱没动，故事也没开始——先记下第一笔，判词才有下文。"
+            )
+        }
         if expenseTotal == 0 {
-            return incomeTotal > 0
-                ? "这个月一分没花。收入原封不动，账单干净得不像话。"
-                : "这个月还没有账单。钱没动，故事也没开始。"
+            return make(
+                "有进无出，守财有道",
+                "本月进账 ¥\(Formats.money(incomeTotal))，一笔未花。钱在账上原封不动，像是替下个月留的伏笔。"
+            )
         }
+
+        // MARK: No income
         if incomeTotal == 0 {
-            if hasNamedNotes, let top = expenseItems.first, top.share >= 0.35 {
-                return "没有收入记录，支出全靠存量。「\(top.label)」一项占了 \(percent(top.share))，先把收入补上，账才看得清。"
+            if hasNamedNotes, let top = namedExpense, top.share >= 0.5 {
+                return make(
+                    "无源之水，一注而竭",
+                    "没有进项，\(expenseCount) 笔支出全靠存量，其中「\(top.label)」就占了 \(percent(top.share))。水无源头，再省也只见少。"
+                )
             }
-            return "没有收入记录，\(expenseCount) 笔支出全从存量里出。钱在减少，账面上却看不到进项。"
+            if expenseCount >= 8 {
+                return make(
+                    "只出不进，坐吃山空",
+                    "没有收入记录，\(expenseCount) 笔支出共 ¥\(Formats.money(expenseTotal))，全从存量里出。账面只见出，不见进。"
+                )
+            }
+            return make(
+                "无源之水，日渐其涸",
+                "没有收入记录，\(expenseCount) 笔支出全从存量里出，合计 ¥\(Formats.money(expenseTotal))。水不添，总会见底。"
+            )
         }
+
+        // MARK: Overspent
         if net < 0 {
-            return "支出比收入多 ¥\(Formats.money(-net))，超支 \(percent(abs(savingsRate ?? 0)))。这个月花超了，缺口已经摆在账上。"
-        }
-        if net == 0 {
-            return "收入刚好被支出吃平，一分没剩。账很干净，钱包也是。"
-        }
-        if hasNamedNotes, let top = expenseItems.first, top.share >= 0.45 {
-            let rest = max(0, expenseCount - top.count)
-            if rest == 0 {
-                return "这个月的支出几乎只有一件事：「\(top.label)」吃掉 \(percent(top.share))。"
+            let overspend = Double(-net) / Double(incomeTotal)
+            if overspend >= 0.5 {
+                return make(
+                    "寅吃卯粮，库府见底",
+                    "支出比收入多 ¥\(Formats.money(-net))，超支 \(percent(overspend))。这一月不只花光进项，还动了老本。"
+                )
             }
-            return "「\(top.label)」一项吃掉 \(percent(top.share))，钱有明确的大头。剩下的 \(rest) 笔，都是陪衬。"
+            if overspend >= 0.2 {
+                return make(
+                    "入不敷出，囊中渐空",
+                    "支出比收入多 ¥\(Formats.money(-net))，超支 \(percent(overspend))。进项追不上花销，缺口已经明明白白写在账上。"
+                )
+            }
+            return make(
+                "略有亏空，尚可回旋",
+                "支出比收入多 ¥\(Formats.money(-net))，超支 \(percent(overspend))。窟窿不大，下月收紧一点便补得回来。"
+            )
+        }
+
+        // MARK: Exactly break-even
+        if net == 0 {
+            return make(
+                "收支相抵，两袖清风",
+                "收入 ¥\(Formats.money(incomeTotal)) 刚够支出，一分未剩。账很干净，钱包也是。"
+            )
+        }
+
+        // MARK: Income has one pillar
+        if let top = namedIncome, incomeCount >= 2, top.share >= 0.75 {
+            return make(
+                "一柱擎天，财源独木",
+                "收入 ¥\(Formats.money(incomeTotal))，其中「\(top.label)」一项占了 \(percent(top.share))。进项有余，来路却只有一条。"
+            )
+        }
+
+        // MARK: One expense dominates
+        if let top = namedExpense, top.share >= 0.6 {
+            let rest = max(0, expenseCount - top.count)
+            return make(
+                "一枝独秀，余皆陪衬",
+                "「\(top.label)」一项吃掉 \(percent(top.share))，其余 \(rest) 笔加起来也不及它。钱有明确的大头，故事只有一个主角。"
+            )
+        }
+        if let top = namedExpense, top.share >= 0.45 {
+            return make(
+                "半壁江山，尽归一物",
+                "「\(top.label)」占了支出的 \(percent(top.share))，几乎半壁江山。剩下的 \(max(0, expenseCount - top.count)) 笔，都是陪衬。"
+            )
+        }
+
+        // MARK: One bill or one day carries the month
+        if let bill = biggestExpense,
+           Double(bill.cents) / Double(expenseTotal) >= 0.45 {
+            let share = Double(bill.cents) / Double(expenseTotal)
+            return make(
+                "一掷千金，余者寥寥",
+                "最大的一笔 ¥\(Formats.money(bill.cents))，占全月 \(percent(share))，在 \(expenseCount) 笔里一枝独重。"
+            )
+        }
+        if let day = biggestDay, day.share >= 0.5 {
+            return make(
+                "一日千金，余日萧索",
+                "\(DateHelp.dayTitle(day.iso))一天花掉 ¥\(Formats.money(day.cents))，占全月 \(percent(day.share))，共 \(day.count) 笔。这一天抵得过其余许多天。"
+            )
         }
         if let day = biggestDay, day.share >= 0.35 {
-            return "\(DateHelp.dayTitle(day.iso))一天花掉 ¥\(Formats.money(day.cents))，占全月 \(percent(day.share))。那天值得回看。"
+            return make(
+                "一日之费，半月之粮",
+                "\(DateHelp.dayTitle(day.iso))一天花掉 ¥\(Formats.money(day.cents))，占全月 \(percent(day.share))。那天值得回看。"
+            )
         }
-        if let rate = savingsRate, rate >= 0.5 {
-            return "收入稳稳盖住支出，结余率 \(percent(rate))。这个月守住了，没让钱溜走太多。"
+
+        // MARK: Late-night spending
+        if let peak = timePeak, peak.label == "深夜", peak.share >= 0.2 {
+            return make(
+                "夜半散财，月下空囊",
+                "深夜（\(peak.range)）的支出占了 \(percent(peak.share))，共 ¥\(Formats.money(peak.cents))。夜深人静时的手，往往比白天松。"
+            )
         }
-        if averageExpense < 5000, expenseCount >= 3 {
-            return "没有大额支出，钱是被 \(expenseCount) 笔小额一点点磨掉的。单笔不疼，加起来不少。"
+
+        // MARK: Sparse ledger
+        if expenseCount <= 3 {
+            return make(
+                "寥寥数笔，落笔如金",
+                "全月只有 \(expenseCount) 笔支出，共 ¥\(Formats.money(expenseTotal))。账册很薄，每一笔都记得清楚。"
+            )
         }
-        if let rate = savingsRate, rate < 0.2 {
-            return "钱进来又出去，结余率只有 \(percent(rate))。没有明显的大头，都是日常在慢慢漏。"
+        if noSpendDays >= 15 {
+            return make(
+                "半月未动，账册生尘",
+                "这一月只有 \(spendingDays) 天有支出，其余 \(noSpendDays) 天账册未动。钱花得克制，日子过得清淡。"
+            )
         }
-        return "收支还算平衡，结余率 \(percent(savingsRate ?? 0))。钱没有乱花，但也没怎么留下。"
+
+        // MARK: Daily rhythm
+        if spendingDays >= 20 && expenseCount >= 20 {
+            return make(
+                "日日有账，滴水穿石",
+                "\(spendingDays) 天里落笔 \(expenseCount) 次，几乎日日有账，均笔 ¥\(Formats.money(averageExpense))。单看不多，合起来便是整月的开销。"
+            )
+        }
+
+        // MARK: Texture
+        if averageExpense < 3000 && expenseCount >= 5 {
+            return make(
+                "细流涓涓，汇作江河",
+                "没有大额支出，\(expenseCount) 笔的平均只有 ¥\(Formats.money(averageExpense))。钱不是被谁拿走的，是顺着指缝一点点流走的。"
+            )
+        }
+        if averageExpense < 5000 && expenseCount >= 3 {
+            return make(
+                "零碎渐多，积沙成塔",
+                "最大一笔不过 ¥\(Formats.money(biggestExpense?.cents ?? 0))，可 \(expenseCount) 笔零碎加起来也有 ¥\(Formats.money(expenseTotal))。单笔不疼，合计不少。"
+            )
+        }
+        if averageExpense >= 100_000 && expenseCount >= 3 {
+            return make(
+                "大手落笔，不拘细流",
+                "\(expenseCount) 笔支出，均笔 ¥\(Formats.money(averageExpense))，最重的一笔 ¥\(Formats.money(biggestExpense?.cents ?? 0))。这一月的钱，落笔都重。"
+            )
+        }
+        if let peak = denominationPeak, peak.name == "100元", peak.count >= 20 {
+            return make(
+                "大钞出入，手笔不凡",
+                "现钞里 100 元最多，共 \(peak.count) 张。这一月的钱，进出都带着分量。"
+            )
+        }
+
+        // MARK: Savings rate
+        if rate >= 0.7 {
+            return make(
+                "仓廪充实，未雨绸缪",
+                "收入 ¥\(Formats.money(incomeTotal))，支出 ¥\(Formats.money(expenseTotal))，结余率 \(percent(rate))。钱守住了，还留出了余量。"
+            )
+        }
+        if rate >= 0.5 {
+            return make(
+                "收支有余，家道渐丰",
+                "收入稳稳盖住支出，结余率 \(percent(rate))。这一月守得住，也攒得下。"
+            )
+        }
+        if rate >= 0.3 {
+            return make(
+                "略有盈余，尚称安稳",
+                "收支相抵之后还剩 ¥\(Formats.money(net))，结余率 \(percent(rate))。不算宽裕，日子安稳。"
+            )
+        }
+        if rate >= 0.15 {
+            return make(
+                "所余无几，聊以自慰",
+                "进项减去花销只剩 ¥\(Formats.money(net))，结余率 \(percent(rate))。钱没花光，也没留下多少。"
+            )
+        }
+        if noteTotal == 0 {
+            return make(
+                "账有其实，事无其名",
+                "收入几乎被支出吃尽，结余率只有 \(percent(rate))。\(expenseCount) 笔皆无备注，数字都在，故事缺席。"
+            )
+        }
+        return make(
+            "钱来钱去，不留痕迹",
+            "收入几乎被支出吃尽，结余率只有 \(percent(rate))。没有明显的窟窿，也没有留下什么。"
+        )
     }
 
     private static func percent(_ share: Double) -> String {
@@ -674,9 +870,15 @@ struct CashPlazaAnalysisView: View {
             }
             .foregroundStyle(palette.accent)
 
-            Text(analysis.verdict)
-                .scalableFont(16, weight: .semibold)
+            Text(analysis.verdict.title)
+                .scalableSerif(21, weight: .semibold)
+                .tracking(1.6)
                 .foregroundStyle(palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(analysis.verdict.text)
+                .scalableFont(14, weight: .regular)
+                .foregroundStyle(palette.ink2)
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
         }

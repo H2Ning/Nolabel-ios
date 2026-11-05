@@ -61,7 +61,7 @@ struct CashStageView: View {
                                 onReady: {}
                             )
                             .blur(radius: motionBlur)
-                            .mask(motionBlurMask)
+                            .mask(motionBlurMask(in: proxy.size))
                             .opacity(motionBlur > 0.01 ? 1 : 0)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
@@ -123,19 +123,92 @@ struct CashStageView: View {
         }
     }
 
-    private var motionBlurMask: some View {
-        LinearGradient(
-            stops: [
-                .init(color: .white, location: 0.0),
-                .init(color: .white, location: 0.20),
-                .init(color: .clear, location: 0.42),
-                .init(color: .clear, location: 0.58),
-                .init(color: .white, location: 0.80),
-                .init(color: .white, location: 1.0)
-            ],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
+    /// Grouped layouts get one sharp axis per stack, each with its own fade
+    /// toward the edges; a single stack keeps the stage-wide gradient.
+    @ViewBuilder
+    private func motionBlurMask(in size: CGSize) -> some View {
+        let centers = projectedGroupCenters(in: size)
+        if centers.count > 1 {
+            Canvas { context, canvasSize in
+                for (index, center) in centers.enumerated() {
+                    let left = index == 0 ? 0 : (centers[index - 1] + center) / 2
+                    let right = index == centers.count - 1
+                        ? canvasSize.width
+                        : (center + centers[index + 1]) / 2
+                    let width = max(right - left, 1)
+                    let clearHalf = min(0.30, max(0.10, 34 / width))
+                    let gradient = Gradient(stops: [
+                        .init(color: .white, location: 0),
+                        .init(color: .white, location: 0.18),
+                        .init(color: .clear, location: 0.5 - clearHalf),
+                        .init(color: .clear, location: 0.5 + clearHalf),
+                        .init(color: .white, location: 0.82),
+                        .init(color: .white, location: 1)
+                    ])
+                    context.fill(
+                        Path(CGRect(x: left, y: 0, width: width, height: canvasSize.height)),
+                        with: .linearGradient(
+                            gradient,
+                            startPoint: CGPoint(x: left, y: 0),
+                            endPoint: CGPoint(x: right, y: 0)
+                        )
+                    )
+                }
+            }
+            .allowsHitTesting(false)
+        } else {
+            LinearGradient(
+                stops: [
+                    .init(color: .white, location: 0.0),
+                    .init(color: .white, location: 0.20),
+                    .init(color: .clear, location: 0.42),
+                    .init(color: .clear, location: 0.58),
+                    .init(color: .white, location: 0.80),
+                    .init(color: .white, location: 1.0)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        }
+    }
+
+    /// Screen-space x of each group's own vertical axis, following the same
+    /// yaw/pitch rotation the 3D canvas applies. Groups in different rows
+    /// project differently, so each row is computed separately.
+    private func projectedGroupCenters(in size: CGSize) -> [CGFloat] {
+        guard mode == 2, groups.count > 1, size.width > 1, size.height > 1 else {
+            return []
+        }
+        let count = groups.count
+        let columns = count <= 3 ? count : (count == 4 ? 2 : 3)
+        let rows = Int(ceil(Double(count) / Double(columns)))
+        let padX: CGFloat = 10
+        let gapX: CGFloat = 6
+        let cellWidth = (size.width - padX * 2 - gapX * CGFloat(columns - 1)) / CGFloat(columns)
+        let rowBase: CGFloat = rows == 1 ? 0.56 : (rows == 2 ? 0.30 : 0.26)
+        let rowGap: CGFloat = rows == 1 ? 0 : (rows == 2 ? 0.36 : 0.20)
+
+        let yawRad = yaw * .pi / 180
+        let pitchRad = pitch * .pi / 180
+        let anchor = CGPoint(x: size.width / 2, y: size.height * 0.44)
+        let cosYaw = CGFloat(cos(yawRad))
+        let sinYaw = CGFloat(sin(yawRad))
+        let cosPitch = CGFloat(cos(pitchRad))
+
+        var centers: [CGFloat] = []
+        for index in 0..<count {
+            let row = index / columns
+            let column = index % columns
+            let rowCount = Swift.min(columns, count - row * columns)
+            let rowOffset = CGFloat(columns - rowCount) * (cellWidth + gapX) / 2
+            let cellLeft = padX + rowOffset + CGFloat(column) * (cellWidth + gapX)
+            let cellCenter = cellLeft + cellWidth / 2
+            let baseY = size.height * (rowBase + CGFloat(row) * rowGap)
+            let relX = cellCenter - anchor.x
+            let relY = baseY - anchor.y
+            centers.append(anchor.x + relX * cosYaw - relY * cosPitch * sinYaw)
+        }
+        return centers.sorted()
     }
 
     private var stageBackground: some View {

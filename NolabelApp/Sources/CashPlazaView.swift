@@ -401,11 +401,12 @@ struct CashPlazaView: View {
                             let plot = geometry[plotFrame]
                             let pointX = plot.origin.x + x
                             let pointY = plot.origin.y + y
+                            // Only the arms between the point and each axis.
                             Path { path in
-                                path.move(to: CGPoint(x: pointX, y: plot.minY))
+                                path.move(to: CGPoint(x: pointX, y: pointY))
                                 path.addLine(to: CGPoint(x: pointX, y: plot.maxY))
-                                path.move(to: CGPoint(x: plot.minX, y: pointY))
-                                path.addLine(to: CGPoint(x: plot.maxX, y: pointY))
+                                path.move(to: CGPoint(x: pointX, y: pointY))
+                                path.addLine(to: CGPoint(x: plot.minX, y: pointY))
                             }
                             .stroke(
                                 palette.accent.opacity(0.45),
