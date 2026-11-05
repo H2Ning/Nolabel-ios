@@ -750,7 +750,7 @@ struct DateOverlay: View {
             let distance = max((dx * dx + dy * dy).squareRoot(), 1)
             // Tilt around the axis perpendicular to the travel direction so the
             // perspective points straight at the date/time convergence point.
-            let tiltAxis = (x: -dy / distance, y: dx / distance, z: 0.0)
+            let tiltAxis = (x: -dy / distance, y: dx / distance, z: CGFloat.zero)
 
             ZStack {
                 Color.black.opacity(palette.isDark ? 0.48 : 0.24)
