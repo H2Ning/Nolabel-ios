@@ -892,28 +892,32 @@ final class CashSceneCanvas: UIView {
 
             // Give each note in the stack a hair of color variation. The
             // strip should read as layered paper, not one painted board.
-            let step = CGFloat(pixelSpacing) / scale
-            let bandCount = vertical
-                ? Int(ceil(size.height / max(step, 0.5)))
-                : Int(ceil(size.width / max(step, 0.5)))
+            let rawStep = CGFloat(pixelSpacing) / scale
+            let rawBands = vertical
+                ? Int(ceil(size.height / max(rawStep, 0.5)))
+                : Int(ceil(size.width / max(rawStep, 0.5)))
+            let bandCount = min(64, max(1, rawBands))
+            let bandStep = vertical
+                ? size.height / CGFloat(bandCount)
+                : size.width / CGFloat(bandCount)
             let seed = "\(denom.id)|\(edge.rawValue)"
             for index in 0..<bandCount {
                 let amount = Self.jitter(seed: seed, index: index)
                 cg.setFillColor(Self.scaledColor(base, by: 1 + amount).cgColor)
                 if vertical {
-                    let y = CGFloat(index) * step
+                    let y = CGFloat(index) * bandStep
                     cg.fill(CGRect(
                         x: 0,
                         y: y,
                         width: size.width,
-                        height: min(step, max(0, size.height - y))
+                        height: min(bandStep, max(0, size.height - y))
                     ))
                 } else {
-                    let x = CGFloat(index) * step
+                    let x = CGFloat(index) * bandStep
                     cg.fill(CGRect(
                         x: x,
                         y: 0,
-                        width: min(step, max(0, size.width - x)),
+                        width: min(bandStep, max(0, size.width - x)),
                         height: size.height
                     ))
                 }
