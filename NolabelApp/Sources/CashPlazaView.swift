@@ -124,7 +124,9 @@ struct CashPlazaView: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        Group {
+                        VStack(spacing: 14) {
+                            stage(snapshot)
+                            chartCard(snapshot)
                             if analysisOpen {
                                 VStack(spacing: 0) {
                                     CashPlazaAnalysisView(
@@ -135,11 +137,7 @@ struct CashPlazaView: View {
                                     .id("plazaAnalysis-\(model.monthDataVersion)")
                                 }
                                 .id("plazaAnalysisBottom")
-                            } else {
-                                VStack(spacing: 14) {
-                                    stage(snapshot)
-                                    chartCard(snapshot)
-                                }
+                                .transition(.opacity)
                             }
                         }
                         .padding(.horizontal, 20)

@@ -45,7 +45,7 @@ struct BillsView: View {
                                 model: model,
                                 palette: palette
                             )
-                            .listRowInsets(EdgeInsets())
+                            .listRowInsets(rowInset)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .accessibilityAddTraits(.isHeader)
@@ -58,7 +58,7 @@ struct BillsView: View {
                                     showDivider: index < group.bills.count - 1,
                                     isLast: index == group.bills.count - 1
                                 )
-                                .listRowInsets(EdgeInsets())
+                                .listRowInsets(rowInset)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -395,7 +395,6 @@ private struct DayHeaderRow: View {
             )
             .fill(palette.surface2.opacity(palette.isDark ? 0.55 : 0.62))
         )
-        .padding(.horizontal, 20)
     }
 }
 
@@ -463,7 +462,6 @@ private struct BillRow: View {
                 }
             }
             .contentShape(Rectangle())
-            .padding(.horizontal, 20)
         }
         .buttonStyle(BillRowButtonStyle(palette: palette))
         .accessibilityElement(children: .combine)
