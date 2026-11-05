@@ -6,6 +6,7 @@ import UIKit
 enum SettingsSubview {
     case main
     case appearance
+    case numberFormat
     case haptics
 }
 
@@ -44,6 +45,7 @@ final class AppModel {
     private let sortKey = "nolabel-sort-desc"
     private let cashModeKey = "nolabel-cash-mode"
     private let hapticKey = "nolabel-haptic-level"
+    private let numberFormatKey = "nolabel-number-format"
     private let deleteSuppressKey = "nolabel-delete-suppress-date"
     private let usernameKey = "h2ning_username"
 
@@ -66,6 +68,7 @@ final class AppModel {
 
     var themeMode: ThemeMode
     var hapticLevel: HapticLevel
+    var numberFormat: NumberFormatSettings
     var sortDesc: Bool
     var selectedMonth: Date
     var settingsOpen = false
@@ -97,7 +100,9 @@ final class AppModel {
     private var entryOperatorTapIndex = 0
     private var entryOperatorTapAt: TimeInterval = 0
     var palette: AppPalette {
-        AppPalette.palette(themeMode == .system ? currentSystemScheme : (themeMode == .dark ? .dark : .light))
+        AppPalette
+            .palette(themeMode == .system ? currentSystemScheme : (themeMode == .dark ? .dark : .light))
+            .withNumberColors(numberFormat.colorScheme)
     }
 
     private var currentSystemScheme: ColorScheme {
@@ -243,6 +248,12 @@ final class AppModel {
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
         hapticLevel = HapticLevel(rawValue: defaults.string(forKey: hapticKey) ?? "") ?? .rich
+        if let data = defaults.data(forKey: numberFormatKey),
+           let stored = try? JSONDecoder().decode(NumberFormatSettings.self, from: data) {
+            numberFormat = stored
+        } else {
+            numberFormat = NumberFormatSettings()
+        }
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
         let storedCashMode = defaults.integer(forKey: cashModeKey)
         cashMode = (1...3).contains(storedCashMode) ? storedCashMode : 1
@@ -255,6 +266,7 @@ final class AppModel {
         if previewMode {
             configurePreview(arguments: arguments)
         }
+        Formats.apply(numberFormat)
         Haptics.setLevel(hapticLevel)
     }
 
@@ -286,6 +298,7 @@ final class AppModel {
             settingsOpen = true
             switch value(after: "--preview-settings", in: arguments) {
             case "appearance": settingsSubview = .appearance
+            case "number-format": settingsSubview = .numberFormat
             case "haptics": settingsSubview = .haptics
             default: break
             }
@@ -337,6 +350,13 @@ final class AppModel {
             selectOperator(.add)
             pressDigit("2")
             pressBackspace()
+        }
+        if arguments.contains("--preview-backspace-twice") {
+            entryOpen = true
+            entryInput = "1"
+            selectOperator(.add)
+            pressDigit("2")
+            pressBackspace()
             pressBackspace()
         }
         if arguments.contains("--preview-delete-confirm"), let first = bills.first {
@@ -344,6 +364,12 @@ final class AppModel {
         }
         if arguments.contains("--preview-plaza") {
             cashPlazaOpen = true
+        }
+        if arguments.contains("--preview-number-alt") {
+            numberFormat.incomeFormat = .plus
+            numberFormat.expenseFormat = .bracket
+            numberFormat.separator = .tenThousand
+            numberFormat.colorScheme = .redCyan
         }
     }
 
@@ -735,6 +761,18 @@ final class AppModel {
         Haptics.pick()
     }
 
+    func updateNumberFormat(_ change: (inout NumberFormatSettings) -> Void) {
+        var next = numberFormat
+        change(&next)
+        guard next != numberFormat else { return }
+        numberFormat = next
+        Formats.apply(next)
+        if let data = try? JSONEncoder().encode(next) {
+            defaults.set(data, forKey: numberFormatKey)
+        }
+        Haptics.pick()
+    }
+
     func setTheme(_ mode: ThemeMode) {
         guard mode != themeMode else { return }
         withAnimation(AppMotion.grace) {
@@ -966,7 +1004,10 @@ final class AppModel {
         if entryWaitingForOperand {
             entryWaitingForOperand = false
             entryOperator = nil
-            entryAccumulator = nil
+            if let left = entryAccumulator {
+                entryAccumulator = nil
+                entryInput = Formats.amountInput(left)
+            }
             return
         }
         if entryJustEvaluated {
@@ -984,6 +1025,11 @@ final class AppModel {
         }
         entryInput.removeLast()
         entryTrailingDecimal = entryInput.last == "."
+        if entryInput.isEmpty, entryAccumulator != nil, entryOperator != nil {
+            // Keep the expression alive after deleting the right operand:
+            // "1+2|" → "1+|" → "1|".
+            entryWaitingForOperand = true
+        }
     }
 
     func clearEntry() {
@@ -1157,14 +1203,10 @@ extension Formats {
             whole.removeFirst()
         }
         if whole.isEmpty { whole = "0" }
-        let grouped = whole.reversed().enumerated().reduce(into: "") { result, pair in
-            if pair.offset > 0 && pair.offset % 3 == 0 { result.append(",") }
-            result.append(pair.element)
-        }
-        let reversed = sign + String(grouped.reversed())
+        let grouped = sign + Formats.groupedInteger(whole)
         if parts.count > 1 {
-            return reversed + "." + String(parts[1].prefix(2))
+            return grouped + "." + String(parts[1].prefix(2))
         }
-        return reversed
+        return grouped
     }
 }

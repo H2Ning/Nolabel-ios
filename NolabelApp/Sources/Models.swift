@@ -79,7 +79,7 @@ struct Bill: Identifiable, Codable, Hashable {
 
     var monthKey: String { String(iso.prefix(7)) }
     var signedAmountText: String {
-        "\(type == .expense ? "−" : "+")¥\(Formats.money(cents))"
+        Formats.signedMoney(cents, type: type)
     }
     var typeLabel: String { type == .expense ? "支出" : "收入" }
     var fallbackTitle: String { type == .expense ? "现金支出" : "现金收入" }
@@ -256,28 +256,32 @@ enum DateHelp {
 }
 
 enum Formats {
+    static var settings = NumberFormatSettings()
+
+    static func apply(_ value: NumberFormatSettings) {
+        settings = value
+    }
+
     static func money(_ cents: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        formatter.usesGroupingSeparator = true
-        return formatter.string(from: NSNumber(value: Double(abs(cents)) / 100.0)) ?? "0.00"
+        decimalString(cents: abs(cents), minimumFractionDigits: 2, maximumFractionDigits: 2)
     }
 
     static func moneyValue(_ cents: Int) -> String {
         "¥\(money(cents))"
     }
 
+    static func signedMoney(_ cents: Int, type: BillType) -> String {
+        let body = "¥\(money(cents))"
+        switch type {
+        case .income:
+            return settings.incomeFormat == .plus ? "+\(body)" : body
+        case .expense:
+            return settings.expenseFormat == .bracket ? "[\(body)]" : "-\(body)"
+        }
+    }
+
     static func compactMoney(_ cents: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        formatter.usesGroupingSeparator = true
-        return formatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? "0"
+        decimalString(cents: cents, minimumFractionDigits: 0, maximumFractionDigits: 2)
     }
 
     static func rawAmount(_ cents: Int) -> String {
@@ -308,5 +312,58 @@ enum Formats {
         if trailingDecimal { return "\(whole)." }
         if fraction == 0 { return "\(whole)" }
         return String(format: "%d.%02d", whole, fraction)
+    }
+
+    static func groupedInteger(_ digits: String) -> String {
+        guard !digits.isEmpty else { return digits }
+        switch settings.separator {
+        case .none:
+            return digits
+        case .thousand:
+            return group(digits, size: 3, separator: ",")
+        case .tenThousand:
+            return group(digits, size: 4, separator: "\u{2009}")
+        }
+    }
+
+    private static func decimalString(
+        cents: Int,
+        minimumFractionDigits: Int,
+        maximumFractionDigits: Int
+    ) -> String {
+        let negative = cents < 0
+        let absolute = abs(cents)
+        var whole = groupedInteger(String(absolute / 100))
+        let fraction = absolute % 100
+        var fractionText = ""
+
+        if maximumFractionDigits > 0 {
+            if fraction != 0 {
+                fractionText = String(format: "%02d", fraction)
+                while fractionText.count > minimumFractionDigits, fractionText.hasSuffix("0") {
+                    fractionText.removeLast()
+                }
+            } else if minimumFractionDigits > 0 {
+                fractionText = String(repeating: "0", count: minimumFractionDigits)
+            }
+        }
+
+        if !fractionText.isEmpty {
+            whole += ".\(fractionText)"
+        }
+        return negative ? "-\(whole)" : whole
+    }
+
+    private static func group(_ digits: String, size: Int, separator: String) -> String {
+        var result = ""
+        var count = 0
+        for character in digits.reversed() {
+            if count > 0, count % size == 0 {
+                result.append(separator)
+            }
+            result.append(character)
+            count += 1
+        }
+        return String(result.reversed())
     }
 }

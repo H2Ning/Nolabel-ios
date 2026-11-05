@@ -39,8 +39,8 @@ struct AppPalette {
     let accent: Color
     let accentSoft: Color
     let accentInk: Color
-    let expense: Color
-    let income: Color
+    var expense: Color
+    var income: Color
     let stage: Color
     let stageGrid: Color
     let glassTint: Color
@@ -48,6 +48,13 @@ struct AppPalette {
 
     static func palette(_ scheme: ColorScheme) -> AppPalette {
         scheme == .dark ? dark : light
+    }
+
+    func withNumberColors(_ scheme: NumberColorScheme) -> AppPalette {
+        var palette = self
+        palette.income = scheme.incomeColor(isDark: isDark)
+        palette.expense = scheme.expenseColor(isDark: isDark)
+        return palette
     }
 
     static let dark = AppPalette(

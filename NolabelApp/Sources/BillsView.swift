@@ -11,6 +11,7 @@ struct BillsView: View {
     }
 
     var body: some View {
+        let _ = model.numberFormat
         VStack(spacing: 0) {
             topBar
             ScrollView {
@@ -284,8 +285,8 @@ struct DayCapsuleView: View {
     let palette: AppPalette
 
     private var netText: String {
-        if group.net > 0 { return "+¥\(Formats.money(group.net))" }
-        if group.net < 0 { return "−¥\(Formats.money(-group.net))" }
+        if group.net > 0 { return Formats.signedMoney(group.net, type: .income) }
+        if group.net < 0 { return Formats.signedMoney(-group.net, type: .expense) }
         return "¥0.00"
     }
 
@@ -300,6 +301,7 @@ struct DayCapsuleView: View {
     }
 
     var body: some View {
+        let _ = model.numberFormat
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Text(DateHelp.dayTitle(group.iso))

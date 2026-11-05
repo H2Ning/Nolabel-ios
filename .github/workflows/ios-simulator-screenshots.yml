@@ -87,6 +87,7 @@ jobs:
           capture entry-expression-light --preview --preview-screen entry --preview-theme light --preview-amount 52145 --preview-expression
           capture entry-negative --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-negative
           capture entry-backspace --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-backspace
+          capture entry-backspace-twice --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-backspace-twice
           capture entry-expanded --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-cash-mode 3
           capture entry-piles --preview --preview-screen entry --preview-theme dark --preview-amount 4234.30
           capture entry-bundle --preview --preview-screen entry --preview-theme dark --preview-amount 100000
@@ -95,6 +96,9 @@ jobs:
           capture settings-dark --preview --preview-screen settings --preview-theme dark
           capture settings-user --preview --preview-screen settings --preview-theme dark --preview-user
           capture settings-appearance --preview --preview-screen settings --preview-theme dark --preview-settings appearance
+          capture settings-number-format --preview --preview-screen settings --preview-theme dark --preview-settings number-format
+          capture settings-number-format-alt --preview --preview-screen settings --preview-theme dark --preview-settings number-format --preview-number-alt
+          capture settings-number-format-light --preview --preview-screen settings --preview-theme light --preview-settings number-format
           capture settings-haptics --preview --preview-screen settings --preview-theme dark --preview-settings haptics
           capture account-dark --preview --preview-screen account --preview-theme dark
           capture network-probe --preview --preview-screen settings --preview-theme dark --preview-probe

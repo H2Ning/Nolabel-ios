@@ -39,6 +39,9 @@ struct SettingsOverlay: View {
                     } else if model.settingsSubview == .appearance {
                         appearanceView
                             .transition(.opacity.combined(with: .move(edge: .trailing)))
+                    } else if model.settingsSubview == .numberFormat {
+                        numberFormatView
+                            .transition(.opacity.combined(with: .move(edge: .trailing)))
                     } else {
                         hapticsView
                             .transition(.opacity.combined(with: .move(edge: .trailing)))
@@ -153,6 +156,10 @@ struct SettingsOverlay: View {
             sectionCard {
                 settingsLink(title: "外观", value: model.themeMode.label) {
                     withAnimation(AppMotion.spring) { model.settingsSubview = .appearance }
+                }
+                divider
+                settingsLink(title: "数字格式", value: model.numberFormat.summary) {
+                    withAnimation(AppMotion.spring) { model.settingsSubview = .numberFormat }
                 }
                 divider
                 settingsLink(title: "触感", value: model.hapticLevel.label) {
@@ -330,6 +337,7 @@ struct SettingsOverlay: View {
         switch model.settingsSubview {
         case .main: return "设置"
         case .appearance: return "外观"
+        case .numberFormat: return "数字格式"
         case .haptics: return "触感"
         }
     }
@@ -361,6 +369,202 @@ struct SettingsOverlay: View {
                 }
             }
         }
+    }
+
+    private var numberFormatView: some View {
+        VStack(spacing: 14) {
+            previewCard
+            formatCard
+            colorCard
+        }
+    }
+
+    private var previewCard: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("预览")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(palette.ink)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 15)
+            .padding(.bottom, 10)
+
+            previewRow(cents: 1_234_567, type: .income, title: "尾款", time: "09:30")
+            divider
+            previewRow(cents: 123_456, type: .expense, title: "房租", time: "18:20")
+        }
+        .background(sectionBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(palette.line, lineWidth: 1)
+        )
+    }
+
+    private func previewRow(cents: Int, type: BillType, title: String, time: String) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(type == .expense ? palette.expense : palette.income)
+                .frame(width: 6, height: 6)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(palette.ink)
+                Text("\(DateHelp.dayTitle(DateHelp.todayISO)) · \(time)")
+                    .font(.system(size: 11, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(palette.muted)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(Formats.signedMoney(cents, type: type))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(type == .expense ? palette.expense : palette.income)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+    }
+
+    private var formatCard: some View {
+        VStack(spacing: 0) {
+            formatRow(title: "收入格式") {
+                SegmentPicker(
+                    options: IncomeFormat.allCases,
+                    selection: model.numberFormat.incomeFormat,
+                    palette: palette,
+                    label: { $0.label }
+                ) { value in
+                    model.updateNumberFormat { $0.incomeFormat = value }
+                }
+            }
+            formatDivider
+            formatRow(title: "支出格式") {
+                SegmentPicker(
+                    options: ExpenseFormat.allCases,
+                    selection: model.numberFormat.expenseFormat,
+                    palette: palette,
+                    label: { $0.label }
+                ) { value in
+                    model.updateNumberFormat { $0.expenseFormat = value }
+                }
+            }
+            formatDivider
+            formatRow(title: "分隔符") {
+                SegmentPicker(
+                    options: AmountSeparator.allCases,
+                    selection: model.numberFormat.separator,
+                    palette: palette,
+                    label: { $0.label }
+                ) { value in
+                    model.updateNumberFormat { $0.separator = value }
+                }
+            }
+        }
+        .background(sectionBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(palette.line, lineWidth: 1)
+        )
+    }
+
+    private func formatRow<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(palette.ink)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            content()
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 46)
+    }
+
+    private var formatDivider: some View {
+        Rectangle()
+            .fill(palette.line)
+            .frame(height: 1)
+            .padding(.horizontal, 12)
+    }
+
+    private var colorCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("收支配色")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(palette.ink)
+
+            HStack(spacing: 8) {
+                ForEach(NumberColorScheme.allCases) { scheme in
+                    colorOption(scheme)
+                }
+            }
+        }
+        .padding(16)
+        .background(sectionBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(palette.line, lineWidth: 1)
+        )
+    }
+
+    private func colorOption(_ scheme: NumberColorScheme) -> some View {
+        let selected = model.numberFormat.colorScheme == scheme
+        return Button {
+            withAnimation(AppMotion.grace) {
+                model.updateNumberFormat { $0.colorScheme = scheme }
+            }
+        } label: {
+            VStack(spacing: 7) {
+                HStack(spacing: 3) {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(scheme.incomeColor(isDark: palette.isDark))
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(scheme.expenseColor(isDark: palette.isDark))
+                }
+                .frame(height: 38)
+
+                Text(scheme.label)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(selected ? palette.accent : palette.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(selected ? palette.accentSoft : palette.surface2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(selected ? palette.accent.opacity(0.55) : palette.line, lineWidth: 1)
+            )
+            .overlay(alignment: .topTrailing) {
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .black))
+                        .foregroundStyle(palette.accentInk)
+                        .frame(width: 14, height: 14)
+                        .background(palette.accent, in: Circle())
+                        .offset(x: 3, y: -3)
+                }
+            }
+        }
+        .buttonStyle(PressableStyle(scale: 0.97))
+        .accessibilityLabel(scheme.label)
+        .accessibilityValue(selected ? "已选择" : "")
     }
 
     private var hapticsView: some View {
@@ -469,6 +673,61 @@ struct SettingsOverlay: View {
     private func submitLogin() {
         focusedField = nil
         Task { await model.login(username: username, password: password) }
+    }
+}
+
+private struct SegmentPicker<Option: Hashable & Identifiable>: View where Option.ID == String {
+    let options: [Option]
+    let selection: Option
+    let palette: AppPalette
+    let label: (Option) -> String
+    let onSelect: (Option) -> Void
+
+    @Namespace private var namespace
+
+    private var thumbFill: Color {
+        palette.isDark ? Color.white.opacity(0.09) : palette.surface
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options) { option in
+                Button {
+                    guard option != selection else { return }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.88)) {
+                        onSelect(option)
+                    }
+                } label: {
+                    Text(label(option))
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(option == selection ? palette.ink : palette.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 30)
+                        .background {
+                            if option == selection {
+                                Capsule()
+                                    .fill(thumbFill)
+                                    .matchedGeometryEffect(id: "segment-thumb", in: namespace)
+                                    .shadow(
+                                        color: .black.opacity(palette.isDark ? 0.24 : 0.08),
+                                        radius: 4,
+                                        y: 2
+                                    )
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(label(option))
+                .accessibilityValue(option == selection ? "已选择" : "")
+            }
+        }
+        .padding(3)
+        .background(Capsule().fill(palette.surface2))
+        .overlay(Capsule().stroke(palette.line, lineWidth: 1))
+        .frame(maxWidth: 196)
     }
 }
 
