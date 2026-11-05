@@ -9,7 +9,6 @@ struct EntryView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let stageHeight = max(184, min(360, proxy.size.height - 382))
             VStack(spacing: 0) {
                 HStack {
                     Button(action: { model.closeEntry() }) {
@@ -36,19 +35,20 @@ struct EntryView: View {
                     onCycle: { model.cycleCashMode() },
                     onReady: {}
                 )
-                .frame(height: stageHeight)
+                .frame(maxWidth: .infinity, minHeight: 184, maxHeight: .infinity)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
-
-                Spacer(minLength: 12)
+                .padding(.bottom, 12)
 
                 entryCard
                     .padding(.horizontal, 20)
+                    .layoutPriority(1)
 
                 keypad
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
                     .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
+                    .layoutPriority(1)
             }
             .background(palette.pageBG.ignoresSafeArea())
         }
@@ -199,10 +199,6 @@ struct EntryView: View {
                 saveKey
             }
         }
-    }
-
-    private func keyHeight(_ proxy: GeometryProxy) -> CGFloat {
-        max(45, min(56, (proxy.size.height - 580) / 4))
     }
 
     private func key(_ title: String, action: @escaping () -> Void) -> some View {

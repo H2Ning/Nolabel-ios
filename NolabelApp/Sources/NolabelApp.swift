@@ -37,16 +37,12 @@ struct RootView: View {
                 .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
                 .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
 
-            if model.entryOpen {
-                EntryView(model: model, palette: palette)
-                    .transition(
-                        .asymmetric(
-                            insertion: .move(edge: .bottom).combined(with: .opacity),
-                            removal: .move(edge: .bottom).combined(with: .opacity)
-                        )
-                    )
-                    .zIndex(2)
-            }
+            EntryView(model: model, palette: palette)
+                .offset(y: model.entryOpen ? 0 : UIScreen.main.bounds.height)
+                .animation(reduceMotion ? nil : AppMotion.drawer, value: model.entryOpen)
+                .allowsHitTesting(model.entryOpen)
+                .accessibilityHidden(!model.entryOpen)
+                .zIndex(2)
 
             if model.settingsOpen {
                 SettingsOverlay(model: model, palette: palette)
@@ -96,7 +92,6 @@ struct RootView: View {
             }
         }
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.settingsOpen)
-        .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.pendingDeleteBill?.id)
         .task {

@@ -118,18 +118,19 @@ jobs:
           mkdir -p transitions
           record() {
             NAME="$1"
-            shift
+            DURATION="$2"
+            shift 2
             xcrun simctl terminate "$DEVICE_ID" "$BUNDLE_ID" >/dev/null 2>&1 || true
             xcrun simctl io "$DEVICE_ID" recordVideo --codec=h264 --force "transitions/$NAME.mp4" &
             REC_PID=$!
             sleep 1
             xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID" "$@" >/dev/null
-            sleep 3
+            sleep "$DURATION"
             kill -INT "$REC_PID" >/dev/null 2>&1 || true
             wait "$REC_PID" 2>/dev/null || true
           }
-          record month-shift --preview --preview-screen bills --preview-theme dark --preview-autoplay-month
-          record entry-open --preview --preview-screen bills --preview-theme dark --preview-autoplay-entry
+          record month-shift 3 --preview --preview-screen bills --preview-theme dark --preview-autoplay-month
+          record entry-open 5 --preview --preview-screen bills --preview-theme dark --preview-autoplay-entry
           ls -l transitions
 
       - name: Upload transitions

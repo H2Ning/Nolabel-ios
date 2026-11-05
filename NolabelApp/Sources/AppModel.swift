@@ -378,9 +378,17 @@ final class AppModel {
             }
         }
         if arguments.contains("--preview-autoplay-entry") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
-                guard let self else { return }
-                withAnimation(AppMotion.spring) { self.openEntry(self.bills.first) }
+            for index in 0..<5 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0 + Double(index) * 0.8) { [weak self] in
+                    guard let self else { return }
+                    withAnimation(AppMotion.drawer) {
+                        if self.entryOpen {
+                            self.closeEntry()
+                        } else {
+                            self.openEntry(self.bills.first)
+                        }
+                    }
+                }
             }
         }
     }
