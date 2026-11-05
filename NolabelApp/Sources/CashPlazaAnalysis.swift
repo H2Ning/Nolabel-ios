@@ -8,12 +8,11 @@ import SwiftUI
 /// list and the cash stage already use.
 struct MonthAnalysis {
     struct RankedItem: Identifiable {
+        let id: String
         let label: String
         let cents: Int
         let count: Int
         let share: Double
-
-        var id: String { label }
     }
 
     struct DayPeak {
@@ -43,6 +42,7 @@ struct MonthAnalysis {
     let savingsRate: Double?
     let expenseItems: [RankedItem]
     let incomeItems: [RankedItem]
+    let hasNamedNotes: Bool
     let biggestExpense: Bill?
     let biggestDay: DayPeak?
     let spendingDays: Int
@@ -67,6 +67,9 @@ struct MonthAnalysis {
         let savingsRate = incomeTotal > 0 ? Double(net) / Double(incomeTotal) : nil
         let expenseItems = Self.ranked(expenses, total: expenseTotal)
         let incomeItems = Self.ranked(incomes, total: incomeTotal)
+        let hasNamedNotes = expenses.contains {
+            !$0.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
         let biggestExpense = expenses.max { $0.cents < $1.cents }
 
         var daily: [String: (cents: Int, count: Int)] = [:]
@@ -133,6 +136,7 @@ struct MonthAnalysis {
         self.savingsRate = savingsRate
         self.expenseItems = expenseItems
         self.incomeItems = incomeItems
+        self.hasNamedNotes = hasNamedNotes
         self.biggestExpense = biggestExpense
         self.biggestDay = biggestDay
         self.spendingDays = spendingDays
@@ -147,6 +151,7 @@ struct MonthAnalysis {
             expenseTotal: expenseTotal,
             incomeTotal: incomeTotal,
             expenseCount: expenseCount,
+            hasNamedNotes: hasNamedNotes,
             net: net,
             savingsRate: savingsRate,
             expenseItems: expenseItems,
@@ -161,17 +166,28 @@ struct MonthAnalysis {
     }
 
     private static func ranked(_ bills: [Bill], total: Int) -> [RankedItem] {
-        var sums: [String: (cents: Int, count: Int)] = [:]
+        var sums: [String: (label: String, cents: Int, count: Int)] = [:]
         for bill in bills {
-            let label = displayNote(bill)
-            var entry = sums[label] ?? (0, 0)
+            let note = bill.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            let key: String
+            let label: String
+            if note.isEmpty {
+                key = "id:\(bill.id)"
+                let day = DateHelp.dayTitle(bill.iso)
+                label = bill.time.isEmpty ? "未备注 · \(day)" : "未备注 · \(day) \(bill.time)"
+            } else {
+                key = "note:\(note)"
+                label = note
+            }
+            var entry = sums[key] ?? (label: label, cents: 0, count: 0)
             entry.cents += bill.cents
             entry.count += 1
-            sums[label] = entry
+            sums[key] = entry
         }
         return sums.map { entry in
             RankedItem(
-                label: entry.key,
+                id: entry.key,
+                label: entry.value.label,
                 cents: entry.value.cents,
                 count: entry.value.count,
                 share: total > 0 ? Double(entry.value.cents) / Double(total) : 0
@@ -232,6 +248,7 @@ struct MonthAnalysis {
         expenseTotal: Int,
         incomeTotal: Int,
         expenseCount: Int,
+        hasNamedNotes: Bool,
         net: Int,
         savingsRate: Double?,
         expenseItems: [RankedItem],
@@ -244,7 +261,7 @@ struct MonthAnalysis {
                 : "这个月还没有账单。钱没动，故事也没开始。"
         }
         if incomeTotal == 0 {
-            if let top = expenseItems.first, top.share >= 0.35 {
+            if hasNamedNotes, let top = expenseItems.first, top.share >= 0.35 {
                 return "没有收入记录，支出全靠存量。「\(top.label)」一项占了 \(percent(top.share))，先把收入补上，账才看得清。"
             }
             return "没有收入记录，\(expenseCount) 笔支出全从存量里出。钱在减少，账面上却看不到进项。"
@@ -255,8 +272,12 @@ struct MonthAnalysis {
         if net == 0 {
             return "收入刚好被支出吃平，一分没剩。账很干净，钱包也是。"
         }
-        if let top = expenseItems.first, top.share >= 0.45 {
-            return "「\(top.label)」一项吃掉 \(percent(top.share))，钱有明确的大头。剩下的 \(max(0, expenseCount - top.count)) 笔，都是陪衬。"
+        if hasNamedNotes, let top = expenseItems.first, top.share >= 0.45 {
+            let rest = max(0, expenseCount - top.count)
+            if rest == 0 {
+                return "这个月的支出几乎只有一件事：「\(top.label)」吃掉 \(percent(top.share))。"
+            }
+            return "「\(top.label)」一项吃掉 \(percent(top.share))，钱有明确的大头。剩下的 \(rest) 笔，都是陪衬。"
         }
         if let day = biggestDay, day.share >= 0.35 {
             return "\(DateHelp.dayTitle(day.iso))一天花掉 ¥\(Formats.money(day.cents))，占全月 \(percent(day.share))。那天值得回看。"
@@ -264,7 +285,7 @@ struct MonthAnalysis {
         if let rate = savingsRate, rate >= 0.5 {
             return "收入稳稳盖住支出，结余率 \(percent(rate))。这个月守住了，没让钱溜走太多。"
         }
-        if averageExpense < 5000 {
+        if averageExpense < 5000, expenseCount >= 3 {
             return "没有大额支出，钱是被 \(expenseCount) 笔小额一点点磨掉的。单笔不疼，加起来不少。"
         }
         if let rate = savingsRate, rate < 0.2 {
@@ -479,7 +500,7 @@ struct CashPlazaAnalysisView: View {
                 if analysis.incomeItems.count > 3 {
                     let rest = analysis.incomeItems.dropFirst(3)
                     let restTotal = rest.reduce(0) { $0 + $1.cents }
-                    Text("还有 \(rest.count) 类收入，共 ¥\(Formats.money(restTotal))")
+                    Text("还有 \(rest.count) 项收入，共 ¥\(Formats.money(restTotal))")
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(palette.muted)
                 }
@@ -502,10 +523,22 @@ struct CashPlazaAnalysisView: View {
                 expenseSummary
                     .font(.system(size: 12, weight: .regular))
                     .lineSpacing(3)
+                if !analysis.hasNamedNotes {
+                    Text("这个月没写备注，支出按单笔列出。")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(palette.muted)
+                }
                 VStack(spacing: 13) {
                     ForEach(Array(analysis.expenseItems.prefix(3))) { item in
                         rankRow(item, color: palette.expense)
                     }
+                }
+                if analysis.expenseItems.count > 3 {
+                    let rest = analysis.expenseItems.dropFirst(3)
+                    let restTotal = rest.reduce(0) { $0 + $1.cents }
+                    Text("还有 \(rest.count) 项支出，共 ¥\(Formats.money(restTotal))")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(palette.muted)
                 }
                 if let timePeak = analysis.timePeak {
                     timeLine(timePeak)
@@ -708,7 +741,7 @@ struct CashPlazaAnalysisView: View {
     private var footnote: some View {
         Text("按备注归类，相同备注算一类；没写备注的归到「未备注」。现钞张数按每笔金额的面额拆分统计。")
             .font(.system(size: 10, weight: .regular))
-            .foregroundStyle(palette.faint)
+            .foregroundStyle(palette.muted)
             .lineSpacing(2)
     }
 

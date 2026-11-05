@@ -98,6 +98,7 @@ jobs:
           capture cash-plaza --preview --preview-screen bills --preview-theme dark --preview-plaza
           capture cash-plaza-analysis --preview --preview-screen bills --preview-theme dark --preview-plaza --preview-plaza-analysis
           capture cash-plaza-analysis-bottom --preview --preview-screen bills --preview-theme dark --preview-plaza --preview-plaza-analysis --preview-plaza-analysis-bottom
+          capture cash-plaza-analysis-light --preview --preview-screen bills --preview-theme light --preview-plaza --preview-plaza-analysis
 
       - name: Make previews
         run: |
