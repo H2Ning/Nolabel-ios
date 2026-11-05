@@ -12,6 +12,7 @@ struct SettingsPage: View {
     @State private var password = ""
     @State private var showImporter = false
     @State private var showExporter = false
+    @State private var showClearAllConfirm = false
     @FocusState private var focusedField: Field?
 
     private enum Field { case username, password }
@@ -84,6 +85,17 @@ struct SettingsPage: View {
                 Haptics.success()
             }
         }
+        .alert("清空全部账单？", isPresented: $showClearAllConfirm) {
+            Button("取消", role: .cancel) {
+                Haptics.soft()
+            }
+            Button("清空全部", role: .destructive) {
+                Haptics.deleteConfirm()
+                Task { await model.clearAllBills() }
+            }
+        } message: {
+            Text("将删除全部 \(model.bills.count) 笔账单，云端数据也会一并清空。此操作无法撤销。")
+        }
     }
 
     private var settingsAtmosphere: some View {
@@ -132,6 +144,29 @@ struct SettingsPage: View {
                     settingsAction(title: "账单导出") { showExporter = true }
                         .disabled(model.bills.isEmpty)
                         .opacity(model.bills.isEmpty ? 0.45 : 1)
+                    divider
+                    Button {
+                        Haptics.deletePrompt()
+                        showClearAllConfirm = true
+                    } label: {
+                        HStack {
+                            Text("清空全部账单")
+                                .scalableFont(16, weight: .medium)
+                                .foregroundStyle(palette.danger)
+                            Spacer()
+                            Text("\(model.bills.count) 笔")
+                                .scalableFont(15, weight: .medium)
+                                .foregroundStyle(palette.muted)
+                        }
+                        .frame(minHeight: 54)
+                        .padding(.horizontal, 16)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.bills.isEmpty)
+                    .opacity(model.bills.isEmpty ? 0.45 : 1)
+                    .accessibilityLabel("清空全部账单")
+                    .accessibilityHint("会先弹出确认，确认后删除全部 \(model.bills.count) 笔账单")
                 }
             }
             if model.authMessageIsError && !model.authMessage.isEmpty {

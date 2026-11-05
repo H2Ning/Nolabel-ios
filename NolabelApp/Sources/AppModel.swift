@@ -806,6 +806,23 @@ final class AppModel {
         CSVCodec.csv(for: bills)
     }
 
+    /// Deletes every bill locally and on the server. The caller must confirm
+    /// first; this only performs the write.
+    @discardableResult
+    func clearAllBills() async -> Bool {
+        guard requireLogin() else { return false }
+        guard !bills.isEmpty else { return true }
+        if await saveBills([]) {
+            selectedMonth = DateHelp.monthStart(Date())
+            openBillID = nil
+            pendingDeleteBill = nil
+            clearUndo()
+            Haptics.success()
+            return true
+        }
+        return false
+    }
+
     @discardableResult
     func importCSV(_ text: String) async -> Bool {
         guard requireLogin() else { return false }
