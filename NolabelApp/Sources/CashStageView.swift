@@ -18,6 +18,9 @@ struct CashStageView: View {
     @State private var lastDragX: CGFloat = 0
     @State private var dragVelocityX: CGFloat = 0
     @State private var lastDetentYaw: Double?
+    @State private var motionBlur: Double = 0
+    @State private var lastYawSample: (yaw: Double, time: CFTimeInterval)?
+    @State private var blurDecayTask: Task<Void, Never>?
 
     private var groups: [CashGroup] {
         switch source {
@@ -44,6 +47,7 @@ struct CashStageView: View {
                             isDark: palette.isDark,
                             onReady: signalReady
                         )
+                        .blur(radius: motionBlur)
                     }
                 }
 
@@ -80,6 +84,7 @@ struct CashStageView: View {
             }
             .onDisappear {
                 momentum.stop()
+                blurDecayTask?.cancel()
             }
             .onChange(of: mode) { _, newMode in
                 momentum.stop()
@@ -87,6 +92,9 @@ struct CashStageView: View {
                 if newMode == 3 {
                     signalReady()
                 }
+            }
+            .onChange(of: yaw) { _, newYaw in
+                updateMotionBlur(newYaw)
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(accessibilityLabel)
@@ -180,6 +188,29 @@ struct CashStageView: View {
         case 2: "分组"
         case 3: "展开"
         default: "整叠"
+        }
+    }
+
+    /// A small Gaussian blur that follows the angular speed of the stage.
+    /// It is not a true directional motion blur, but at 0–4pt it reads as one
+    /// while the notes are spinning and disappears as soon as they settle.
+    private func updateMotionBlur(_ newYaw: Double) {
+        let now = CACurrentMediaTime()
+        defer { lastYawSample = (newYaw, now) }
+        guard let last = lastYawSample else { return }
+
+        let dt = max(now - last.time, 1.0 / 120.0)
+        let degreesPerSecond = abs(newYaw - last.yaw) / dt
+        let target = min(4.0, max(0, (degreesPerSecond - 80) / 250))
+        motionBlur = target
+
+        blurDecayTask?.cancel()
+        blurDecayTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) {
+                motionBlur = 0
+            }
         }
     }
 
