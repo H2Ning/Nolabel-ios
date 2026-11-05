@@ -742,7 +742,9 @@ struct DateOverlay: View {
                 Color.black.opacity(palette.isDark ? 0.48 : 0.24)
                     .ignoresSafeArea()
                     .background(.ultraThinMaterial)
-                    .onTapGesture { model.dateSheetOpen = false }
+                    .contentShape(Rectangle())
+                    // Swallow taps so the keypad behind the sheet never fires.
+                    .onTapGesture { }
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text("修改时间")
