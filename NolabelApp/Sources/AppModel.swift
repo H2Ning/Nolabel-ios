@@ -15,12 +15,12 @@ enum EntryOperator: String, CaseIterable {
     case multiply = "×"
     case divide = "÷"
 
-    var next: EntryOperator {
+    var label: String {
         switch self {
-        case .add: .subtract
-        case .subtract: .multiply
-        case .multiply: .divide
-        case .divide: .add
+        case .add: "加"
+        case .subtract: "减"
+        case .multiply: "乘"
+        case .divide: "除"
         }
     }
 }
@@ -73,6 +73,7 @@ final class AppModel {
     var entryDate = Date()
     var entryAccumulator: Int?
     var entryOperator: EntryOperator?
+    var entryWaitingForOperand = false
     var dateSheetOpen = false
     var entryError = ""
     var cashYaw: Double = Double(CashSceneLayout.defaultYaw)
@@ -668,6 +669,7 @@ final class AppModel {
         }
         entryAccumulator = nil
         entryOperator = nil
+        entryWaitingForOperand = false
         entryJustEvaluated = false
         entryError = ""
         cashYaw = Double(CashSceneLayout.defaultYaw)
@@ -684,6 +686,7 @@ final class AppModel {
         entryError = ""
         entryOperator = nil
         entryAccumulator = nil
+        entryWaitingForOperand = false
         Haptics.soft()
     }
 
@@ -757,6 +760,9 @@ final class AppModel {
             entryInput = ""
             entryNote = ""
             entryError = ""
+            entryAccumulator = nil
+            entryOperator = nil
+            entryWaitingForOperand = false
             Haptics.cashCounted()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 if self?.lastSavedBillID == bill.id {
@@ -767,6 +773,11 @@ final class AppModel {
     }
 
     func pressDigit(_ digit: String) {
+        if entryWaitingForOperand {
+            entryInput = ""
+            entryTrailingDecimal = false
+            entryWaitingForOperand = false
+        }
         if entryJustEvaluated {
             entryInput = ""
             entryTrailingDecimal = false
@@ -785,6 +796,11 @@ final class AppModel {
     }
 
     func pressDecimal() {
+        if entryWaitingForOperand {
+            entryInput = ""
+            entryTrailingDecimal = false
+            entryWaitingForOperand = false
+        }
         if entryJustEvaluated {
             entryInput = ""
             entryJustEvaluated = false
@@ -796,6 +812,11 @@ final class AppModel {
     }
 
     func pressDoubleZero() {
+        if entryWaitingForOperand {
+            entryInput = ""
+            entryTrailingDecimal = false
+            entryWaitingForOperand = false
+        }
         if entryJustEvaluated {
             entryInput = ""
             entryTrailingDecimal = false
@@ -812,6 +833,11 @@ final class AppModel {
     }
 
     func pressBackspace() {
+        if entryWaitingForOperand {
+            entryWaitingForOperand = false
+            entryOperator = nil
+            entryAccumulator = nil
+        }
         if entryJustEvaluated {
             entryInput = ""
             entryTrailingDecimal = false
@@ -828,50 +854,53 @@ final class AppModel {
         entryJustEvaluated = false
         entryAccumulator = nil
         entryOperator = nil
+        entryWaitingForOperand = false
     }
 
-    func pressOperator() {
-        let current = entryCents
-        if entryInput.isEmpty, entryOperator == nil {
-            entryOperator = .add
-            return
+    func selectOperator(_ op: EntryOperator) {
+        if let pending = entryOperator, !entryWaitingForOperand, let left = entryAccumulator {
+            guard let result = calculate(left, pending, entryCents) else { return }
+            entryAccumulator = result
+            entryInput = Formats.amountInput(max(0, result))
+        } else if !entryWaitingForOperand {
+            entryAccumulator = entryCents
         }
-        if entryOperator == nil {
-            entryAccumulator = current
-            entryOperator = .add
-        } else {
-            entryOperator = entryOperator?.next
-        }
-        entryInput = ""
+        entryOperator = op
+        entryWaitingForOperand = true
         entryTrailingDecimal = false
         entryJustEvaluated = false
+        Haptics.operatorKey()
     }
 
     func pressEquals() {
-        let current = entryInput.isEmpty ? 0 : entryCents
-        guard let left = entryAccumulator else { return }
-        let op = entryOperator ?? .add
-        let result: Int
-        switch op {
-        case .add:
-            result = left + current
-        case .subtract:
-            result = left - current
-        case .multiply:
-            result = Int((Double(left) * Double(current) / 100.0).rounded())
-        case .divide:
-            guard current != 0 else {
-                entryError = "不能除以 0"
-                return
-            }
-            result = Int((Double(left) * 100.0 / Double(current)).rounded())
-        }
+        guard let left = entryAccumulator, let op = entryOperator else { return }
+        let right = entryWaitingForOperand ? 0 : (entryInput.isEmpty ? 0 : entryCents)
+        guard let result = calculate(left, op, right) else { return }
         entryInput = Formats.amountInput(max(0, result))
         entryTrailingDecimal = false
         entryAccumulator = nil
         entryOperator = nil
+        entryWaitingForOperand = false
         entryJustEvaluated = true
         Haptics.equalsSettle()
+    }
+
+    private func calculate(_ left: Int, _ op: EntryOperator, _ right: Int) -> Int? {
+        switch op {
+        case .add:
+            return left + right
+        case .subtract:
+            return left - right
+        case .multiply:
+            return Int((Double(left) * Double(right) / 100.0).rounded())
+        case .divide:
+            guard right != 0 else {
+                entryError = "不能除以 0"
+                Haptics.warning()
+                return nil
+            }
+            return Int((Double(left) * 100.0 / Double(right)).rounded())
+        }
     }
 
     func changeType(_ type: BillType) {

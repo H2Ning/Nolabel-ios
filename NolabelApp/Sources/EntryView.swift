@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct EntryView: View {
@@ -5,6 +6,7 @@ struct EntryView: View {
     let palette: AppPalette
     @FocusState private var noteFocused: Bool
     @State private var contentReady = false
+    @State private var operatorPickerOpen = ProcessInfo.processInfo.arguments.contains("--preview-operator-picker")
 
     private let keySpacing: CGFloat = 8
 
@@ -255,25 +257,85 @@ struct EntryView: View {
 
     private var operatorKey: some View {
         Button {
-            model.pressOperator()
+            operatorPickerOpen = true
         } label: {
-            HStack(spacing: 2) {
-                ForEach(EntryOperator.allCases, id: \.rawValue) { op in
+            HStack(spacing: 3) {
+                if let op = model.entryOperator {
                     Text(op.rawValue)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(model.entryOperator == op ? palette.accent : palette.muted)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(palette.accent)
+                } else {
+                    ForEach(EntryOperator.allCases, id: \.rawValue) { op in
+                        Text(op.rawValue)
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(palette.muted)
+                    }
                 }
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 7.5, weight: .bold))
+                    .foregroundStyle(palette.muted)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background(palette.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(
+                model.entryOperator == nil ? palette.surface2 : palette.accentSoft,
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(palette.line, lineWidth: 1)
+                    .stroke(
+                        model.entryOperator == nil ? palette.line : palette.accent.opacity(0.35),
+                        lineWidth: 1
+                    )
             )
         }
-        .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.68, level: model.hapticLevel))
+        .buttonStyle(PressableStyle(scale: 0.94))
+        .popover(isPresented: $operatorPickerOpen, attachmentAnchor: .point(.top), arrowEdge: .bottom) {
+            operatorPicker
+        }
         .accessibilityLabel("选择运算")
+        .accessibilityValue(model.entryOperator?.label ?? "未选择")
+    }
+
+    private var operatorPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("选择运算")
+                .font(.system(size: 10, weight: .semibold))
+                .tracking(0.6)
+                .foregroundStyle(palette.muted)
+            HStack(spacing: 8) {
+                ForEach(EntryOperator.allCases, id: \.rawValue) { op in
+                    Button {
+                        model.selectOperator(op)
+                        operatorPickerOpen = false
+                    } label: {
+                        VStack(spacing: 1) {
+                            Text(op.rawValue)
+                                .font(.system(size: 21, weight: .semibold))
+                            Text(op.label)
+                                .font(.system(size: 9, weight: .medium))
+                        }
+                        .foregroundStyle(model.entryOperator == op ? palette.accent : palette.ink)
+                        .frame(width: 52, height: 52)
+                        .background(
+                            model.entryOperator == op ? palette.accentSoft : palette.surface,
+                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(
+                                    model.entryOperator == op ? palette.accent.opacity(0.4) : palette.line,
+                                    lineWidth: 1
+                                )
+                        )
+                    }
+                    .buttonStyle(PressableStyle(scale: 0.94))
+                }
+            }
+        }
+        .padding(12)
+        .presentationCompactAdaptation(.popover)
+        .presentationBackground(palette.surface2)
     }
 
     private var equalsKey: some View {
