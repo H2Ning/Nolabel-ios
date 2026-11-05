@@ -125,8 +125,22 @@ final class AppModel {
     }
 
     private var billsRevision = 0
+    private var billsByMonth: [String: [Bill]] = [:]
+    private var billsByMonthRevision = -1
     private var cachedMonthSnapshot: MonthSnapshot?
     private var cachedMonthSnapshotKey = ""
+
+    private func billsForSelectedMonth() -> [Bill] {
+        if billsByMonthRevision != billsRevision {
+            var map: [String: [Bill]] = [:]
+            for bill in bills {
+                map[bill.monthKey, default: []].append(bill)
+            }
+            billsByMonth = map
+            billsByMonthRevision = billsRevision
+        }
+        return billsByMonth[selectedMonthKey] ?? []
+    }
 
     private func monthSnapshot() -> MonthSnapshot {
         let key = monthDataVersion
@@ -134,8 +148,7 @@ final class AppModel {
             return cached
         }
 
-        let sorted = bills
-            .filter { $0.monthKey == selectedMonthKey }
+        let sorted = billsForSelectedMonth()
             .sorted { lhs, rhs in
                 if lhs.iso != rhs.iso { return sortDesc ? lhs.iso > rhs.iso : lhs.iso < rhs.iso }
                 if lhs.createdAt != rhs.createdAt { return sortDesc ? lhs.createdAt > rhs.createdAt : lhs.createdAt < rhs.createdAt }
