@@ -765,7 +765,9 @@ struct DateOverlay: View {
                 card(width: proxy.size.width)
                     // Genie in and out: the sheet leaves from and returns to the
                     // date pill, arcing sideways before it is crushed in.
-                    .offset(x: offsetX(dx), y: offsetY(dy))
+                    // Scale and tilt first, translate last: offset is applied in
+                    // the parent space, so shrinking no longer shrinks the travel
+                    // and the card really converges on the pill.
                     .scaleEffect(x: scaleX, y: scaleY)
                     .rotation3DEffect(
                         .degrees(tiltDegrees),
@@ -773,6 +775,7 @@ struct DateOverlay: View {
                         anchor: .center,
                         perspective: 0.6
                     )
+                    .offset(x: offsetX(dx), y: offsetY(dy))
                     .blur(radius: collapsed ? 1.5 : 0)
             }
             .onAppear {
