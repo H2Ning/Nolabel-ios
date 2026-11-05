@@ -35,6 +35,7 @@ final class CashSceneCanvas: UIView {
     private var readySignaled = false
     private var isDark = false
     private var sceneBounds = SceneBounds()
+    private var sceneOffsetY: CGFloat = 0
     var onReady: (() -> Void)?
 
     private struct ItemNode {
@@ -87,7 +88,7 @@ final class CashSceneCanvas: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         contentLayer.bounds = CGRect(origin: .zero, size: bounds.size)
-        contentLayer.position = CGPoint(x: bounds.width / 2, y: bounds.height * 0.44)
+        contentLayer.position = CGPoint(x: bounds.width / 2, y: bounds.height * 0.44 + sceneOffsetY)
         if bounds.size != sceneSize {
             sceneSize = bounds.size
             rebuild(source: lastSource, mode: lastMode)
@@ -148,13 +149,18 @@ final class CashSceneCanvas: UIView {
     private func updateTransforms() {
         guard !nodes.isEmpty, sceneSize.width > 1 else { return }
         let rotation = multiply(rotationZ(yaw * .pi / 180), rotationX(pitch * .pi / 180))
-        let offset = screenOffset(for: rotation)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for node in nodes {
-            let base = multiply(rotation, translation(node.x, node.y, 0))
-            node.layer.transform = multiply(translation(0, offset, 0), base)
+            node.layer.transform = multiply(rotation, translation(node.x, node.y, 0))
         }
+        // Shift the whole scene in screen space after the 3D transforms. This
+        // keeps the projected bounds centered without moving items sideways.
+        sceneOffsetY = sceneSize.height * 0.5 - projectedCenterY(for: rotation)
+        contentLayer.position = CGPoint(
+            x: sceneSize.width / 2,
+            y: sceneSize.height * 0.44 + sceneOffsetY
+        )
         CATransaction.commit()
     }
 
@@ -1107,8 +1113,8 @@ final class CashSceneCanvas: UIView {
 
     // MARK: - 3D math
 
-    private func screenOffset(for rotation: CATransform3D) -> CGFloat {
-        guard !sceneBounds.isEmpty else { return 0 }
+    private func projectedCenterY(for rotation: CATransform3D) -> CGFloat {
+        guard !sceneBounds.isEmpty else { return sceneSize.height * 0.44 }
         var low = CGFloat.greatestFiniteMagnitude
         var high = -CGFloat.greatestFiniteMagnitude
         for x in [sceneBounds.minX, sceneBounds.maxX] {
@@ -1120,7 +1126,7 @@ final class CashSceneCanvas: UIView {
                 }
             }
         }
-        return sceneSize.height * 0.5 - (low + high) / 2
+        return (low + high) / 2
     }
 
     private static func bounds(of items: [CashItemSpec]) -> SceneBounds {
