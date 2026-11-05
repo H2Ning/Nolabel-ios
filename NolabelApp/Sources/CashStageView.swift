@@ -35,7 +35,6 @@ struct CashStageView: View {
                 if !groups.isEmpty {
                     if mode == 3 {
                         CashNoteGrid(source: source, palette: palette)
-                            .transition(.opacity)
                     } else {
                         CashScene3DView(
                             source: source,
@@ -45,14 +44,14 @@ struct CashStageView: View {
                             isDark: palette.isDark,
                             onReady: signalReady
                         )
-                        .transition(.opacity)
                     }
                 }
 
                 if !groups.isEmpty {
                     modeBadge
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                        .padding(8)
+                        .padding(.top, 5)
+                        .padding(.trailing, 12)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
@@ -149,7 +148,7 @@ struct CashStageView: View {
         } label: {
             HStack(spacing: 4) {
                 Text(modeLabel)
-                Image(systemName: "chevron.up.chevron.down")
+                Image(systemName: "arrow.left.arrow.right")
                     .font(.system(size: 7, weight: .bold))
             }
             .font(.system(size: 9, weight: .semibold))
@@ -280,7 +279,7 @@ private struct CashNoteGrid: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 42)
+            .padding(.top, 60)
             .padding(.bottom, 12)
         }
         .scrollIndicators(.hidden)

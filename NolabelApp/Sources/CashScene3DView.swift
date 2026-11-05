@@ -222,8 +222,7 @@ final class CashSceneCanvas: UIView {
             height: thickness,
             spacing: spec.noteStep,
             vertical: false,
-            edge: .bottom,
-            flipHorizontal: true
+            edge: .bottom
         )
 
         // Exposed back face of the bottom of the cuboid.
