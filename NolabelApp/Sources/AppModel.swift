@@ -97,7 +97,6 @@ final class AppModel {
     private var bootstrapped = false
     private var autoRetryUsed = false
     private var autoRetryTask: Task<Void, Never>?
-    private var entryOpenTask: Task<Void, Never>?
     private var entryOperatorTapIndex = 0
     private var entryOperatorTapAt: TimeInterval = 0
     var palette: AppPalette {
@@ -852,22 +851,12 @@ final class AppModel {
         resetOperatorCycle()
         cashYaw = Double(CashSceneLayout.defaultYaw)
         cashPitch = Double(CashSceneLayout.packageTilt)
-        // Build the offscreen cash scene before the sheet slides. Building the
-        // 3D layers during the transition drops frames and makes the amount,
-        // model, and mode capsule appear to stand still.
-        entryOpenTask?.cancel()
-        entryOpenTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            guard let self, !Task.isCancelled else { return }
-            self.entryOpenTask = nil
-            self.entryOpen = true
-        }
+        entryOpen = true
         Haptics.soft()
     }
 
     func closeEntry() {
-        entryOpenTask?.cancel()
-        entryOpenTask = nil
+        guard entryOpen else { return }
         entryOpen = false
         entryEditingID = nil
         entryInput = ""

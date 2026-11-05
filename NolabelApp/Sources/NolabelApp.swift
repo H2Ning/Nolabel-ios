@@ -31,18 +31,10 @@ struct RootView: View {
                 .allowsHitTesting(false)
 
             BillsView(model: model, palette: palette)
-                .opacity(model.entryOpen || model.cashPlazaOpen ? 0.36 : 1)
-                .scaleEffect(model.entryOpen || model.cashPlazaOpen ? 0.988 : 1)
-                .allowsHitTesting(!model.entryOpen && !model.settingsOpen && !model.cashPlazaOpen && model.pendingDeleteBill == nil)
-                .animation(reduceMotion ? nil : AppMotion.drawer, value: model.entryOpen)
+                .opacity(model.cashPlazaOpen ? 0.36 : 1)
+                .scaleEffect(model.cashPlazaOpen ? 0.988 : 1)
+                .allowsHitTesting(!model.settingsOpen && !model.cashPlazaOpen && model.pendingDeleteBill == nil)
                 .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
-
-            EntryView(model: model, palette: palette)
-                .offset(y: model.entryOpen ? 0 : UIScreen.main.bounds.height)
-                .animation(reduceMotion ? nil : AppMotion.drawer, value: model.entryOpen)
-                .allowsHitTesting(model.entryOpen)
-                .accessibilityHidden(!model.entryOpen)
-                .zIndex(2)
 
             if model.settingsOpen {
                 SettingsOverlay(model: model, palette: palette)
@@ -97,6 +89,14 @@ struct RootView: View {
         .task {
             Haptics.prepare()
             await model.bootstrap()
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { model.entryOpen },
+                set: { if !$0 { model.closeEntry() } }
+            )
+        ) {
+            EntryView(model: model, palette: palette)
         }
     }
 
