@@ -79,6 +79,8 @@ jobs:
           }
           capture bills-dark --preview --preview-screen bills --preview-theme dark
           capture bills-light --preview --preview-screen bills --preview-theme light
+          capture bills-number-alt --preview --preview-screen bills --preview-theme dark --preview-number-alt
+          capture bills-number-alt-light --preview --preview-screen bills --preview-theme light --preview-number-alt
           capture entry-dark --preview --preview-screen entry --preview-theme dark --preview-amount 52145
           capture entry-light --preview --preview-screen entry --preview-theme light --preview-amount 123
           capture entry-grouped --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-cash-mode 2
