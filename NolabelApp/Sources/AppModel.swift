@@ -324,6 +324,21 @@ final class AppModel {
             selectOperator(.add)
             pressDigit("2")
         }
+        if arguments.contains("--preview-negative") {
+            entryOpen = true
+            entryInput = "1"
+            selectOperator(.subtract)
+            pressDigit("2")
+            pressEquals()
+        }
+        if arguments.contains("--preview-backspace") {
+            entryOpen = true
+            entryInput = "1"
+            selectOperator(.add)
+            pressDigit("2")
+            pressBackspace()
+            pressBackspace()
+        }
         if arguments.contains("--preview-delete-confirm"), let first = bills.first {
             pendingDeleteBill = first
         }
@@ -946,6 +961,7 @@ final class AppModel {
     }
 
     func pressBackspace() {
+        entryError = ""
         resetOperatorCycle()
         if entryWaitingForOperand {
             entryWaitingForOperand = false
@@ -958,7 +974,14 @@ final class AppModel {
             entryTrailingDecimal = false
             entryJustEvaluated = false
         }
-        guard !entryInput.isEmpty else { return }
+        if entryInput.isEmpty {
+            if let left = entryAccumulator {
+                entryAccumulator = nil
+                entryOperator = nil
+                entryInput = Formats.amountInput(left)
+            }
+            return
+        }
         entryInput.removeLast()
         entryTrailingDecimal = entryInput.last == "."
     }
@@ -993,6 +1016,11 @@ final class AppModel {
                 Haptics.warning()
                 return
             }
+            guard result >= 0 else {
+                entryError = "金额不能为负"
+                Haptics.warning()
+                return
+            }
             entryAccumulator = result
             entryInput = Formats.amountInput(result)
         } else if !entryWaitingForOperand {
@@ -1015,6 +1043,11 @@ final class AppModel {
                 Haptics.warning()
                 return
             }
+            guard result >= 0 else {
+                entryError = "金额不能为负"
+                Haptics.warning()
+                return
+            }
             entryInput = Formats.amountInput(result)
         }
         entryTrailingDecimal = false
@@ -1033,6 +1066,11 @@ final class AppModel {
             } else {
                 guard let result = Self.operationResult(left, op, entryCents) else {
                     entryError = "不能除以 0"
+                    Haptics.warning()
+                    return nil
+                }
+                guard result >= 0 else {
+                    entryError = "金额不能为负"
                     Haptics.warning()
                     return nil
                 }
@@ -1112,12 +1150,18 @@ enum SampleData {
 extension Formats {
     static func formattedInput(_ raw: String) -> String {
         let parts = raw.split(separator: ".", omittingEmptySubsequences: false)
-        let whole = String(parts.first ?? "0")
+        var whole = String(parts.first ?? "0")
+        var sign = ""
+        if whole.hasPrefix("-") {
+            sign = "-"
+            whole.removeFirst()
+        }
+        if whole.isEmpty { whole = "0" }
         let grouped = whole.reversed().enumerated().reduce(into: "") { result, pair in
             if pair.offset > 0 && pair.offset % 3 == 0 { result.append(",") }
             result.append(pair.element)
         }
-        let reversed = String(grouped.reversed())
+        let reversed = sign + String(grouped.reversed())
         if parts.count > 1 {
             return reversed + "." + String(parts[1].prefix(2))
         }
