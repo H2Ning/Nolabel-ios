@@ -127,8 +127,10 @@ struct CashStageView: View {
         LinearGradient(
             stops: [
                 .init(color: .white, location: 0.0),
-                .init(color: .clear, location: 0.24),
-                .init(color: .clear, location: 0.76),
+                .init(color: .white, location: 0.20),
+                .init(color: .clear, location: 0.42),
+                .init(color: .clear, location: 0.58),
+                .init(color: .white, location: 0.80),
                 .init(color: .white, location: 1.0)
             ],
             startPoint: .leading,
@@ -232,7 +234,7 @@ struct CashStageView: View {
 
         let dt = max(now - last.time, 1.0 / 120.0)
         let degreesPerSecond = abs(newYaw - last.yaw) / dt
-        let target = min(4.0, max(0, (degreesPerSecond - 80) / 250))
+        let target = min(10.0, max(0, (degreesPerSecond - 40) / 90))
         motionBlur = target
 
         blurDecayTask?.cancel()
