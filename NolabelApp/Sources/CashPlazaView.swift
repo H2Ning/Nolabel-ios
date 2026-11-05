@@ -12,7 +12,7 @@ struct CashPlazaView: View {
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
     @State private var showingAnalysisSection = false
-    @State private var analysisHeaderY: CGFloat = .greatestFiniteMagnitude
+    @State private var analysisHeaderBottom: CGFloat = 0
     @State private var selectedDayLabel: String?
 
     /// Large detent shows the analysis; medium shows the cash display.
@@ -143,11 +143,22 @@ struct CashPlazaView: View {
                                     GeometryReader { geo in
                                         Color.clear.preference(
                                             key: AnalysisHeaderOffsetKey.self,
-                                            value: geo.frame(in: .named("plazaContent")).minY
+                                            value: geo.frame(in: .named("plazaContent")).maxY
                                         )
                                     }
                                 )
                                 .opacity(showingAnalysisSection ? 0 : 1)
+                            }
+                            if analysisOpen {
+                                // The verdict leads the analysis; the chart follows.
+                                MonthVerdictCard(
+                                    analysis: MonthAnalysis(
+                                        bills: model.monthBills,
+                                        month: model.selectedMonth
+                                    ),
+                                    palette: palette
+                                )
+                                .transition(.opacity)
                             }
                             chartCard(snapshot)
                             if analysisOpen {
@@ -179,16 +190,17 @@ struct CashPlazaView: View {
                             }
                         }
                     }
-                    .onPreferenceChange(AnalysisHeaderOffsetKey.self) { minY in
-                        if minY.isFinite {
-                            analysisHeaderY = minY
+                    .onPreferenceChange(AnalysisHeaderOffsetKey.self) { bottom in
+                        if bottom.isFinite, bottom > 0 {
+                            analysisHeaderBottom = bottom
                         }
                     }
                     .onScrollGeometryChange(for: Bool.self) { geometry in
-                        guard analysisOpen, analysisHeaderY.isFinite else { return false }
+                        guard analysisOpen, analysisHeaderBottom > 0 else { return false }
                         // Visible top of the content, in content coordinates.
                         let top = geometry.contentOffset.y + geometry.contentInsets.top
-                        return top >= analysisHeaderY - 8
+                        // Only once the whole in-content title has left the viewport.
+                        return top >= analysisHeaderBottom - 4
                     } action: { _, shouldShow in
                         if shouldShow != showingAnalysisSection {
                             showingAnalysisSection = shouldShow
@@ -511,9 +523,9 @@ private struct PlazaDay: Identifiable {
 }
 
 private struct AnalysisHeaderOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = .greatestFiniteMagnitude
+    static var defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = min(value, nextValue())
+        value = max(value, nextValue())
     }
 }

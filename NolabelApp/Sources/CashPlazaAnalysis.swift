@@ -515,7 +515,6 @@ struct CashPlazaAnalysisView: View {
             if analysis.expenseTotal > 0 {
                 statsGrid
             }
-            verdictCard
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -859,7 +858,36 @@ struct CashPlazaAnalysisView: View {
         return "\(peak.name)最多，\(peak.count) 张"
     }
 
-    private var verdictCard: some View {
+    private func sectionHeader(_ title: String, detail: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(title)
+                .scalableFont(16, weight: .semibold)
+                .foregroundStyle(palette.ink)
+            Rectangle()
+                .fill(palette.line)
+                .frame(width: 1, height: 12)
+            Text(detail)
+                .scalableFont(11, weight: .medium)
+                .foregroundStyle(palette.muted)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func percentText(_ share: Double) -> String {
+        let value = share * 100
+        if value >= 10 { return String(format: "%.0f%%", value) }
+        if value >= 1 { return String(format: "%.1f%%", value) }
+        return String(format: "%.2f%%", value)
+    }
+}
+
+
+/// The month's judgement, shown first in the plaza analysis.
+struct MonthVerdictCard: View {
+    let analysis: MonthAnalysis
+    let palette: AppPalette
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "quote.opening")
@@ -892,27 +920,5 @@ struct CashPlazaAnalysisView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(palette.accent.opacity(0.26), lineWidth: 1)
         )
-    }
-
-    private func sectionHeader(_ title: String, detail: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(title)
-                .scalableFont(16, weight: .semibold)
-                .foregroundStyle(palette.ink)
-            Rectangle()
-                .fill(palette.line)
-                .frame(width: 1, height: 12)
-            Text(detail)
-                .scalableFont(11, weight: .medium)
-                .foregroundStyle(palette.muted)
-            Spacer(minLength: 0)
-        }
-    }
-
-    private func percentText(_ share: Double) -> String {
-        let value = share * 100
-        if value >= 10 { return String(format: "%.0f%%", value) }
-        if value >= 1 { return String(format: "%.1f%%", value) }
-        return String(format: "%.2f%%", value)
     }
 }
