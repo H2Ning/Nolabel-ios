@@ -24,6 +24,16 @@ struct RootView: View {
     }
 
     var body: some View {
+        @Bindable var model = model
+        NavigationStack(path: $model.settingsPath) {
+            rootContent
+                .navigationDestination(for: SettingsSubview.self) { sub in
+                    SettingsPage(sub: sub, model: model, palette: palette)
+                }
+        }
+    }
+
+    private var rootContent: some View {
         ZStack {
             palette.pageBG.ignoresSafeArea()
             appAtmosphere
@@ -35,17 +45,6 @@ struct RootView: View {
                 .scaleEffect(model.cashPlazaOpen ? 0.988 : 1)
                 .allowsHitTesting(!model.settingsOpen && !model.cashPlazaOpen && model.pendingDeleteBill == nil)
                 .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
-
-            if model.settingsOpen {
-                SettingsOverlay(model: model, palette: palette)
-                    .transition(
-                        .asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .trailing).combined(with: .opacity)
-                        )
-                    )
-                    .zIndex(3)
-            }
 
             if model.dateSheetOpen && !model.entryOpen {
                 DateOverlay(model: model, palette: palette)

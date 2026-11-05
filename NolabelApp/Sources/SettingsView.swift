@@ -2,10 +2,10 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-struct SettingsOverlay: View {
+struct SettingsPage: View {
+    let sub: SettingsSubview
     @Bindable var model: AppModel
     let palette: AppPalette
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
 
     @State private var username = ""
@@ -33,18 +33,15 @@ struct SettingsOverlay: View {
                         .foregroundStyle(palette.ink)
                         .padding(.bottom, 2)
 
-                    if model.settingsSubview == .main {
+                    switch sub {
+                    case .main:
                         mainView
-                            .transition(.opacity.combined(with: .move(edge: .leading)))
-                    } else if model.settingsSubview == .appearance {
+                    case .appearance:
                         appearanceView
-                            .transition(.opacity.combined(with: .move(edge: .trailing)))
-                    } else if model.settingsSubview == .numberFormat {
+                    case .numberFormat:
                         numberFormatView
-                            .transition(.opacity.combined(with: .move(edge: .trailing)))
-                    } else {
+                    case .haptics:
                         hapticsView
-                            .transition(.opacity.combined(with: .move(edge: .trailing)))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -54,11 +51,10 @@ struct SettingsOverlay: View {
             .scrollIndicators(.hidden)
         }
         .contentShape(Rectangle())
-        .simultaneousGesture(backSwipe)
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             username = model.savedUsername
         }
-        .animation(reduceMotion ? nil : AppMotion.spring, value: model.settingsSubview)
         .fileImporter(
             isPresented: $showImporter,
             allowedContentTypes: [.commaSeparatedText, .plainText],
@@ -108,7 +104,7 @@ struct SettingsOverlay: View {
             }
             .buttonStyle(PressableStyle(scale: 0.92))
             .glassCircle()
-            .accessibilityLabel(model.settingsSubview == .main ? "关闭设置" : "返回设置")
+            .accessibilityLabel(sub == .main ? "关闭设置" : "返回设置")
             Spacer(minLength: 0)
         }
     }
@@ -127,27 +123,13 @@ struct SettingsOverlay: View {
         )
     }
 
-    private var backSwipe: some Gesture {
-        DragGesture(minimumDistance: 20)
-            .onEnded { value in
-                guard value.startLocation.x < 28,
-                      value.translation.width > 90,
-                      abs(value.translation.width) > abs(value.translation.height) else {
-                    return
-                }
-                goBack()
-            }
-    }
-
     private func goBack() {
-        if model.settingsSubview == .main {
+        if sub == .main {
             model.closeSettings()
             return
         }
         Haptics.soft()
-        withAnimation(AppMotion.spring) {
-            model.settingsSubview = .main
-        }
+        model.settingsSubview = .main
     }
 
     private var mainView: some View {
@@ -155,15 +137,15 @@ struct SettingsOverlay: View {
             accountCard
             sectionCard {
                 settingsLink(title: "外观", value: model.themeMode.label) {
-                    withAnimation(AppMotion.spring) { model.settingsSubview = .appearance }
+                    model.settingsSubview = .appearance
                 }
                 divider
                 settingsLink(title: "数字格式", value: model.numberFormat.summary) {
-                    withAnimation(AppMotion.spring) { model.settingsSubview = .numberFormat }
+                    model.settingsSubview = .numberFormat
                 }
                 divider
                 settingsLink(title: "触感", value: model.hapticLevel.label) {
-                    withAnimation(AppMotion.spring) { model.settingsSubview = .haptics }
+                    model.settingsSubview = .haptics
                 }
             }
             if model.user != nil && model.accountLoaded {
@@ -334,7 +316,7 @@ struct SettingsOverlay: View {
     }
 
     private var settingsTitle: String {
-        switch model.settingsSubview {
+        switch sub {
         case .main: return "设置"
         case .appearance: return "外观"
         case .numberFormat: return "数字格式"

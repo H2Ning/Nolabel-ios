@@ -3,7 +3,7 @@ import Observation
 import SwiftUI
 import UIKit
 
-enum SettingsSubview {
+enum SettingsSubview: Hashable {
     case main
     case appearance
     case numberFormat
@@ -71,8 +71,31 @@ final class AppModel {
     var numberFormat: NumberFormatSettings
     var sortDesc: Bool
     var selectedMonth: Date
-    var settingsOpen = false
-    var settingsSubview: SettingsSubview = .main
+    var settingsPath: [SettingsSubview] = []
+
+    var settingsOpen: Bool {
+        get { !settingsPath.isEmpty }
+        set {
+            if newValue {
+                if settingsPath.isEmpty { settingsPath = [.main] }
+            } else {
+                settingsPath = []
+            }
+        }
+    }
+
+    var settingsSubview: SettingsSubview {
+        get { settingsPath.last ?? .main }
+        set {
+            guard !settingsPath.isEmpty else { return }
+            if newValue == .main {
+                settingsPath = [.main]
+            } else {
+                settingsPath.removeAll { $0 != .main }
+                settingsPath.append(newValue)
+            }
+        }
+    }
     var openBillID: String?
     var lastSavedBillID: String?
     var writing = false
