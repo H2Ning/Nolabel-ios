@@ -180,7 +180,7 @@ struct SettingsOverlay: View {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(model.authMessage)
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(palette.expense)
+                            .foregroundStyle(palette.danger)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         if model.authRetryable {
                             Button {
@@ -191,11 +191,11 @@ struct SettingsOverlay: View {
                                 }
                             } label: {
                                 if model.authLoading {
-                                    ProgressView().tint(palette.expense)
+                                    ProgressView().tint(palette.danger)
                                 } else {
                                     Text("重试")
                                         .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(palette.expense)
+                                        .foregroundStyle(palette.danger)
                                 }
                             }
                             .buttonStyle(.plain)
@@ -269,7 +269,7 @@ struct SettingsOverlay: View {
                 } label: {
                     Text("退出登录")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(palette.expense)
+                        .foregroundStyle(palette.danger)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .frame(height: 54)
                         .padding(.horizontal, 16)

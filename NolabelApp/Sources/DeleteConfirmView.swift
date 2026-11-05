@@ -103,7 +103,7 @@ struct DeleteConfirmView: View {
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 47)
-                                .background(palette.expense, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                .background(palette.danger, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                         }
                         .buttonStyle(PressableStyle(scale: 0.98))
                     }

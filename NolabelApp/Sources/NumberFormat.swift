@@ -38,7 +38,7 @@ enum AmountSeparator: String, Codable, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .thousand: "12,345.67"
-        case .tenThousand: "1\u{2009}2345.67"
+        case .tenThousand: "1\u{2002}2345.67"
         case .none: "1234567"
         }
     }
@@ -97,6 +97,16 @@ enum NumberColorScheme: String, Codable, CaseIterable, Identifiable {
             return Self.green(isDark: isDark)
         case .redCyan:
             return Self.cyan(isDark: isDark)
+        }
+    }
+
+    func netTextColor(for type: BillType, isDark: Bool) -> Color {
+        guard isDark else { return Color(hex: 0xFFFDF7) }
+        switch (self, type) {
+        case (.greenRed, .income), (.redGreen, .expense), (.cyanRed, .income), (.redCyan, .expense):
+            return Color(hex: 0x0E1910)
+        default:
+            return Color(hex: 0xFFFDF7)
         }
     }
 

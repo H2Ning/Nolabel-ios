@@ -170,7 +170,7 @@ struct EntryView: View {
             if !model.entryError.isEmpty {
                 Text(model.entryError)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(palette.expense)
+                    .foregroundStyle(palette.danger)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 1)
             }

@@ -19,7 +19,9 @@ struct RootView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var palette: AppPalette { .palette(colorScheme) }
+    private var palette: AppPalette {
+        .palette(colorScheme).withNumberColors(model.numberFormat.colorScheme)
+    }
 
     var body: some View {
         ZStack {

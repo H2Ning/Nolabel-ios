@@ -41,6 +41,7 @@ struct AppPalette {
     let accentInk: Color
     var expense: Color
     var income: Color
+    let danger: Color
     let stage: Color
     let stageGrid: Color
     let glassTint: Color
@@ -74,6 +75,7 @@ struct AppPalette {
         accentInk: Color(hex: 0x231C0B),
         expense: Color(hex: 0xEF6856),
         income: Color(hex: 0x72D699),
+        danger: Color(hex: 0xEF6856),
         stage: Color(hex: 0x030804),
         stageGrid: Color(hex: 0x1A2B20).opacity(0.32),
         glassTint: Color.black.opacity(0.10),
@@ -97,6 +99,7 @@ struct AppPalette {
         accentInk: Color(hex: 0xFFFDF7),
         expense: Color(hex: 0xAC1B18),
         income: Color(hex: 0x00672D),
+        danger: Color(hex: 0xAC1B18),
         stage: Color(hex: 0xE3EAE4),
         stageGrid: Color(hex: 0x536459).opacity(0.16),
         glassTint: Color.white.opacity(0.20),

@@ -322,7 +322,9 @@ struct DayCapsuleView: View {
     }
 
     private var netTextColor: Color {
-        group.net == 0 ? palette.ink : Color(hex: 0xFFFDF7)
+        guard group.net != 0 else { return palette.ink }
+        let type: BillType = group.net > 0 ? .income : .expense
+        return model.numberFormat.colorScheme.netTextColor(for: type, isDark: palette.isDark)
     }
 
     var body: some View {
@@ -422,7 +424,7 @@ struct SwipeBillRow: View {
                     .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(.white)
                     .frame(width: circleSize, height: circleSize)
-                    .background(palette.expense, in: Circle())
+                    .background(palette.danger, in: Circle())
                     .brightness(deleteBrightness)
                     .scaleEffect(appearProgress)
                     .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
