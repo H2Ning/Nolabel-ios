@@ -94,6 +94,8 @@ final class AppModel {
     private var bootstrapped = false
     private var autoRetryUsed = false
     private var autoRetryTask: Task<Void, Never>?
+    private var entryOperatorTapIndex = 0
+    private var entryOperatorTapAt: TimeInterval = 0
     var palette: AppPalette {
         AppPalette.palette(themeMode == .system ? currentSystemScheme : (themeMode == .dark ? .dark : .light))
     }
@@ -211,12 +213,23 @@ final class AppModel {
     }
 
     var entryDisplay: String {
+        if let left = entryAccumulator, let op = entryOperator {
+            let right = entryWaitingForOperand ? "" : Formats.formattedInput(entryInput)
+            return "\(Formats.compactMoney(left))\(op.rawValue)\(right)"
+        }
         guard !entryInput.isEmpty else { return "0.00" }
         return Formats.formattedInput(entryInput)
     }
 
+    var entryPreviewCents: Int {
+        guard let left = entryAccumulator, let op = entryOperator else { return entryCents }
+        if entryWaitingForOperand { return left }
+        guard let result = Self.operationResult(left, op, entryCents) else { return 0 }
+        return max(0, result)
+    }
+
     var entryGroups: [CashGroup] {
-        CashBreakdown.groups(for: entryCents)
+        CashBreakdown.groups(for: entryPreviewCents)
     }
 
     var entryNotePlaceholder: String {
@@ -305,10 +318,11 @@ final class AppModel {
             pressDigit("3")
             pressEquals()
         }
-        if arguments.contains("--preview-operator-selected") {
+        if arguments.contains("--preview-expression") {
             entryOpen = true
-            entryInput = "52"
-            selectOperator(.multiply)
+            entryInput = "1"
+            selectOperator(.add)
+            pressDigit("2")
         }
         if arguments.contains("--preview-delete-confirm"), let first = bills.first {
             pendingDeleteBill = first
@@ -761,6 +775,7 @@ final class AppModel {
         entryWaitingForOperand = false
         entryJustEvaluated = false
         entryError = ""
+        resetOperatorCycle()
         cashYaw = Double(CashSceneLayout.defaultYaw)
         cashPitch = Double(CashSceneLayout.packageTilt)
         entryOpen = true
@@ -776,16 +791,18 @@ final class AppModel {
         entryOperator = nil
         entryAccumulator = nil
         entryWaitingForOperand = false
+        resetOperatorCycle()
         Haptics.soft()
     }
 
     func saveEntry() async {
-        guard entryCents > 0 else {
+        guard let cents = finalizeEntryCents() else { return }
+        guard cents > 0 else {
             entryError = "金额必须大于 0"
             Haptics.warning()
             return
         }
-        let groups = CashBreakdown.groups(for: entryCents)
+        let groups = CashBreakdown.groups(for: cents)
         guard !groups.isEmpty else {
             entryError = "这个金额暂时无法组合"
             Haptics.warning()
@@ -796,7 +813,7 @@ final class AppModel {
         let iso = DateHelp.iso(from: entryDate)
         let time = DateHelp.time(from: entryDate)
         let fields = (
-            cents: entryCents,
+            cents: cents,
             type: entryType,
             note: entryNote.trimmingCharacters(in: .whitespacesAndNewlines),
             iso: iso,
@@ -852,6 +869,7 @@ final class AppModel {
             entryAccumulator = nil
             entryOperator = nil
             entryWaitingForOperand = false
+            resetOperatorCycle()
             Haptics.cashCounted()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 if self?.lastSavedBillID == bill.id {
@@ -862,6 +880,7 @@ final class AppModel {
     }
 
     func pressDigit(_ digit: String) {
+        resetOperatorCycle()
         if entryWaitingForOperand {
             entryInput = ""
             entryTrailingDecimal = false
@@ -885,6 +904,7 @@ final class AppModel {
     }
 
     func pressDecimal() {
+        resetOperatorCycle()
         if entryWaitingForOperand {
             entryInput = ""
             entryTrailingDecimal = false
@@ -901,6 +921,7 @@ final class AppModel {
     }
 
     func pressDoubleZero() {
+        resetOperatorCycle()
         if entryWaitingForOperand {
             entryInput = ""
             entryTrailingDecimal = false
@@ -911,7 +932,10 @@ final class AppModel {
             entryTrailingDecimal = false
             entryJustEvaluated = false
         }
-        if entryInput.isEmpty { entryInput = "0" }
+        if entryInput.isEmpty || entryInput == "0" {
+            entryInput = "0"
+            return
+        }
         if entryTrailingDecimal {
             let fraction = entryInput.split(separator: ".", omittingEmptySubsequences: false).last ?? ""
             if fraction.isEmpty { entryInput += "00" }
@@ -922,10 +946,12 @@ final class AppModel {
     }
 
     func pressBackspace() {
+        resetOperatorCycle()
         if entryWaitingForOperand {
             entryWaitingForOperand = false
             entryOperator = nil
             entryAccumulator = nil
+            return
         }
         if entryJustEvaluated {
             entryInput = ""
@@ -938,6 +964,7 @@ final class AppModel {
     }
 
     func clearEntry() {
+        resetOperatorCycle()
         entryInput = ""
         entryTrailingDecimal = false
         entryJustEvaluated = false
@@ -947,14 +974,27 @@ final class AppModel {
     }
 
     func cycleOperator() {
-        selectOperator(entryOperator?.next ?? .add)
+        let now = Date().timeIntervalSinceReferenceDate
+        let rapid = entryOperatorTapAt != 0 && now - entryOperatorTapAt <= 0.7
+        entryOperatorTapIndex = rapid ? (entryOperatorTapIndex + 1) % EntryOperator.allCases.count : 0
+        entryOperatorTapAt = now
+        selectOperator(EntryOperator.allCases[entryOperatorTapIndex])
+    }
+
+    private func resetOperatorCycle() {
+        entryOperatorTapIndex = 0
+        entryOperatorTapAt = 0
     }
 
     func selectOperator(_ op: EntryOperator) {
         if let pending = entryOperator, !entryWaitingForOperand, let left = entryAccumulator {
-            guard let result = calculate(left, pending, entryCents) else { return }
+            guard let result = Self.operationResult(left, pending, entryCents) else {
+                entryError = "不能除以 0"
+                Haptics.warning()
+                return
+            }
             entryAccumulator = result
-            entryInput = Formats.amountInput(max(0, result))
+            entryInput = Formats.amountInput(result)
         } else if !entryWaitingForOperand {
             entryAccumulator = entryCents
         }
@@ -966,9 +1006,17 @@ final class AppModel {
 
     func pressEquals() {
         guard let left = entryAccumulator, let op = entryOperator else { return }
-        let right = entryWaitingForOperand ? 0 : (entryInput.isEmpty ? 0 : entryCents)
-        guard let result = calculate(left, op, right) else { return }
-        entryInput = Formats.amountInput(max(0, result))
+        resetOperatorCycle()
+        if entryWaitingForOperand {
+            entryInput = Formats.amountInput(left)
+        } else {
+            guard let result = Self.operationResult(left, op, entryCents) else {
+                entryError = "不能除以 0"
+                Haptics.warning()
+                return
+            }
+            entryInput = Formats.amountInput(result)
+        }
         entryTrailingDecimal = false
         entryAccumulator = nil
         entryOperator = nil
@@ -977,7 +1025,30 @@ final class AppModel {
         Haptics.equalsSettle()
     }
 
-    private func calculate(_ left: Int, _ op: EntryOperator, _ right: Int) -> Int? {
+    private func finalizeEntryCents() -> Int? {
+        var cents = entryCents
+        if let left = entryAccumulator, let op = entryOperator {
+            if entryWaitingForOperand {
+                cents = left
+            } else {
+                guard let result = Self.operationResult(left, op, entryCents) else {
+                    entryError = "不能除以 0"
+                    Haptics.warning()
+                    return nil
+                }
+                cents = result
+                entryInput = Formats.amountInput(result)
+            }
+            entryAccumulator = nil
+            entryOperator = nil
+            entryWaitingForOperand = false
+            entryTrailingDecimal = false
+            entryJustEvaluated = true
+        }
+        return max(0, cents)
+    }
+
+    private static func operationResult(_ left: Int, _ op: EntryOperator, _ right: Int) -> Int? {
         switch op {
         case .add:
             return left + right
@@ -986,11 +1057,7 @@ final class AppModel {
         case .multiply:
             return Int((Double(left) * Double(right) / 100.0).rounded())
         case .divide:
-            guard right != 0 else {
-                entryError = "不能除以 0"
-                Haptics.warning()
-                return nil
-            }
+            guard right != 0 else { return nil }
             return Int((Double(left) * 100.0 / Double(right)).rounded())
         }
     }

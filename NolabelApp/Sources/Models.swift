@@ -270,6 +270,16 @@ enum Formats {
         "¥\(money(cents))"
     }
 
+    static func compactMoney(_ cents: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        formatter.usesGroupingSeparator = true
+        return formatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? "0"
+    }
+
     static func rawAmount(_ cents: Int) -> String {
         let yuan = Double(cents) / 100
         if yuan.rounded() == yuan {
