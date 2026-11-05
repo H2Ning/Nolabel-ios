@@ -22,7 +22,7 @@ enum ExpenseFormat: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .minus: "减号"
+        case .minus: "负号"
         case .bracket: "括号"
         }
     }

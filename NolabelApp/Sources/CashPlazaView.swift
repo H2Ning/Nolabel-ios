@@ -171,6 +171,14 @@ struct CashPlazaView: View {
                         .transition(.opacity)
                     }
                     .scrollIndicators(.hidden)
+                    .onChange(of: analysisOpen) { _, isOpen in
+                        // Returning to the medium cash page should start at the top.
+                        if !isOpen {
+                            withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                                proxy.scrollTo("plazaTop", anchor: .top)
+                            }
+                        }
+                    }
                     .onPreferenceChange(AnalysisHeaderOffsetKey.self) { minY in
                         if minY.isFinite {
                             analysisHeaderY = minY
