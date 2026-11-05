@@ -754,17 +754,16 @@ struct DateOverlay: View {
             let tiltAxis = (x: -dy / distance, y: dx / distance, z: CGFloat.zero)
 
             ZStack {
-                // Night deepens toward black; day stays a softer grey.
-                Color.black.opacity(
-                    appeared
-                        ? (palette.isDark ? 0.48 + 0.38 * dim : 0.24 + 0.22 * dim)
-                        : 0
-                )
-                    .ignoresSafeArea()
-                    .background(.ultraThinMaterial)
-                    .contentShape(Rectangle())
-                    // Swallow taps so the keypad behind the sheet never fires.
-                    .onTapGesture { }
+                ZStack {
+                    // Night deepens toward black; day washes out toward white.
+                    Color.black.opacity(blackDim)
+                    Color.white.opacity(whiteDim)
+                }
+                .ignoresSafeArea()
+                .background(.ultraThinMaterial)
+                .contentShape(Rectangle())
+                // Swallow taps so the keypad behind the sheet never fires.
+                .onTapGesture { }
 
                 card(width: proxy.size.width)
                     // Genie in and out: the sheet leaves from and returns to the
@@ -873,6 +872,18 @@ struct DateOverlay: View {
     }
 
     private var collapsed: Bool { !appeared || landed }
+
+    private var blackDim: Double {
+        guard appeared else { return 0 }
+        let base: Double = palette.isDark ? 0.48 : 0.24
+        let end: Double = palette.isDark ? 0.86 : 0.02
+        return base + (end - base) * dim
+    }
+
+    private var whiteDim: Double {
+        guard appeared, !palette.isDark else { return 0 }
+        return 0.55 * dim
+    }
 
     private func offsetX(_ dx: CGFloat) -> CGFloat {
         (!appeared || landed) ? dx : 0
