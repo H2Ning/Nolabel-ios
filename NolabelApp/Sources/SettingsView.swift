@@ -739,6 +739,7 @@ struct DateOverlay: View {
     @State private var appeared = false
     @State private var closing = false
     @State private var landed = false
+    @State private var dim = 0.0
 
     var body: some View {
         GeometryReader { proxy in
@@ -753,13 +754,12 @@ struct DateOverlay: View {
             let tiltAxis = (x: -dy / distance, y: dx / distance, z: CGFloat.zero)
 
             ZStack {
-                Color.black.opacity(palette.isDark ? 0.48 : 0.24)
+                Color.black.opacity((palette.isDark ? 0.48 : 0.24) * (appeared ? 1 + dim : 0))
                     .ignoresSafeArea()
                     .background(.ultraThinMaterial)
                     .contentShape(Rectangle())
                     // Swallow taps so the keypad behind the sheet never fires.
                     .onTapGesture { }
-                    .opacity(appeared ? (landed ? 0 : 1) : 0)
 
                 card(width: proxy.size.width)
                     // Genie in and out: the sheet leaves from and returns to the
@@ -890,6 +890,11 @@ struct DateOverlay: View {
         closing = true
         withAnimation(.timingCurve(0.55, 0.0, 0.25, 1.0, duration: 0.58)) {
             landed = true
+        }
+        // Dim deepens on its own curve: barely at first, then faster and darker
+        // as the sheet is swallowed by the pill.
+        withAnimation(.timingCurve(0.9, 0.0, 1.0, 1.0, duration: 0.58)) {
+            dim = 1
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.62) {
             if confirmed {
