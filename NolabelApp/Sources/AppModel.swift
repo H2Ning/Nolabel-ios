@@ -221,6 +221,13 @@ final class AppModel {
             }
         }
 
+        if arguments.contains("--preview-calc") {
+            entryOpen = true
+            entryInput = "5"
+            selectOperator(.multiply)
+            pressDigit("3")
+            pressEquals()
+        }
         if arguments.contains("--preview-delete-confirm"), let first = bills.first {
             pendingDeleteBill = first
         }

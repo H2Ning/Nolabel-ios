@@ -34,12 +34,20 @@ final class CashSceneCanvas: UIView {
     private var hasSource = false
     private var readySignaled = false
     private var isDark = false
+    private var heightCentroid: CGFloat = 0
     var onReady: (() -> Void)?
 
     private struct ItemNode {
         let layer: CALayer
         let x: CGFloat
         let y: CGFloat
+    }
+
+    private enum NoteEdge: String {
+        case left
+        case right
+        case top
+        case bottom
     }
 
     override init(frame: CGRect) {
@@ -117,6 +125,7 @@ final class CashSceneCanvas: UIView {
         }
 
         let spec = CashSceneLayout.spec(source: source, mode: mode, size: size)
+        heightCentroid = Self.heightCentroid(of: spec.items)
         for item in spec.items {
             guard let node = makeNode(for: item) else { continue }
             contentLayer.addSublayer(node.layer)
@@ -184,19 +193,37 @@ final class CashSceneCanvas: UIView {
         let zCenter = zBottom + thickness / 2
 
         let shadowColor = UIColor(hex: denom.sideDarkColor)
-        let side = sideImage(
+        let leftSide = sideImage(
             denom: denom,
             width: thickness,
             height: depth,
             spacing: spec.noteStep,
-            vertical: true
+            vertical: true,
+            edge: .left
         )
-        let edge = sideImage(
+        let rightSide = sideImage(
+            denom: denom,
+            width: thickness,
+            height: depth,
+            spacing: spec.noteStep,
+            vertical: true,
+            edge: .right
+        )
+        let topSideImage = sideImage(
             denom: denom,
             width: width,
             height: thickness,
             spacing: spec.noteStep,
-            vertical: false
+            vertical: false,
+            edge: .top
+        )
+        let bottomSideImage = sideImage(
+            denom: denom,
+            width: width,
+            height: thickness,
+            spacing: spec.noteStep,
+            vertical: false,
+            edge: .bottom
         )
 
         // Exposed back face of the bottom of the cuboid.
@@ -211,7 +238,7 @@ final class CashSceneCanvas: UIView {
         container.addSublayer(back)
 
         let left = sideFace(
-            image: side,
+            image: leftSide,
             width: thickness,
             height: depth,
             center: CGPoint(x: -width / 2, y: 0),
@@ -236,7 +263,7 @@ final class CashSceneCanvas: UIView {
         }
 
         let right = sideFace(
-            image: side,
+            image: rightSide,
             width: thickness,
             height: depth,
             center: CGPoint(x: width / 2, y: 0),
@@ -246,7 +273,7 @@ final class CashSceneCanvas: UIView {
         container.addSublayer(right)
 
         let topSide = sideFace(
-            image: edge,
+            image: topSideImage,
             width: width,
             height: thickness,
             center: CGPoint(x: 0, y: -depth / 2),
@@ -256,7 +283,7 @@ final class CashSceneCanvas: UIView {
         container.addSublayer(topSide)
 
         let bottomSide = sideFace(
-            image: edge,
+            image: bottomSideImage,
             width: width,
             height: thickness,
             center: CGPoint(x: 0, y: depth / 2),
@@ -836,21 +863,22 @@ final class CashSceneCanvas: UIView {
         width: CGFloat,
         height: CGFloat,
         spacing: CGFloat,
-        vertical: Bool
+        vertical: Bool,
+        edge: NoteEdge
     ) -> CGImage? {
         let scale = UIScreen.main.scale
         let pixelWidth = max(1, Int((width * scale).rounded()))
         let pixelHeight = max(1, Int((height * scale).rounded()))
         let pixelSpacing = max(1, Int((spacing * scale).rounded()))
-        let key = "\(denom.id)|\(pixelWidth)|\(pixelHeight)|\(pixelSpacing)|\(vertical)" as NSString
+        let key = "\(denom.id)|\(pixelWidth)|\(pixelHeight)|\(pixelSpacing)|\(vertical)|\(edge.rawValue)" as NSString
         if let cached = Self.sideImages.object(forKey: key) {
             return cached.cgImage
         }
 
         let size = CGSize(width: CGFloat(pixelWidth) / scale, height: CGFloat(pixelHeight) / scale)
-        let base = UIColor(hex: denom.sideColor)
-        let line = UIColor(hex: denom.sideLineColor)
-        let dark = UIColor(hex: denom.sideDarkColor)
+        let base = edgeColor(for: denom, edge: edge)
+        let line = Self.scaledColor(base, by: 0.78)
+        let dark = Self.scaledColor(base, by: 0.58)
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
         format.opaque = true
@@ -860,6 +888,35 @@ final class CashSceneCanvas: UIView {
             let rect = CGRect(origin: .zero, size: size)
             cg.setFillColor(base.cgColor)
             cg.fill(rect)
+
+            // Give each note in the stack a hair of color variation. The
+            // strip should read as layered paper, not one painted board.
+            let step = CGFloat(pixelSpacing) / scale
+            let bandCount = vertical
+                ? Int(ceil(size.height / max(step, 0.5)))
+                : Int(ceil(size.width / max(step, 0.5)))
+            let seed = "\(denom.id)|\(edge.rawValue)"
+            for index in 0..<bandCount {
+                let amount = Self.jitter(seed: seed, index: index)
+                cg.setFillColor(Self.scaledColor(base, by: 1 + amount).cgColor)
+                if vertical {
+                    let y = CGFloat(index) * step
+                    cg.fill(CGRect(
+                        x: 0,
+                        y: y,
+                        width: size.width,
+                        height: min(step, max(0, size.height - y))
+                    ))
+                } else {
+                    let x = CGFloat(index) * step
+                    cg.fill(CGRect(
+                        x: x,
+                        y: 0,
+                        width: min(step, max(0, size.width - x)),
+                        height: size.height
+                    ))
+                }
+            }
 
             let colors = [
                 UIColor.white.withAlphaComponent(0.16).cgColor,
@@ -898,7 +955,101 @@ final class CashSceneCanvas: UIView {
         return image.cgImage
     }
 
+    private func edgeColor(for denom: Denomination, edge: NoteEdge) -> UIColor {
+        let key = "\(denom.id)|\(edge.rawValue)" as NSString
+        if let cached = Self.edgeColors.object(forKey: key) {
+            return cached
+        }
+        let sampled = sampleEdgeColor(denom: denom, edge: edge) ?? UIColor(hex: denom.sideColor)
+        Self.edgeColors.setObject(sampled, forKey: key)
+        return sampled
+    }
+
+    private func sampleEdgeColor(denom: Denomination, edge: NoteEdge) -> UIColor? {
+        guard let image = noteImage(denom.imageName)?.cgImage else { return nil }
+        let width = CGFloat(image.width)
+        let height = CGFloat(image.height)
+        let shortSide = min(width, height)
+        let band = max(1, (shortSide * 0.035).rounded())
+        let inset = max(1, (shortSide * 0.02).rounded())
+        let rect: CGRect
+        switch edge {
+        case .left:
+            rect = CGRect(x: inset, y: inset, width: band, height: max(1, height - inset * 2))
+        case .right:
+            rect = CGRect(
+                x: max(inset, width - inset - band),
+                y: inset,
+                width: band,
+                height: max(1, height - inset * 2)
+            )
+        case .top:
+            rect = CGRect(x: inset, y: inset, width: max(1, width - inset * 2), height: band)
+        case .bottom:
+            rect = CGRect(
+                x: inset,
+                y: max(inset, height - inset - band),
+                width: max(1, width - inset * 2),
+                height: band
+            )
+        }
+        guard let crop = image.cropping(to: rect.integral) else { return nil }
+
+        var color: UIColor?
+        var pixel = [UInt8](repeating: 0, count: 4)
+        pixel.withUnsafeMutableBytes { buffer in
+            guard let base = buffer.baseAddress,
+                  let context = CGContext(
+                      data: base,
+                      width: 1,
+                      height: 1,
+                      bitsPerComponent: 8,
+                      bytesPerRow: 4,
+                      space: CGColorSpaceCreateDeviceRGB(),
+                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                  ) else {
+                return
+            }
+            context.interpolationQuality = .medium
+            context.draw(crop, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            let bytes = base.assumingMemoryBound(to: UInt8.self)
+            color = UIColor(
+                red: CGFloat(bytes[0]) / 255,
+                green: CGFloat(bytes[1]) / 255,
+                blue: CGFloat(bytes[2]) / 255,
+                alpha: 1
+            )
+        }
+        return color
+    }
+
+    private static func scaledColor(_ color: UIColor, by factor: CGFloat) -> UIColor {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return color }
+        return UIColor(
+            red: min(1, max(0, red * factor)),
+            green: min(1, max(0, green * factor)),
+            blue: min(1, max(0, blue * factor)),
+            alpha: alpha
+        )
+    }
+
+    private static func jitter(seed: String, index: Int) -> CGFloat {
+        var hash: UInt64 = 5381
+        for byte in seed.utf8 {
+            hash = (hash &* 33) &+ UInt64(byte)
+        }
+        hash ^= UInt64(bitPattern: Int64(index))
+        hash = hash &* 6364136223846793005 &+ 1442695040888963407
+        let normalized = CGFloat(hash & 0xFF) / 255 - 0.5
+        return normalized * 0.03
+    }
+
     private static let noteImages = NSCache<NSString, UIImage>()
+    private static let edgeColors = NSCache<NSString, UIColor>()
     private static let sideImages = NSCache<NSString, UIImage>()
     private static let boxImages = NSCache<NSString, UIImage>()
     private static let wrapperImages = NSCache<NSString, UIImage>()
@@ -945,7 +1096,30 @@ final class CashSceneCanvas: UIView {
 
     private func worldTransform(x: CGFloat, y: CGFloat) -> CATransform3D {
         let rotation = multiply(rotationZ(yaw * .pi / 180), rotationX(pitch * .pi / 180))
-        return multiply(rotation, translation(x, y, 0))
+        // The note faces sit on z = 0 and the stack grows upward. Shift the
+        // whole scene down by the projected height centroid so the stack's
+        // mass, not the bottom note, sits at the scene's visual center.
+        let lift = heightCentroid * CGFloat(sin(pitch * .pi / 180))
+        return multiply(rotation, translation(x, y + lift, 0))
+    }
+
+    private static func heightCentroid(of items: [CashItemSpec]) -> CGFloat {
+        var weighted: CGFloat = 0
+        var volume: CGFloat = 0
+        for item in items {
+            if item.layers.isEmpty {
+                let cubic = max(0, item.width * item.depth * item.height)
+                weighted += cubic * (item.height / 2)
+                volume += cubic
+            } else {
+                for layer in item.layers {
+                    let cubic = max(0, layer.width * layer.depth * layer.thickness)
+                    weighted += cubic * (layer.z + layer.thickness / 2)
+                    volume += cubic
+                }
+            }
+        }
+        return volume > 0 ? weighted / volume : 0
     }
 
     private func translation(_ x: CGFloat, _ y: CGFloat, _ z: CGFloat) -> CATransform3D {
