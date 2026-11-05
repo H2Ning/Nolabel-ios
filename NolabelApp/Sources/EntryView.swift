@@ -61,10 +61,13 @@ struct EntryView: View {
             noteFocused = false
         }
         .overlay {
-            if model.dateSheetOpen {
-                DateOverlay(model: model, palette: palette)
-                    .transition(.opacity)
-            }
+            // Always mounted so the sheet can be reopened while its close
+            // animation is still running; closed state ignores touches.
+            DateOverlay(model: model, palette: palette)
+                .opacity(model.dateSheetOpen ? 1 : 0)
+                .allowsHitTesting(model.dateSheetOpen)
+                .accessibilityHidden(!model.dateSheetOpen)
+                .animation(AppMotion.spring, value: model.dateSheetOpen)
         }
     }
 

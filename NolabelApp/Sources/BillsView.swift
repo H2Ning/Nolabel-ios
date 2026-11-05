@@ -4,7 +4,8 @@ struct BillsView: View {
     @Bindable var model: AppModel
     let palette: AppPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var monthShiftDirection = 1
+
+    private let rowInset = EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
 
     init(model: AppModel, palette: AppPalette) {
         self._model = Bindable(model)
@@ -15,17 +16,86 @@ struct BillsView: View {
         let _ = model.numberFormat
         VStack(spacing: 0) {
             topBar
-            ScrollView {
-                VStack(spacing: 0) {
+            List {
+                Section {
                     heading
+                        .listRowInsets(rowInset)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     summaryCard
-                    listSection
+                        .listRowInsets(rowInset)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    listHeader
+                        .listRowInsets(rowInset)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 128)
+
+                if model.monthBills.isEmpty {
+                    emptyState
+                        .listRowInsets(rowInset)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                } else {
+                    ForEach(model.monthGroups()) { group in
+                        Section {
+                            DayHeaderRow(
+                                group: group,
+                                model: model,
+                                palette: palette
+                            )
+                            .listRowInsets(rowInset)
+                            .listRowBackground(
+                                UnevenRoundedRectangle(
+                                    topLeadingRadius: 26,
+                                    bottomLeadingRadius: 0,
+                                    bottomTrailingRadius: 0,
+                                    topTrailingRadius: 26,
+                                    style: .continuous
+                                )
+                                .fill(palette.surface2.opacity(palette.isDark ? 0.55 : 0.62))
+                            )
+                            .listRowSeparator(.hidden)
+                            .accessibilityAddTraits(.isHeader)
+
+                            ForEach(Array(group.bills.enumerated()), id: \.element.id) { index, bill in
+                                BillRow(
+                                    model: model,
+                                    bill: bill,
+                                    palette: palette,
+                                    showDivider: index < group.bills.count - 1
+                                )
+                                .listRowInsets(rowInset)
+                                .listRowBackground(
+                                    UnevenRoundedRectangle(
+                                        topLeadingRadius: 0,
+                                        bottomLeadingRadius: index == group.bills.count - 1 ? 26 : 0,
+                                        bottomTrailingRadius: index == group.bills.count - 1 ? 26 : 0,
+                                        topTrailingRadius: 0,
+                                        style: .continuous
+                                    )
+                                    .fill(palette.surface)
+                                )
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        model.requestDelete(bill)
+                                    } label: {
+                                        Label("删除", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively)
+            .listSectionSpacing(12)
+            .contentMargins(.top, 0, for: .scrollContent)
+            .contentMargins(.bottom, 120, for: .scrollContent)
         }
         .overlay(alignment: .bottomTrailing) {
             addButton
@@ -61,7 +131,6 @@ struct BillsView: View {
             GlassEffectContainer(spacing: 0) {
                 HStack(spacing: 0) {
                     monthButton(systemName: "chevron.left", label: "上个月") {
-                        monthShiftDirection = -1
                         withAnimation(reduceMotion ? nil : AppMotion.spring) {
                             model.shiftMonth(-1)
                         }
@@ -70,7 +139,6 @@ struct BillsView: View {
                         .fill(palette.line)
                         .frame(width: 1, height: 22)
                     monthButton(systemName: "chevron.right", label: "下个月") {
-                        monthShiftDirection = 1
                         withAnimation(reduceMotion ? nil : AppMotion.spring) {
                             model.shiftMonth(1)
                         }
@@ -198,51 +266,24 @@ struct BillsView: View {
         .accessibilityLabel("该月支出 \(Formats.money(model.monthExpense)) 元，收入 \(Formats.money(model.monthIncome)) 元，\(model.monthBills.count) 笔，\(model.monthNotes) 张现钞")
     }
 
-    private var monthListTransition: AnyTransition {
-        let incoming: Edge = monthShiftDirection > 0 ? .trailing : .leading
-        let outgoing: Edge = monthShiftDirection > 0 ? .leading : .trailing
-        return .asymmetric(
-            insertion: .move(edge: incoming).combined(with: .opacity),
-            removal: .move(edge: outgoing).combined(with: .opacity)
-        )
-    }
-
-    private var listSection: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("账单明细")
-                    .scalableFont(16, weight: .semibold)
-                    .foregroundStyle(palette.ink)
-                Spacer()
-                Button(action: { model.toggleSort() }) {
-                    Text(model.sortDesc ? "按时间倒序" : "按时间正序")
-                        .scalableFont(12, weight: .medium)
-                        .foregroundStyle(palette.muted)
-                        .padding(.vertical, 8)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle(scale: 0.96))
+    private var listHeader: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("账单明细")
+                .scalableFont(16, weight: .semibold)
+                .foregroundStyle(palette.ink)
+            Spacer()
+            Button(action: { model.toggleSort() }) {
+                Text(model.sortDesc ? "按时间倒序" : "按时间正序")
+                    .scalableFont(12, weight: .medium)
+                    .foregroundStyle(palette.muted)
+                    .padding(.vertical, 8)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
             }
-            .padding(.top, 24)
-            .padding(.bottom, 8)
-
-            ZStack(alignment: .top) {
-                if model.monthBills.isEmpty {
-                    emptyState
-                        .id("empty-\(model.selectedMonthKey)")
-                        .transition(monthListTransition)
-                } else {
-                    LazyVStack(spacing: 12) {
-                        ForEach(model.monthGroups()) { group in
-                            DayCapsuleView(model: model, group: group, palette: palette)
-                        }
-                    }
-                    .id(model.selectedMonthKey)
-                    .transition(monthListTransition)
-                }
-            }
+            .buttonStyle(PressableStyle(scale: 0.96))
         }
+        .padding(.top, 24)
+        .padding(.bottom, 8)
     }
 
     private var emptyState: some View {
@@ -307,9 +348,9 @@ struct BillsView: View {
     }
 }
 
-struct DayCapsuleView: View {
-    @Bindable var model: AppModel
+private struct DayHeaderRow: View {
     let group: DayGroup
+    let model: AppModel
     let palette: AppPalette
 
     private var netText: String {
@@ -331,114 +372,48 @@ struct DayCapsuleView: View {
     }
 
     var body: some View {
-        let _ = model.numberFormat
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Text(DateHelp.dayTitle(group.iso))
-                    .scalableFont(13, weight: .semibold)
-                    .foregroundStyle(palette.ink2)
-                if group.isToday {
-                    Text("今天")
-                        .scalableFont(11, weight: .semibold)
-                        .foregroundStyle(palette.accent)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(palette.accentSoft, in: Capsule())
-                }
-                Rectangle()
-                    .fill(palette.line)
-                    .frame(height: 1)
-                Text(netText)
-                    .scalableFont(16, weight: .semibold, design: .rounded)
-                    .monospacedDigit()
-                    .foregroundStyle(netTextColor)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(netColor, in: Capsule())
-                    .accessibilityLabel("当日支出 \(Formats.money(group.expense)) 元，收入 \(Formats.money(group.income)) 元")
+        HStack(spacing: 8) {
+            Text(DateHelp.dayTitle(group.iso))
+                .scalableFont(13, weight: .semibold)
+                .foregroundStyle(palette.ink2)
+            if group.isToday {
+                Text("今天")
+                    .scalableFont(11, weight: .semibold)
+                    .foregroundStyle(palette.accent)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(palette.accentSoft, in: Capsule())
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 9)
-            .background(palette.surface2.opacity(palette.isDark ? 0.55 : 0.62))
-
-            LazyVStack(spacing: 0) {
-                ForEach(Array(group.bills.enumerated()), id: \.element.id) { index, bill in
-                    SwipeBillRow(
-                        model: model,
-                        bill: bill,
-                        palette: palette,
-                        showDivider: index < group.bills.count - 1
-                    )
-                }
-            }
+            Rectangle()
+                .fill(palette.line)
+                .frame(height: 1)
+            Text(netText)
+                .scalableFont(16, weight: .semibold, design: .rounded)
+                .monospacedDigit()
+                .foregroundStyle(netTextColor)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(netColor, in: Capsule())
+                .accessibilityLabel("当日支出 \(Formats.money(group.expense)) 元，收入 \(Formats.money(group.income)) 元")
         }
-        .background(palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(palette.line, lineWidth: 1)
-        )
-        .shadow(color: palette.isDark ? .black.opacity(0.12) : .black.opacity(0.06), radius: 12, y: 8)
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 9)
     }
 }
 
-struct SwipeBillRow: View {
+private struct BillRow: View {
     @Bindable var model: AppModel
     let bill: Bill
     let palette: AppPalette
     let showDivider: Bool
 
-    @State private var dragOffset: CGFloat = 0
-    @State private var startOffset: CGFloat = 0
-    @State private var isDragging = false
-    @State private var crossedReveal = false
-    @State private var suppressTap = false
-    @State private var isTouching = false
-
-    private let reveal: CGFloat = 68
-    private let circleSize: CGFloat = 44
-
-    private var isOpen: Bool { model.openBillID == bill.id }
-    private var offset: CGFloat {
-        if isDragging { return dragOffset }
-        return isOpen ? reveal : 0
-    }
-
-    private var appearProgress: CGFloat {
-        max(0, min(1, (offset - 34) / 34))
-    }
-
-    private var deleteBrightness: Double {
-        if palette.isDark {
-            return -0.5 + 0.5 * appearProgress
-        }
-        return 0.5 - 0.5 * appearProgress
-    }
-
     var body: some View {
-        ZStack(alignment: .trailing) {
-            Button {
-                model.requestDelete(bill)
-            } label: {
-                Image(systemName: "trash")
-                    .scalableFont(17, weight: .medium)
-                    .foregroundStyle(.white)
-                    .frame(width: circleSize, height: circleSize)
-                    .background(palette.danger, in: Circle())
-                    .brightness(deleteBrightness)
-                    .scaleEffect(appearProgress)
-                    .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PressableStyle(scale: 0.93))
-            .frame(width: circleSize, height: circleSize)
-            .padding(.trailing, 12)
-            .allowsHitTesting(isOpen && !isDragging)
-            .accessibilityLabel("删除 \(bill.title) \(Formats.money(bill.cents)) 元")
-
+        Button {
+            model.openEntry(bill)
+        } label: {
             HStack(spacing: 10) {
                 Circle()
                     .fill(bill.type == .expense ? palette.expense : palette.income)
@@ -462,11 +437,18 @@ struct SwipeBillRow: View {
                     .lineLimit(1)
             }
             .padding(.leading, 16)
-            .padding(.trailing, 26)
+            .padding(.trailing, 16)
             .padding(.vertical, 13)
             .frame(maxWidth: .infinity)
-            .background(isTouching && !isDragging ? palette.surface2 : palette.surface)
-            .animation(.easeOut(duration: 0.06), value: isTouching)
+            .overlay(alignment: .bottom) {
+                if showDivider {
+                    Rectangle()
+                        .fill(palette.line)
+                        .frame(height: 1)
+                        .padding(.leading, 16)
+                        .allowsHitTesting(false)
+                }
+            }
             .overlay {
                 if model.lastSavedBillID == bill.id {
                     Rectangle()
@@ -475,48 +457,11 @@ struct SwipeBillRow: View {
                 }
             }
             .contentShape(Rectangle())
-            .overlay {
-                HorizontalSwipeArea(
-                    onTouchDown: { isTouching = true },
-                    onTouchUp: { isTouching = false },
-                    onBegan: {
-                        isTouching = false
-                        beginSwipe()
-                    },
-                    onChanged: updateSwipe,
-                    onEnded: endSwipe,
-                    onTap: handleRowTap
-                )
-                .accessibilityHidden(true)
-            }
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction {
-                guard !suppressTap else { return }
-                if isOpen {
-                    withAnimation(AppMotion.spring) { model.openBillID = nil }
-                } else {
-                    model.openEntry(bill)
-                }
-            }
-            .offset(x: -offset)
-            .animation(AppMotion.grace, value: model.lastSavedBillID)
-
-            if showDivider {
-                VStack {
-                    Spacer()
-                    Rectangle()
-                        .fill(palette.line)
-                        .frame(height: 1)
-                }
-                .allowsHitTesting(false)
-            }
         }
-        .frame(maxWidth: .infinity)
-        .clipped()
-        .contentShape(Rectangle())
-        .animation(isDragging ? nil : AppMotion.spring, value: offset)
-        .animation(isDragging ? nil : AppMotion.spring, value: isOpen)
-        .accessibilityElement(children: .contain)
+        .buttonStyle(BillRowButtonStyle(palette: palette))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(bill.title)，\(bill.signedAmountText)，\(bill.time)")
+        .accessibilityHint("轻点编辑这笔账单")
     }
 
     private var metaText: String {
@@ -526,59 +471,13 @@ struct SwipeBillRow: View {
         if bill.kinds > 0 { parts.append("\(bill.kinds) 种面额") }
         return parts.joined(separator: " · ")
     }
+}
 
-    private func handleRowTap() {
-        guard !suppressTap else { return }
-        if isOpen {
-            Haptics.swipeClose()
-            withAnimation(AppMotion.spring) { model.openBillID = nil }
-        } else {
-            model.openEntry(bill)
-        }
+private struct BillRowButtonStyle: ButtonStyle {
+    let palette: AppPalette
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(configuration.isPressed ? palette.surface2 : Color.clear)
     }
-
-    private func beginSwipe() {
-        guard !isDragging else { return }
-        isTouching = false
-        if model.openBillID != bill.id {
-            model.openBillID = nil
-        }
-        isDragging = true
-        crossedReveal = false
-        startOffset = isOpen ? reveal : 0
-        suppressTap = true
-    }
-
-    private func updateSwipe(_ translation: CGFloat) {
-        guard isDragging else { return }
-        let next = startOffset - translation
-        if startOffset == 0 && next >= 34 && !crossedReveal {
-            crossedReveal = true
-            Haptics.detent()
-        }
-        dragOffset = min(reveal, max(0, next))
-    }
-
-    private func endSwipe(_ translation: CGFloat, _ predictedTranslation: CGFloat) {
-        guard isDragging else { return }
-        isDragging = false
-        let projected = dragOffset + (-predictedTranslation) * 0.22
-        let shouldOpen = projected > reveal * 0.42
-        if shouldOpen != isOpen {
-            if shouldOpen {
-                Haptics.swipeOpen()
-            } else {
-                Haptics.swipeClose()
-            }
-        }
-        withAnimation(AppMotion.spring) {
-            model.openBillID = shouldOpen ? bill.id : nil
-        }
-        dragOffset = 0
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-            suppressTap = false
-        }
-    }
-
-
 }

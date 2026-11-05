@@ -694,7 +694,6 @@ struct DateOverlay: View {
     @Bindable var model: AppModel
     let palette: AppPalette
     @State private var date = Date()
-    @State private var shown = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -706,13 +705,13 @@ struct DateOverlay: View {
                     .onTapGesture { }
 
                 card(width: proxy.size.width)
-                    .scaleEffect(shown ? 1 : 0.96)
-                    .opacity(shown ? 1 : 0)
+                    .scaleEffect(model.dateSheetOpen ? 1 : 0.96)
+                    .opacity(model.dateSheetOpen ? 1 : 0)
             }
         }
-        .onAppear {
-            date = model.entryDate
-            withAnimation(AppMotion.spring) { shown = true }
+        .onAppear { date = model.entryDate }
+        .onChange(of: model.dateSheetOpen) { _, open in
+            if open { date = model.entryDate }
         }
     }
 

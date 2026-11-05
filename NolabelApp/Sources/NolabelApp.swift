@@ -46,12 +46,6 @@ struct RootView: View {
                 .allowsHitTesting(!model.settingsOpen && !model.cashPlazaOpen && model.pendingDeleteBill == nil)
                 .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
 
-            if model.dateSheetOpen && !model.entryOpen {
-                DateOverlay(model: model, palette: palette)
-                    .transition(.opacity)
-                    .zIndex(4)
-            }
-
             if model.cashPlazaOpen {
                 CashPlazaView(
                     model: model,
