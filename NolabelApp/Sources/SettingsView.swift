@@ -754,7 +754,12 @@ struct DateOverlay: View {
             let tiltAxis = (x: -dy / distance, y: dx / distance, z: CGFloat.zero)
 
             ZStack {
-                Color.black.opacity((palette.isDark ? 0.48 : 0.24) * (appeared ? 1 + dim : 0))
+                // Night deepens toward black; day stays a softer grey.
+                Color.black.opacity(
+                    appeared
+                        ? (palette.isDark ? 0.48 + 0.38 * dim : 0.24 + 0.22 * dim)
+                        : 0
+                )
                     .ignoresSafeArea()
                     .background(.ultraThinMaterial)
                     .contentShape(Rectangle())
@@ -764,6 +769,10 @@ struct DateOverlay: View {
                 card(width: proxy.size.width)
                     // Genie in and out: the sheet leaves from and returns to the
                     // date pill, arcing sideways before it is crushed in.
+                    // Rasterise the glass before transforming it: otherwise the
+                    // material re-samples the backdrop as it shrinks and the
+                    // card changes colour mid-animation.
+                    .compositingGroup()
                     // Scale and tilt first, translate last: offset is applied in
                     // the parent space, so shrinking no longer shrinks the travel
                     // and the card really converges on the pill.
