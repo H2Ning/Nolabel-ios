@@ -17,7 +17,7 @@ struct EntryView: View {
                 HStack {
                     Button(action: { model.closeEntry() }) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .semibold))
+                            .scalableFont(15, weight: .semibold)
                             .foregroundStyle(palette.ink2)
                             .frame(width: 46, height: 46)
                             .contentShape(Circle())
@@ -73,10 +73,10 @@ struct EntryView: View {
             HStack(alignment: .center, spacing: 12) {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("¥")
-                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .scalableFont(20, weight: .semibold, design: .rounded)
                         .foregroundStyle(palette.accent)
                     Text(model.entryDisplay)
-                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .scalableFont(38, weight: .bold, design: .rounded)
                         .tracking(-1.2)
                         .monospacedDigit()
                         .foregroundStyle(palette.ink)
@@ -101,10 +101,10 @@ struct EntryView: View {
 
             HStack(spacing: 8) {
                 Image(systemName: "pencil")
-                    .font(.system(size: 13, weight: .medium))
+                    .scalableFont(13, weight: .medium)
                     .foregroundStyle(palette.muted)
                 TextField("备注", text: $model.entryNote)
-                    .font(.system(size: 15, weight: .medium))
+                    .scalableFont(15, weight: .medium)
                     .foregroundStyle(palette.ink)
                     .focused($noteFocused)
                     .submitLabel(.done)
@@ -121,10 +121,12 @@ struct EntryView: View {
                     Haptics.soft()
                 } label: {
                     Text(DateHelp.dayTitle(DateHelp.iso(from: model.entryDate)) + " · \(DateHelp.time(from: model.entryDate))")
-                        .font(.system(size: 12, weight: .medium))
+                        .scalableFont(12, weight: .medium)
                         .monospacedDigit()
                         .foregroundStyle(palette.muted)
                         .lineLimit(1)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle(scale: 0.96))
                 .accessibilityLabel("修改日期和时间")
@@ -162,7 +164,7 @@ struct EntryView: View {
                     .fill(type == .expense ? palette.expense : palette.income)
                     .frame(width: 6, height: 6)
                 Text(type == .expense ? "支出" : "收入")
-                    .font(.system(size: 12, weight: .semibold))
+                    .scalableFont(12, weight: .semibold)
             }
             .foregroundStyle(selected ? palette.ink : palette.muted)
             .padding(.horizontal, 9)
@@ -180,7 +182,7 @@ struct EntryView: View {
         VStack(spacing: 7) {
             if !model.entryError.isEmpty {
                 Text(model.entryError)
-                    .font(.system(size: 12, weight: .medium))
+                    .scalableFont(12, weight: .medium)
                     .foregroundStyle(palette.danger)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 1)
@@ -215,7 +217,7 @@ struct EntryView: View {
     private func key(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 20, weight: .medium))
+                .scalableFont(20, weight: .medium)
                 .foregroundStyle(palette.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
@@ -233,7 +235,7 @@ struct EntryView: View {
             model.pressBackspace()
         } label: {
             Image(systemName: "delete.left")
-                .font(.system(size: 19, weight: .medium))
+                .scalableFont(19, weight: .medium)
                 .foregroundStyle(palette.ink2)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
@@ -260,7 +262,7 @@ struct EntryView: View {
             HStack(spacing: 2) {
                 ForEach(EntryOperator.allCases, id: \.rawValue) { op in
                     Text(op.rawValue)
-                        .font(.system(size: 14, weight: .semibold))
+                        .scalableFont(14, weight: .semibold)
                         .foregroundStyle(model.entryOperator == op ? palette.accent : palette.ink2)
                 }
             }
@@ -282,7 +284,7 @@ struct EntryView: View {
             model.pressEquals()
         } label: {
             Text("=")
-                .font(.system(size: 21, weight: .semibold))
+                .scalableFont(21, weight: .semibold)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
@@ -296,7 +298,7 @@ struct EntryView: View {
             Task { await model.saveEntry() }
         } label: {
             Text(model.writing ? "保存中" : "保存")
-                .font(.system(size: 16, weight: .semibold))
+                .scalableFont(16, weight: .semibold)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)

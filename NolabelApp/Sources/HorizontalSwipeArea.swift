@@ -86,6 +86,13 @@ struct HorizontalSwipeArea: UIViewRepresentable {
         }
 
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            // A tap whose only job was to stop a decelerating list must not
+            // open the bill underneath the finger.
+            if gestureRecognizer is UITapGestureRecognizer,
+               let view = gestureRecognizer.view as? TouchReportingView,
+               view.wasScrollingOnTouchDown {
+                return false
+            }
             guard let pan = gestureRecognizer as? UIPanGestureRecognizer,
                   let view = pan.view else {
                 return true
@@ -110,10 +117,24 @@ struct HorizontalSwipeArea: UIViewRepresentable {
 private final class TouchReportingView: UIView {
     var onTouchDown: (() -> Void)?
     var onTouchUp: (() -> Void)?
+    private(set) var wasScrollingOnTouchDown = false
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let scrollView = enclosingScrollView()
+        wasScrollingOnTouchDown = scrollView.map { $0.isDecelerating || $0.isDragging } ?? false
         onTouchDown?()
         super.touchesBegan(touches, with: event)
+    }
+
+    private func enclosingScrollView() -> UIScrollView? {
+        var current = superview
+        while let view = current {
+            if let scrollView = view as? UIScrollView {
+                return scrollView
+            }
+            current = view.superview
+        }
+        return nil
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {

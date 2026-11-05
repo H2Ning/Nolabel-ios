@@ -47,7 +47,7 @@ struct BillsView: View {
         HStack(spacing: 12) {
             Button(action: { model.openSettings() }) {
                 Image(systemName: "person")
-                    .font(.system(size: 17, weight: .medium))
+                    .scalableFont(17, weight: .medium)
                     .foregroundStyle(palette.ink2)
                     .frame(width: 46, height: 46)
                     .contentShape(Circle())
@@ -88,7 +88,7 @@ struct BillsView: View {
     private func monthButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 16, weight: .medium))
+                .scalableFont(16, weight: .medium)
                 .foregroundStyle(palette.ink2)
                 .frame(width: 46, height: 46)
                 .contentShape(Rectangle())
@@ -101,18 +101,18 @@ struct BillsView: View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(model.monthTitle)
-                    .font(.system(size: 12, weight: .medium))
+                    .scalableFont(12, weight: .medium)
                     .tracking(1.1)
                     .foregroundStyle(palette.muted)
                     .contentTransition(.numericText())
                 Text("账单")
-                    .font(.system(size: 36, weight: .bold))
+                    .scalableFont(36, weight: .bold)
                     .tracking(-0.8)
                     .foregroundStyle(palette.ink)
             }
             Spacer()
             Text("\(model.monthBills.count) 笔")
-                .font(.system(size: 13, weight: .medium))
+                .scalableFont(13, weight: .medium)
                 .monospacedDigit()
                 .foregroundStyle(palette.muted)
                 .contentTransition(.numericText())
@@ -126,22 +126,22 @@ struct BillsView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("该月支出")
-                    .font(.system(size: 13, weight: .medium))
+                    .scalableFont(13, weight: .medium)
                     .tracking(0.2)
                     .foregroundStyle(palette.muted)
                 Spacer()
                 Text(model.monthPeriod)
-                    .font(.system(size: 12, weight: .medium))
+                    .scalableFont(12, weight: .medium)
                     .foregroundStyle(palette.muted)
                     .contentTransition(.numericText())
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("¥")
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .scalableFont(20, weight: .semibold, design: .rounded)
                     .foregroundStyle(palette.accent)
                 Text(Formats.money(model.monthExpense))
-                    .font(.system(size: 43, weight: .bold, design: .rounded))
+                    .scalableFont(43, weight: .bold, design: .rounded)
                     .tracking(-1.3)
                     .monospacedDigit()
                     .foregroundStyle(palette.ink)
@@ -161,16 +161,16 @@ struct BillsView: View {
                     .fill(palette.income)
                     .frame(width: 6, height: 6)
                 Text("收入")
-                    .font(.system(size: 12, weight: .medium))
+                    .scalableFont(12, weight: .medium)
                     .foregroundStyle(palette.ink2)
                 Text(Formats.money(model.monthIncome))
-                    .font(.system(size: 12, weight: .semibold))
+                    .scalableFont(12, weight: .semibold)
                     .monospacedDigit()
                     .foregroundStyle(palette.income)
                     .contentTransition(.numericText())
                 Spacer()
                 Text("\(model.monthBills.count) 笔 · \(model.monthNotes) 张现钞")
-                    .font(.system(size: 12, weight: .medium))
+                    .scalableFont(12, weight: .medium)
                     .monospacedDigit()
                     .foregroundStyle(palette.muted)
                     .contentTransition(.numericText())
@@ -211,14 +211,16 @@ struct BillsView: View {
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
                 Text("账单明细")
-                    .font(.system(size: 16, weight: .semibold))
+                    .scalableFont(16, weight: .semibold)
                     .foregroundStyle(palette.ink)
                 Spacer()
                 Button(action: { model.toggleSort() }) {
                     Text(model.sortDesc ? "按时间倒序" : "按时间正序")
-                        .font(.system(size: 12, weight: .medium))
+                        .scalableFont(12, weight: .medium)
                         .foregroundStyle(palette.muted)
                         .padding(.vertical, 8)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle(scale: 0.96))
             }
@@ -266,15 +268,15 @@ struct BillsView: View {
                 .padding(.bottom, 16)
 
             Text(model.bills.isEmpty ? "还没有账单" : "这个月还没有账单")
-                .font(.system(size: 17, weight: .semibold))
+                .scalableFont(17, weight: .semibold)
                 .foregroundStyle(palette.ink)
 
             Button(action: { model.openEntry() }) {
                 Text("记一笔")
-                    .font(.system(size: 14, weight: .semibold))
+                    .scalableFont(14, weight: .semibold)
                     .foregroundStyle(palette.ink)
                     .padding(.horizontal, 18)
-                    .frame(height: 42)
+                    .frame(minHeight: 44)
                     .glassCapsule()
             }
             .buttonStyle(PressableStyle(scale: 0.96))
@@ -289,13 +291,13 @@ struct BillsView: View {
         Button(action: { model.openEntry() }) {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
-                    .font(.system(size: 17, weight: .semibold))
+                    .scalableFont(17, weight: .semibold)
                 Text("记一笔")
-                    .font(.system(size: 16, weight: .semibold))
+                    .scalableFont(16, weight: .semibold)
             }
             .foregroundStyle(palette.accentInk)
             .padding(.horizontal, 19)
-            .frame(height: 52)
+            .frame(minHeight: 52)
             .glassCapsule(tint: palette.accent)
             .contentShape(Capsule())
         }
@@ -332,11 +334,11 @@ struct DayCapsuleView: View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Text(DateHelp.dayTitle(group.iso))
-                    .font(.system(size: 13, weight: .semibold))
+                    .scalableFont(13, weight: .semibold)
                     .foregroundStyle(palette.ink2)
                 if group.isToday {
                     Text("今天")
-                        .font(.system(size: 11, weight: .semibold))
+                        .scalableFont(11, weight: .semibold)
                         .foregroundStyle(palette.accent)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
@@ -346,7 +348,7 @@ struct DayCapsuleView: View {
                     .fill(palette.line)
                     .frame(height: 1)
                 Text(netText)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .scalableFont(16, weight: .semibold, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(netTextColor)
                     .lineLimit(1)
@@ -421,7 +423,7 @@ struct SwipeBillRow: View {
                 model.requestDelete(bill)
             } label: {
                 Image(systemName: "trash")
-                    .font(.system(size: 17, weight: .medium))
+                    .scalableFont(17, weight: .medium)
                     .foregroundStyle(.white)
                     .frame(width: circleSize, height: circleSize)
                     .background(palette.danger, in: Circle())
@@ -442,18 +444,18 @@ struct SwipeBillRow: View {
                     .frame(width: 6, height: 6)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bill.title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .scalableFont(16, weight: .semibold)
                         .foregroundStyle(palette.ink)
                         .lineLimit(1)
                     Text(metaText)
-                        .font(.system(size: 12, weight: .medium))
+                        .scalableFont(12, weight: .medium)
                         .monospacedDigit()
                         .foregroundStyle(palette.muted)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Text(bill.signedAmountText)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .scalableFont(16, weight: .semibold, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(bill.type == .expense ? palette.expense : palette.income)
                     .lineLimit(1)

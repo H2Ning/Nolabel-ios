@@ -28,7 +28,7 @@ struct SettingsPage: View {
                     pageHeader
 
                     Text(settingsTitle)
-                        .font(.system(size: 36, weight: .bold))
+                        .scalableFont(36, weight: .bold)
                         .tracking(-0.8)
                         .foregroundStyle(palette.ink)
                         .padding(.bottom, 2)
@@ -101,7 +101,7 @@ struct SettingsPage: View {
         HStack {
             Button(action: goBack) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .semibold))
+                    .scalableFont(16, weight: .semibold)
                     .foregroundStyle(palette.ink2)
                     .frame(width: 46, height: 46)
                     .contentShape(Circle())
@@ -151,6 +151,15 @@ struct SettingsPage: View {
                 settingsLink(title: "触感", value: model.hapticLevel.label) {
                     model.settingsSubview = .haptics
                 }
+                divider
+                Toggle(isOn: $model.deleteConfirmEnabled) {
+                    Text("删除前确认")
+                        .scalableFont(16, weight: .medium)
+                        .foregroundStyle(palette.ink)
+                }
+                .tint(palette.accent)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 54)
             }
             if model.user != nil && model.accountLoaded {
                 sectionCard {
@@ -165,7 +174,7 @@ struct SettingsPage: View {
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(model.authMessage)
-                            .font(.system(size: 13, weight: .medium))
+                            .scalableFont(13, weight: .medium)
                             .foregroundStyle(palette.danger)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         if model.authRetryable {
@@ -180,7 +189,7 @@ struct SettingsPage: View {
                                     ProgressView().tint(palette.danger)
                                 } else {
                                     Text("重试")
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .scalableFont(13, weight: .semibold)
                                         .foregroundStyle(palette.danger)
                                 }
                             }
@@ -193,7 +202,7 @@ struct SettingsPage: View {
                                 }
                             } label: {
                                 Text("设置")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .scalableFont(13, weight: .semibold)
                                     .foregroundStyle(palette.accent)
                             }
                             .buttonStyle(.plain)
@@ -202,13 +211,13 @@ struct SettingsPage: View {
 
                     if !model.networkDiagnostic.isEmpty {
                         Text(model.networkDiagnostic)
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .scalableFont(10, weight: .medium, design: .monospaced)
                             .foregroundStyle(palette.muted)
                     }
 
                     if model.authRetryable {
                         Text("已允许仍失败：设置 → 蜂窝网络 → 诺诺 → 无线局域网与蜂窝移动数据；或 设置 → 隐私与安全性 → 本地网络 → 诺诺。若开着 VPN/Tailscale 或 Wi-Fi 代理，请先关闭或改用蜂窝数据。")
-                            .font(.system(size: 10.5, weight: .regular))
+                            .scalableFont(10.5, weight: .regular)
                             .foregroundStyle(palette.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -224,7 +233,7 @@ struct SettingsPage: View {
                 HStack(spacing: 10) {
                     ProgressView().tint(palette.ink2)
                     Text("正在连接账号")
-                        .font(.system(size: 14, weight: .medium))
+                        .scalableFont(14, weight: .medium)
                         .foregroundStyle(palette.muted)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -232,12 +241,12 @@ struct SettingsPage: View {
             } else if let user = model.user {
                 HStack(spacing: 11) {
                     Text(String(user.name.prefix(1)).uppercased())
-                        .font(.system(size: 16, weight: .bold))
+                        .scalableFont(16, weight: .bold)
                         .foregroundStyle(palette.accentInk)
                         .frame(width: 36, height: 36)
                         .background(palette.accent, in: Circle())
                     Text(user.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .scalableFont(16, weight: .semibold)
                         .foregroundStyle(palette.ink)
                     Spacer()
                     if model.authLoading {
@@ -254,10 +263,10 @@ struct SettingsPage: View {
                     Task { await model.logout() }
                 } label: {
                     Text("退出登录")
-                        .font(.system(size: 16, weight: .medium))
+                        .scalableFont(16, weight: .medium)
                         .foregroundStyle(palette.danger)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .frame(height: 54)
+                        .frame(minHeight: 54)
                         .padding(.horizontal, 16)
                         .contentShape(Rectangle())
                 }
@@ -273,10 +282,10 @@ struct SettingsPage: View {
                         .focused($focusedField, equals: .username)
                         .submitLabel(.next)
                         .onSubmit { focusedField = .password }
-                        .font(.system(size: 16, weight: .medium))
+                        .scalableFont(16, weight: .medium)
                         .foregroundStyle(palette.ink)
                         .padding(.horizontal, 13)
-                        .frame(height: 46)
+                        .frame(minHeight: 46)
                         .background(fieldBackground)
 
                     fieldLabel("密码")
@@ -285,10 +294,10 @@ struct SettingsPage: View {
                         .focused($focusedField, equals: .password)
                         .submitLabel(.go)
                         .onSubmit { submitLogin() }
-                        .font(.system(size: 16, weight: .medium))
+                        .scalableFont(16, weight: .medium)
                         .foregroundStyle(palette.ink)
                         .padding(.horizontal, 13)
-                        .frame(height: 46)
+                        .frame(minHeight: 46)
                         .background(fieldBackground)
 
                     Button(action: submitLogin) {
@@ -297,12 +306,12 @@ struct SettingsPage: View {
                                 ProgressView().tint(palette.accentInk)
                             } else {
                                 Text("登录")
-                                    .font(.system(size: 16, weight: .semibold))
+                                    .scalableFont(16, weight: .semibold)
                             }
                         }
                         .foregroundStyle(palette.accentInk)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 46)
+                        .frame(minHeight: 46)
                         .background(palette.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(PressableStyle(scale: 0.98))
@@ -336,16 +345,16 @@ struct SettingsPage: View {
                 } label: {
                     HStack {
                         Text(mode.label)
-                            .font(.system(size: 16, weight: .medium))
+                            .scalableFont(16, weight: .medium)
                             .foregroundStyle(palette.ink)
                         Spacer()
                         if model.themeMode == mode {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .semibold))
+                                .scalableFont(14, weight: .semibold)
                                 .foregroundStyle(palette.accent)
                         }
                     }
-                    .frame(height: 54)
+                    .frame(minHeight: 54)
                     .padding(.horizontal, 16)
                     .contentShape(Rectangle())
                 }
@@ -369,7 +378,7 @@ struct SettingsPage: View {
         VStack(spacing: 0) {
             HStack {
                 Text("预览")
-                    .font(.system(size: 14, weight: .semibold))
+                    .scalableFont(14, weight: .semibold)
                     .foregroundStyle(palette.ink)
                 Spacer()
             }
@@ -397,10 +406,10 @@ struct SettingsPage: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .scalableFont(14, weight: .semibold)
                     .foregroundStyle(palette.ink)
                 Text("\(DateHelp.dayTitle(DateHelp.todayISO)) · \(time)")
-                    .font(.system(size: 11, weight: .medium))
+                    .scalableFont(11, weight: .medium)
                     .monospacedDigit()
                     .foregroundStyle(palette.muted)
             }
@@ -408,7 +417,7 @@ struct SettingsPage: View {
             Spacer(minLength: 8)
 
             Text(Formats.signedMoney(cents, type: type))
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .scalableFont(16, weight: .semibold, design: .rounded)
                 .monospacedDigit()
                 .foregroundStyle(type == .expense ? palette.expense : palette.income)
                 .lineLimit(1)
@@ -467,14 +476,14 @@ struct SettingsPage: View {
     ) -> some View {
         HStack(spacing: 10) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
+                .scalableFont(13, weight: .semibold)
                 .foregroundStyle(palette.ink)
                 .lineLimit(1)
             Spacer(minLength: 8)
             content()
         }
         .padding(.horizontal, 12)
-        .frame(height: 46)
+        .frame(minHeight: 46)
     }
 
     private var formatDivider: some View {
@@ -487,7 +496,7 @@ struct SettingsPage: View {
     private var colorCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("收支配色")
-                .font(.system(size: 14, weight: .semibold))
+                .scalableFont(14, weight: .semibold)
                 .foregroundStyle(palette.ink)
 
             HStack(spacing: 8) {
@@ -522,7 +531,7 @@ struct SettingsPage: View {
                 .frame(height: 38)
 
                 Text(scheme.label)
-                    .font(.system(size: 10, weight: .semibold))
+                    .scalableFont(10, weight: .semibold)
                     .foregroundStyle(selected ? palette.accent : palette.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -540,7 +549,7 @@ struct SettingsPage: View {
             .overlay(alignment: .topTrailing) {
                 if selected {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 8, weight: .black))
+                        .scalableFont(8, weight: .black)
                         .foregroundStyle(palette.accentInk)
                         .frame(width: 14, height: 14)
                         .background(palette.accent, in: Circle())
@@ -561,16 +570,16 @@ struct SettingsPage: View {
                 } label: {
                     HStack {
                         Text(level.label)
-                            .font(.system(size: 16, weight: .medium))
+                            .scalableFont(16, weight: .medium)
                             .foregroundStyle(palette.ink)
                         Spacer()
                         if model.hapticLevel == level {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .semibold))
+                                .scalableFont(14, weight: .semibold)
                                 .foregroundStyle(palette.accent)
                         }
                     }
-                    .frame(height: 54)
+                    .frame(minHeight: 54)
                     .padding(.horizontal, 16)
                     .contentShape(Rectangle())
                 }
@@ -584,7 +593,7 @@ struct SettingsPage: View {
 
     private func fieldLabel(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 12, weight: .medium))
+            .scalableFont(12, weight: .medium)
             .foregroundStyle(palette.muted)
     }
 
@@ -624,17 +633,17 @@ struct SettingsPage: View {
         Button(action: action) {
             HStack {
                 Text(title)
-                    .font(.system(size: 16, weight: .medium))
+                    .scalableFont(16, weight: .medium)
                     .foregroundStyle(palette.ink)
                 Spacer()
                 Text(value)
-                    .font(.system(size: 15, weight: .medium))
+                    .scalableFont(15, weight: .medium)
                     .foregroundStyle(palette.muted)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .scalableFont(13, weight: .semibold)
                     .foregroundStyle(palette.muted)
             }
-            .frame(height: 56)
+            .frame(minHeight: 56)
             .padding(.horizontal, 16)
             .contentShape(Rectangle())
         }
@@ -645,11 +654,11 @@ struct SettingsPage: View {
         Button(action: action) {
             HStack {
                 Text(title)
-                    .font(.system(size: 16, weight: .medium))
+                    .scalableFont(16, weight: .medium)
                     .foregroundStyle(palette.ink)
                 Spacer()
             }
-            .frame(height: 54)
+            .frame(minHeight: 54)
             .padding(.horizontal, 16)
             .contentShape(Rectangle())
         }
@@ -685,12 +694,12 @@ private struct SegmentPicker<Option: Hashable & Identifiable>: View where Option
                     }
                 } label: {
                     Text(label(option))
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .scalableFont(10.5, weight: .semibold)
                         .foregroundStyle(option == selection ? palette.ink : palette.muted)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 30)
+                        .frame(height: 44)
                         .background {
                             if option == selection {
                                 Capsule()
@@ -747,14 +756,14 @@ struct DateOverlay: View {
     private func card(width: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("修改时间")
-                .font(.system(size: 18, weight: .bold))
+                .scalableFont(18, weight: .bold)
                 .foregroundStyle(palette.ink)
                 .padding(.bottom, 18)
 
             DatePicker("日期", selection: $date, displayedComponents: .date)
                 .datePickerStyle(.compact)
                 .tint(palette.accent)
-                .font(.system(size: 16, weight: .medium))
+                .scalableFont(16, weight: .medium)
                 .padding(.vertical, 8)
 
             Rectangle().fill(palette.line).frame(height: 1)
@@ -762,7 +771,7 @@ struct DateOverlay: View {
             DatePicker("时间", selection: $date, displayedComponents: .hourAndMinute)
                 .datePickerStyle(.compact)
                 .tint(palette.accent)
-                .font(.system(size: 16, weight: .medium))
+                .scalableFont(16, weight: .medium)
                 .padding(.vertical, 8)
 
             HStack(spacing: 10) {
@@ -771,10 +780,10 @@ struct DateOverlay: View {
                     dismiss(confirmed: false)
                 } label: {
                     Text("取消")
-                        .font(.system(size: 16, weight: .semibold))
+                        .scalableFont(16, weight: .semibold)
                         .foregroundStyle(palette.ink2)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 46)
+                        .frame(minHeight: 46)
                         .background(palette.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(PressableStyle(scale: 0.98))
@@ -783,10 +792,10 @@ struct DateOverlay: View {
                     dismiss(confirmed: true)
                 } label: {
                     Text("完成")
-                        .font(.system(size: 16, weight: .semibold))
+                        .scalableFont(16, weight: .semibold)
                         .foregroundStyle(palette.accentInk)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 46)
+                        .frame(minHeight: 46)
                         .background(palette.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(PressableStyle(scale: 0.98))
@@ -804,6 +813,11 @@ struct DateOverlay: View {
     }
 
     private func dismiss(confirmed: Bool) {
+        if confirmed {
+            Haptics.complete()
+        } else {
+            Haptics.soft()
+        }
         withAnimation(AppMotion.spring) {
             if confirmed {
                 model.confirmDate(date)

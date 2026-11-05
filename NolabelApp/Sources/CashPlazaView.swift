@@ -177,7 +177,7 @@ struct CashPlazaView: View {
         VStack(alignment: .leading, spacing: 14) {
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
+                    .scalableFont(15, weight: .semibold)
                     .foregroundStyle(palette.ink2)
                     .frame(width: 44, height: 44)
                     .contentShape(Circle())
@@ -188,16 +188,16 @@ struct CashPlazaView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(analysisOpen ? "本月账单分析" : "现金广场")
-                    .font(.system(size: 28, weight: .bold))
+                    .scalableFont(28, weight: .bold)
                     .tracking(-0.5)
                     .foregroundStyle(palette.ink)
                 if analysisOpen {
                     analysisSubtitle(snapshot)
-                        .font(.system(size: 12, weight: .medium))
+                        .scalableFont(12, weight: .medium)
                         .monospacedDigit()
                 } else {
                     Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
-                        .font(.system(size: 12, weight: .medium))
+                        .scalableFont(12, weight: .medium)
                         .monospacedDigit()
                         .foregroundStyle(palette.muted)
                 }
@@ -275,7 +275,7 @@ struct CashPlazaView: View {
             .allowsHitTesting(false)
 
             Text("这个月还没有支出")
-                .font(.system(size: 13, weight: .medium))
+                .scalableFont(13, weight: .medium)
                 .foregroundStyle(palette.muted)
         }
         .frame(height: 360)
@@ -324,10 +324,10 @@ struct CashPlazaView: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("每日支出与累计支出")
-                        .font(.system(size: 15, weight: .semibold))
+                        .scalableFont(15, weight: .semibold)
                         .foregroundStyle(palette.ink)
                     Text("¥\(Formats.money(snapshot.totalCents))")
-                        .font(.system(size: 25, weight: .bold, design: .rounded))
+                        .scalableFont(25, weight: .bold, design: .rounded)
                         .tracking(-0.5)
                         .monospacedDigit()
                         .foregroundStyle(palette.ink)
@@ -341,7 +341,7 @@ struct CashPlazaView: View {
 
             if snapshot.points.isEmpty {
                 Text("暂无支出")
-                    .font(.system(size: 12, weight: .medium))
+                    .scalableFont(12, weight: .medium)
                     .foregroundStyle(palette.muted)
                     .frame(maxWidth: .infinity)
                     .frame(height: 124)
@@ -372,7 +372,7 @@ struct CashPlazaView: View {
                         AxisValueLabel {
                             if let label = value.as(String.self) {
                                 Text(label)
-                                    .font(.system(size: 9, weight: .medium))
+                                    .scalableFont(9, weight: .medium)
                                     .foregroundStyle(palette.muted)
                                     .fixedSize()
                             }
@@ -385,7 +385,7 @@ struct CashPlazaView: View {
                         AxisValueLabel {
                             if let amount = value.as(Double.self) {
                                 Text("¥\(Int(amount))")
-                                    .font(.system(size: 9, weight: .medium))
+                                    .scalableFont(9, weight: .medium)
                                     .monospacedDigit()
                                     .foregroundStyle(palette.muted)
                             }
@@ -403,12 +403,12 @@ struct CashPlazaView: View {
 
             HStack(spacing: 6) {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .scalableFont(9.5, weight: .semibold)
                 Text(analysisOpen ? "收起分析，回到现金展示" : "点击图表，查看本月账单分析")
-                    .font(.system(size: 10.5, weight: .medium))
+                    .scalableFont(10.5, weight: .medium)
                 Spacer()
                 Image(systemName: analysisOpen ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
+                    .scalableFont(8, weight: .bold)
             }
             .foregroundStyle(palette.muted)
             .contentShape(Rectangle())
@@ -456,7 +456,7 @@ struct CashPlazaView: View {
                     .frame(width: 9, height: 9)
             }
             Text(text)
-                .font(.system(size: 9.5, weight: .medium))
+                .scalableFont(9.5, weight: .medium)
                 .foregroundStyle(palette.muted)
         }
     }

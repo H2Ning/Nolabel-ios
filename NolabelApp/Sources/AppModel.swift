@@ -46,12 +46,18 @@ final class AppModel {
     private let cashModeKey = "nolabel-cash-mode"
     private let hapticKey = "nolabel-haptic-level"
     private let numberFormatKey = "nolabel-number-format"
-    private let deleteSuppressKey = "nolabel-delete-suppress-date"
+    private let deleteConfirmKey = "nolabel-delete-confirm"
     private let usernameKey = "h2ning_username"
 
     let previewMode: Bool
     let previewProbe: Bool
     var pendingDeleteBill: Bill?
+    var deleteConfirmEnabled: Bool {
+        didSet { defaults.set(deleteConfirmEnabled, forKey: deleteConfirmKey) }
+    }
+    private(set) var undoDeleteTitle: String?
+    private var deleteUndoSnapshot: [Bill]?
+    private var undoTask: Task<Void, Never>?
     var cashPlazaOpen = false
 
     var bills: [Bill] = [] {
@@ -278,6 +284,7 @@ final class AppModel {
             numberFormat = NumberFormatSettings()
         }
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
+        deleteConfirmEnabled = defaults.object(forKey: deleteConfirmKey) as? Bool ?? true
         let storedCashMode = defaults.integer(forKey: cashModeKey)
         cashMode = (1...3).contains(storedCashMode) ? storedCashMode : 1
         selectedMonth = DateHelp.monthStart(Date())
@@ -713,18 +720,14 @@ final class AppModel {
         }
     }
 
-    var deleteConfirmationSuppressedToday: Bool {
-        defaults.string(forKey: deleteSuppressKey) == DateHelp.todayISO
-    }
-
     func requestDelete(_ bill: Bill) {
         guard requireLogin() else { return }
-        if deleteConfirmationSuppressedToday {
-            Haptics.deleteConfirm()
-            Task { await delete(bill) }
-        } else {
+        if deleteConfirmEnabled {
             pendingDeleteBill = bill
             Haptics.deletePrompt()
+        } else {
+            Haptics.deleteConfirm()
+            Task { await delete(bill) }
         }
     }
 
@@ -733,22 +736,42 @@ final class AppModel {
         Haptics.soft()
     }
 
-    func confirmDeletePrompt(suppressToday: Bool) {
+    func confirmDeletePrompt() {
         guard let bill = pendingDeleteBill else { return }
         pendingDeleteBill = nil
-        if suppressToday {
-            defaults.set(DateHelp.todayISO, forKey: deleteSuppressKey)
-        }
         Haptics.deleteConfirm()
         Task { await delete(bill) }
     }
 
     func delete(_ bill: Bill) async {
         guard requireLogin() else { return }
+        let snapshot = bills
         let next = bills.filter { $0.id != bill.id }
         if await saveBills(next) {
             openBillID = nil
+            deleteUndoSnapshot = snapshot
+            undoDeleteTitle = bill.title
+            undoTask?.cancel()
+            undoTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                guard !Task.isCancelled else { return }
+                self?.clearUndo()
+            }
         }
+    }
+
+    func undoDelete() async {
+        guard let snapshot = deleteUndoSnapshot else { return }
+        undoTask?.cancel()
+        clearUndo()
+        if await saveBills(snapshot) {
+            Haptics.success()
+        }
+    }
+
+    private func clearUndo() {
+        undoDeleteTitle = nil
+        deleteUndoSnapshot = nil
     }
 
     func shiftMonth(_ value: Int) {

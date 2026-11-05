@@ -344,22 +344,22 @@ struct CashPlazaAnalysisView: View {
                 ratioBar
 
                 Text(ratioCaption)
-                    .font(.system(size: 10.5, weight: .medium))
+                    .scalableFont(10.5, weight: .medium)
                     .foregroundStyle(palette.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(netLabel)
-                        .font(.system(size: 10.5, weight: .medium))
+                        .scalableFont(10.5, weight: .medium)
                         .foregroundStyle(palette.muted)
                     Spacer(minLength: 8)
                     Text(signedNet)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .scalableFont(14, weight: .semibold, design: .rounded)
                         .monospacedDigit()
                         .foregroundStyle(netColor)
                     if let rateText {
                         Text(rateText)
-                            .font(.system(size: 9.5, weight: .medium))
+                            .scalableFont(9.5, weight: .medium)
                             .monospacedDigit()
                             .foregroundStyle(palette.muted)
                     }
@@ -380,14 +380,14 @@ struct CashPlazaAnalysisView: View {
     private func flowColumn(cents: Int, meta: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text("¥\(Formats.money(cents))")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .scalableFont(22, weight: .bold, design: .rounded)
                 .tracking(-0.5)
                 .monospacedDigit()
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(meta)
-                .font(.system(size: 10, weight: .medium))
+                .scalableFont(10, weight: .medium)
                 .foregroundStyle(palette.muted)
         }
     }
@@ -445,7 +445,7 @@ struct CashPlazaAnalysisView: View {
             sectionHeader("钱从哪来", detail: "收入")
             if analysis.incomeItems.isEmpty {
                 Text("这个月没有收入记录。花的是之前的存量，或者你忘了记。")
-                    .font(.system(size: 12.5, weight: .regular))
+                    .scalableFont(12.5, weight: .regular)
                     .foregroundStyle(palette.muted)
                     .lineSpacing(3)
             } else {
@@ -458,7 +458,7 @@ struct CashPlazaAnalysisView: View {
                     let rest = analysis.incomeItems.dropFirst(3)
                     let restTotal = rest.reduce(0) { $0 + $1.cents }
                     Text("还有 \(rest.count) 项收入，共 ¥\(Formats.money(restTotal))")
-                        .font(.system(size: 10.5, weight: .medium))
+                        .scalableFont(10.5, weight: .medium)
                         .foregroundStyle(palette.muted)
                 }
             }
@@ -470,16 +470,16 @@ struct CashPlazaAnalysisView: View {
             sectionHeader("钱怎么没的", detail: "支出")
             if analysis.expenseItems.isEmpty {
                 Text("这个月没有支出。钱还在，账单是空的。")
-                    .font(.system(size: 12.5, weight: .regular))
+                    .scalableFont(12.5, weight: .regular)
                     .foregroundStyle(palette.muted)
                     .lineSpacing(3)
             } else {
                 expenseSummary
-                    .font(.system(size: 12, weight: .regular))
+                    .scalableFont(12, weight: .regular)
                     .lineSpacing(3)
                 if !analysis.hasNamedNotes {
                     Text("这个月没写备注，支出按单笔列出。")
-                        .font(.system(size: 10.5, weight: .medium))
+                        .scalableFont(10.5, weight: .medium)
                         .foregroundStyle(palette.muted)
                 }
                 VStack(spacing: 13) {
@@ -491,7 +491,7 @@ struct CashPlazaAnalysisView: View {
                     let rest = analysis.expenseItems.dropFirst(3)
                     let restTotal = rest.reduce(0) { $0 + $1.cents }
                     Text("还有 \(rest.count) 项支出，共 ¥\(Formats.money(restTotal))")
-                        .font(.system(size: 10.5, weight: .medium))
+                        .scalableFont(10.5, weight: .medium)
                         .foregroundStyle(palette.muted)
                 }
                 if let timePeak = analysis.timePeak {
@@ -512,14 +512,14 @@ struct CashPlazaAnalysisView: View {
     private func timeLine(_ peak: MonthAnalysis.TimePeak) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 7) {
             Image(systemName: "clock")
-                .font(.system(size: 10, weight: .semibold))
+                .scalableFont(10, weight: .semibold)
                 .foregroundStyle(palette.muted)
             (Text("钱最常在这时出门：").foregroundColor(palette.muted)
                 + Text(peak.label).foregroundColor(palette.expense).fontWeight(.semibold)
                 + Text("，\(peak.range)花掉 ").foregroundColor(palette.muted)
                 + Text("¥\(Formats.money(peak.cents))").foregroundColor(palette.ink).fontWeight(.semibold)
                 + Text("，占 \(percentText(peak.share))。").foregroundColor(palette.muted))
-                .font(.system(size: 11, weight: .regular))
+                .scalableFont(11, weight: .regular)
                 .lineSpacing(2)
         }
     }
@@ -528,22 +528,22 @@ struct CashPlazaAnalysisView: View {
         VStack(spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(item.label)
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .scalableFont(13.5, weight: .semibold)
                     .foregroundStyle(palette.ink)
                     .lineLimit(1)
                 if item.count > 1 {
                     Text("×\(item.count)")
-                        .font(.system(size: 9.5, weight: .medium))
+                        .scalableFont(9.5, weight: .medium)
                         .monospacedDigit()
                         .foregroundStyle(palette.muted)
                 }
                 Spacer(minLength: 8)
                 Text("¥\(Formats.money(item.cents))")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .scalableFont(13, weight: .semibold, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(palette.ink2)
                 Text(percentText(item.share))
-                    .font(.system(size: 9.5, weight: .medium))
+                    .scalableFont(9.5, weight: .medium)
                     .monospacedDigit()
                     .foregroundStyle(palette.muted)
                     .frame(width: 38, alignment: .trailing)
@@ -610,18 +610,18 @@ struct CashPlazaAnalysisView: View {
     private func statCell(label: String, value: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
-                .font(.system(size: 9.5, weight: .semibold))
+                .scalableFont(9.5, weight: .semibold)
                 .tracking(0.5)
                 .foregroundStyle(palette.muted)
             Text(value)
-                .font(.system(size: 19, weight: .bold, design: .rounded))
+                .scalableFont(19, weight: .bold, design: .rounded)
                 .tracking(-0.4)
                 .monospacedDigit()
                 .foregroundStyle(palette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
             Text(detail)
-                .font(.system(size: 10, weight: .medium))
+                .scalableFont(10, weight: .medium)
                 .foregroundStyle(palette.muted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
@@ -667,15 +667,15 @@ struct CashPlazaAnalysisView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "quote.opening")
-                    .font(.system(size: 10, weight: .bold))
+                    .scalableFont(10, weight: .bold)
                 Text("本月判词")
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .scalableFont(9.5, weight: .semibold)
                     .tracking(0.8)
             }
             .foregroundStyle(palette.accent)
 
             Text(analysis.verdict)
-                .font(.system(size: 16, weight: .semibold))
+                .scalableFont(16, weight: .semibold)
                 .foregroundStyle(palette.ink)
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
@@ -695,13 +695,13 @@ struct CashPlazaAnalysisView: View {
     private func sectionHeader(_ title: String, detail: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(title)
-                .font(.system(size: 16, weight: .semibold))
+                .scalableFont(16, weight: .semibold)
                 .foregroundStyle(palette.ink)
             Rectangle()
                 .fill(palette.line)
                 .frame(width: 1, height: 12)
             Text(detail)
-                .font(.system(size: 11, weight: .medium))
+                .scalableFont(11, weight: .medium)
                 .foregroundStyle(palette.muted)
             Spacer(minLength: 0)
         }

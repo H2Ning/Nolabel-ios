@@ -149,9 +149,9 @@ struct CashStageView: View {
             HStack(spacing: 4) {
                 Text(modeLabel)
                 Image(systemName: "arrow.left.arrow.right")
-                    .font(.system(size: 7, weight: .bold))
+                    .scalableFont(7, weight: .bold)
             }
-            .font(.system(size: 9, weight: .semibold))
+            .scalableFont(9, weight: .semibold)
             .foregroundStyle(palette.ink2)
             .padding(.horizontal, 10)
             .frame(height: 30)

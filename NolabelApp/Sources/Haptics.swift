@@ -56,7 +56,7 @@ enum Haptics {
 
     private static var scale: Double {
         switch level {
-        case .rich: return 1.18
+        case .rich: return 1.0
         case .soft: return 0.62
         case .off: return 0
         }
@@ -175,15 +175,17 @@ enum Haptics {
         impact(softGenerator, 0.42)
     }
 
-    /// The signature "cash counted" pattern used after a save.
+    /// The signature "cash counted" pattern used after a save: two beats.
     static func cashCounted() {
         impact(lightGenerator, 0.52)
-        after(0.055) {
-            impact(lightGenerator, 0.70)
+        after(0.070) {
+            impact(rigidGenerator, 0.78)
         }
-        after(0.110) {
-            impact(rigidGenerator, 0.82)
-        }
+    }
+
+    /// A committed action, such as confirming the date sheet.
+    static func complete() {
+        impact(lightGenerator, 0.45)
     }
 
     /// A destructive prompt and its confirmation.
@@ -191,24 +193,10 @@ enum Haptics {
         notify(.warning)
     }
 
+    /// A single, brief acknowledgement for a destructive action. Haptics stay
+    /// short and meaningful; multi-beat signatures are reserved for successes.
     static func deleteConfirm() {
-        // A sharp center burst followed by a short, uneven crackle.
-        impact(rigidGenerator, 1.0)
-        after(0.032) {
-            impact(mediumGenerator, 0.92)
-        }
-        after(0.072) {
-            impact(lightGenerator, 0.84)
-        }
-        after(0.116) {
-            impact(lightGenerator, 0.70)
-        }
-        after(0.164) {
-            impact(lightGenerator, 0.55)
-        }
-        after(0.218) {
-            impact(softGenerator, 0.42)
-        }
+        notify(.warning)
     }
 
     /// Switching months; crossing a year adds a second tiny detent.

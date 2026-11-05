@@ -70,21 +70,57 @@ struct RootView: View {
                 .zIndex(5)
             }
 
-            if let bill = model.pendingDeleteBill {
-                DeleteConfirmView(
-                    bill: bill,
-                    palette: palette,
-                    onCancel: { model.cancelDeletePrompt() },
-                    onConfirm: { suppressToday in
-                        model.confirmDeletePrompt(suppressToday: suppressToday)
+            if let title = model.undoDeleteTitle {
+                VStack {
+                    Spacer()
+                    HStack(spacing: 12) {
+                        Text("已删除「\(title)」")
+                            .scalableFont(14, weight: .medium)
+                            .foregroundStyle(palette.ink)
+                            .lineLimit(1)
+                        Spacer(minLength: 12)
+                        Button {
+                            Task { await model.undoDelete() }
+                        } label: {
+                            Text("撤销")
+                                .scalableFont(15, weight: .semibold)
+                                .foregroundStyle(palette.accent)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                )
-                .zIndex(6)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 52)
+                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(palette.line, lineWidth: 1)
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 92)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(7)
             }
+        }
+        .alert(
+            "删除这笔账单？",
+            isPresented: Binding(
+                get: { model.pendingDeleteBill != nil },
+                set: { _ in }
+            ),
+            presenting: model.pendingDeleteBill
+        ) { _ in
+            Button("删除", role: .destructive) { model.confirmDeletePrompt() }
+            Button("取消", role: .cancel) { model.cancelDeletePrompt() }
+        } message: { bill in
+            Text("\(bill.title) · \(bill.signedAmountText)")
         }
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.settingsOpen)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.pendingDeleteBill?.id)
+        .animation(reduceMotion ? nil : AppMotion.spring, value: model.undoDeleteTitle)
         .task {
             Haptics.prepare()
             await model.bootstrap()
