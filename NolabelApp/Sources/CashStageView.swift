@@ -47,7 +47,14 @@ struct CashStageView: View {
                             isDark: palette.isDark,
                             onReady: signalReady
                         )
-                        .blur(radius: motionBlur)
+                        .layerEffect(
+                            ShaderLibrary.motionBlur(
+                                .float2(proxy.size.width, proxy.size.height),
+                                .float(motionBlur)
+                            ),
+                            maxSampleOffset: CGSize(width: 8, height: 0),
+                            isEnabled: motionBlur > 0.01
+                        )
                     }
                 }
 
