@@ -784,6 +784,20 @@ struct DateOverlay: View {
             date = model.entryDate
             withAnimation(AppMotion.spring) { appeared = true }
         }
+        .task {
+            let arguments = ProcessInfo.processInfo.arguments
+            let delay: UInt64?
+            if arguments.contains("--preview-autoplay-date") {
+                delay = 1_600_000_000
+            } else if arguments.contains("--preview-autoplay-entry") {
+                delay = 900_000_000
+            } else {
+                delay = nil
+            }
+            guard let delay else { return }
+            try? await Task.sleep(nanoseconds: delay)
+            dismiss(confirmed: false)
+        }
     }
 
     private func card(width: CGFloat) -> some View {

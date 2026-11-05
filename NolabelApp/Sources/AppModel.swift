@@ -378,17 +378,23 @@ final class AppModel {
             }
         }
         if arguments.contains("--preview-autoplay-entry") {
-            for index in 0..<5 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0 + Double(index) * 0.8) { [weak self] in
-                    guard let self else { return }
-                    withAnimation(AppMotion.drawer) {
-                        if self.entryOpen {
-                            self.closeEntry()
-                        } else {
-                            self.openEntry(self.bills.first)
-                        }
-                    }
-                }
+            // Temporary verification sequence: entry -> date sheet -> genie dismiss.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                guard let self else { return }
+                withAnimation(AppMotion.drawer) { self.openEntry(self.bills.first) }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { [weak self] in
+                guard let self else { return }
+                withAnimation(AppMotion.spring) { self.dateSheetOpen = true }
+            }
+        }
+        if arguments.contains("--preview-autoplay-date") {
+            entryOpen = true
+            entryInput = "52145"
+            entryType = .expense
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                guard let self else { return }
+                withAnimation(AppMotion.spring) { self.dateSheetOpen = true }
             }
         }
     }
