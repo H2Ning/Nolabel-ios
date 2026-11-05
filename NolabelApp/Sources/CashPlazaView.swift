@@ -92,9 +92,16 @@ struct CashPlazaView: View {
                 chartMax = 100
             }
 
-            let labelStride = max(1, Int(ceil(Double(points.count) / 6.0)))
-            tickLabels = points.enumerated().compactMap { index, point in
-                index % labelStride == 0 ? point.label : nil
+            let tickCount = min(4, points.count)
+            if tickCount <= 1 {
+                tickLabels = points.map(\.label)
+            } else {
+                tickLabels = (0..<tickCount).map { index in
+                    let source = Int(
+                        (Double(index) * Double(points.count - 1) / Double(tickCount - 1)).rounded()
+                    )
+                    return points[source].label
+                }
             }
         }
     }
@@ -359,12 +366,17 @@ struct CashPlazaView: View {
                 }
                 .chartYScale(domain: 0...snapshot.chartMax)
                 .chartXAxis {
-                    AxisMarks(values: snapshot.tickLabels) { _ in
+                    AxisMarks(preset: .aligned, values: snapshot.tickLabels) { value in
                         AxisGridLine().foregroundStyle(palette.line.opacity(0.4))
                         AxisTick().foregroundStyle(palette.line)
-                        AxisValueLabel()
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(palette.muted)
+                        AxisValueLabel {
+                            if let label = value.as(String.self) {
+                                Text(label)
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundStyle(palette.muted)
+                                    .fixedSize()
+                            }
+                        }
                     }
                 }
                 .chartYAxis {
