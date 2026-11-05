@@ -754,30 +754,32 @@ struct DateOverlay: View {
                     .contentShape(Rectangle())
                     // Swallow taps so the keypad behind the sheet never fires.
                     .onTapGesture { }
-                    .opacity(closing ? 0 : 1)
+                    .opacity(landed ? 0 : 1)
 
                 card(width: proxy.size.width)
-                    // Two-stage path: the sheet arcs out first, then gets pulled
-                    // into the date pill, so the motion curves instead of sliding.
+                    // Two-stage genie: the sheet is pulled sideways first, then
+                    // stretched and crushed into the date pill on a curved path.
                     .offset(
-                        x: landed ? travel.width : (closing ? travel.width * 0.34 : 0),
-                        y: landed ? travel.height : (closing ? travel.height * 0.12 : 0)
+                        x: landed ? travel.width : (closing ? travel.width * 0.55 : 0),
+                        y: landed ? travel.height : (closing ? travel.height * 0.08 : 0)
                     )
-                    .scaleEffect(landed ? 0.04 : (closing ? 0.6 : (appeared ? 1 : 0.9)))
+                    .scaleEffect(
+                        x: landed ? 0.02 : (closing ? 0.92 : (appeared ? 1 : 0.9)),
+                        y: landed ? 0.05 : (closing ? 1.08 : (appeared ? 1 : 0.9))
+                    )
                     .rotation3DEffect(
-                        .degrees(landed ? -38 : (closing ? -12 : 0)),
+                        .degrees(landed ? -32 : (closing ? -9 : 0)),
                         axis: (x: 1, y: 0, z: 0),
                         anchor: .center,
-                        perspective: 0.55
+                        perspective: 0.6
                     )
                     .rotation3DEffect(
-                        .degrees(landed ? 10 : (closing ? 3 : 0)),
+                        .degrees(landed ? 30 : (closing ? 16 : 0)),
                         axis: (x: 0, y: 1, z: 0),
                         anchor: .center,
-                        perspective: 0.55
+                        perspective: 0.6
                     )
-                    .opacity(landed ? 0 : 1)
-                    .blur(radius: landed ? 5 : 0)
+                    .blur(radius: landed ? 2.5 : 0)
             }
         }
         .onAppear {
@@ -860,11 +862,11 @@ struct DateOverlay: View {
 
     private func dismiss(confirmed: Bool) {
         guard !closing else { return }
-        withAnimation(.easeOut(duration: 0.16)) { closing = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
-            withAnimation(.easeIn(duration: 0.32)) { landed = true }
+        withAnimation(.easeOut(duration: 0.18)) { closing = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            withAnimation(.easeIn(duration: 0.4)) { landed = true }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.62) {
             if confirmed {
                 model.confirmDate(date)
             } else {
