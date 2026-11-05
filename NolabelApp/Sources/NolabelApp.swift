@@ -34,7 +34,7 @@ struct RootView: View {
                 .opacity(model.entryOpen || model.cashPlazaOpen ? 0.36 : 1)
                 .scaleEffect(model.entryOpen || model.cashPlazaOpen ? 0.988 : 1)
                 .allowsHitTesting(!model.entryOpen && !model.settingsOpen && !model.cashPlazaOpen && model.pendingDeleteBill == nil)
-                .animation(reduceMotion ? nil : AppMotion.spring, value: model.entryOpen)
+                .animation(reduceMotion ? nil : AppMotion.drawer, value: model.entryOpen)
                 .animation(reduceMotion ? nil : AppMotion.spring, value: model.cashPlazaOpen)
 
             EntryView(model: model, palette: palette)

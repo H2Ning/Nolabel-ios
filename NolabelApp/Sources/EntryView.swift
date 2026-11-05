@@ -9,7 +9,11 @@ struct EntryView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            VStack(spacing: 0) {
+            let stageHeight = max(184, min(360, proxy.size.height - 382))
+            ZStack(alignment: .top) {
+                palette.pageBG.ignoresSafeArea()
+
+                VStack(spacing: 0) {
                 HStack {
                     Button(action: { model.closeEntry() }) {
                         Image(systemName: "xmark")
@@ -35,10 +39,11 @@ struct EntryView: View {
                     onCycle: { model.cycleCashMode() },
                     onReady: {}
                 )
-                .frame(maxWidth: .infinity, minHeight: 184, maxHeight: .infinity)
+                .frame(height: stageHeight)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
-                .padding(.bottom, 12)
+
+                Spacer(minLength: 12)
 
                 entryCard
                     .padding(.horizontal, 20)
@@ -49,8 +54,8 @@ struct EntryView: View {
                     .padding(.top, 12)
                     .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
                     .layoutPriority(1)
+                }
             }
-            .background(palette.pageBG.ignoresSafeArea())
         }
         .onTapGesture {
             noteFocused = false
