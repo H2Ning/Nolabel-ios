@@ -96,6 +96,7 @@ jobs:
           capture network-probe-pin --preview --preview-screen settings --preview-theme dark --preview-probe --force-pin
           capture delete-confirm --preview --preview-screen bills --preview-theme dark --preview-delete-confirm
           capture cash-plaza --preview --preview-screen bills --preview-theme dark --preview-plaza
+          capture cash-plaza-analysis --preview --preview-screen bills --preview-theme dark --preview-plaza --preview-plaza-analysis
 
       - name: Make previews
         run: |

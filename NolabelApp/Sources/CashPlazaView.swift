@@ -1,4 +1,5 @@
 import Charts
+import Foundation
 import SwiftUI
 
 struct CashPlazaView: View {
@@ -6,9 +7,11 @@ struct CashPlazaView: View {
     let palette: AppPalette
     let onClose: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var stageMode = 2
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
+    @State private var analysisOpen = ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis")
 
     private var bills: [Bill] { model.monthBills }
     private var monthTitle: String { model.monthTitle }
@@ -99,18 +102,51 @@ struct CashPlazaView: View {
         ZStack {
             palette.pageBG.ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 14) {
-                    header
-                    stage
-                    chartCard
+            VStack(spacing: 0) {
+                header
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 14)
+
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            if !analysisOpen {
+                                stage
+                                    .transition(
+                                        .asymmetric(
+                                            insertion: .opacity.combined(with: .scale(scale: 0.98, anchor: .top)),
+                                            removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
+                                        )
+                                    )
+                            }
+
+                            chartButton
+
+                            if analysisOpen {
+                                CashPlazaAnalysisView(
+                                    bills: bills,
+                                    month: model.selectedMonth,
+                                    palette: palette
+                                )
+                                .transition(.opacity.combined(with: .scale(scale: 0.99, anchor: .top)))
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 2)
+                        .padding(.bottom, 30)
+                        .id("plazaTop")
+                    }
+                    .scrollIndicators(.hidden)
+                    .onChange(of: analysisOpen) { _, _ in
+                        withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                            proxy.scrollTo("plazaTop", anchor: .top)
+                        }
+                    }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 30)
             }
-            .scrollIndicators(.hidden)
         }
+        .animation(reduceMotion ? nil : AppMotion.spring, value: analysisOpen)
     }
 
     private var header: some View {
@@ -207,6 +243,26 @@ struct CashPlazaView: View {
         )
     }
 
+    private var chartButton: some View {
+        Button {
+            Haptics.pick()
+            withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                analysisOpen.toggle()
+            }
+        } label: {
+            chartCard
+        }
+        .buttonStyle(PressableStyle(scale: 0.985))
+        .accessibilityLabel(
+            analysisOpen
+                ? "收起账单分析，返回现金广场"
+                : "每日支出与累计支出，共 \(Formats.money(totalCents)) 元"
+        )
+        .accessibilityHint(
+            analysisOpen ? "轻点返回现金展示" : "轻点隐藏现金展示，查看本月花费分析"
+        )
+    }
+
     private var chartCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
@@ -278,6 +334,23 @@ struct CashPlazaView: View {
                 .frame(height: 190)
                 .animation(AppMotion.grace, value: points.count)
             }
+
+            Rectangle()
+                .fill(palette.line)
+                .frame(height: 1)
+                .padding(.top, 2)
+
+            HStack(spacing: 6) {
+                Image(systemName: analysisOpen ? "chevron.up" : "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 9.5, weight: .semibold))
+                Text(analysisOpen ? "收起分析，回到现金展示" : "看看这个月的钱怎么没的")
+                    .font(.system(size: 10.5, weight: .medium))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .bold))
+                    .rotationEffect(.degrees(analysisOpen ? 90 : 0))
+            }
+            .foregroundStyle(palette.muted)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

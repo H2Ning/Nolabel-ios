@@ -258,7 +258,9 @@ private struct CashNoteGrid: View {
                     NoteThumbnail(denom: denom)
                 }
             }
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.top, 42)
+            .padding(.bottom, 12)
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
