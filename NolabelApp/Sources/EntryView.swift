@@ -85,7 +85,19 @@ struct EntryView: View {
                         .foregroundStyle(palette.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.55)
+                    if let op = model.entryOperator {
+                        Text(op.rawValue)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(palette.accent)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(palette.accentSoft, in: Capsule())
+                            .padding(.leading, 4)
+                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                            .accessibilityHidden(true)
+                    }
                 }
+                .animation(AppMotion.quick, value: model.entryOperator)
                 Spacer(minLength: 4)
                 typeSwitch
             }
@@ -257,19 +269,43 @@ struct EntryView: View {
         Button {
             model.cycleOperator()
         } label: {
-            HStack(spacing: 2) {
-                ForEach(EntryOperator.allCases, id: \.rawValue) { op in
-                    Text(op.rawValue)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(model.entryOperator == op ? palette.accent : palette.muted)
+            Group {
+                if let op = model.entryOperator {
+                    VStack(spacing: 1) {
+                        Text(op.rawValue)
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(palette.accent)
+                        Text("轻点切换")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(palette.muted)
+                    }
+                } else {
+                    VStack(spacing: 3) {
+                        HStack(spacing: 3) {
+                            ForEach(EntryOperator.allCases, id: \.rawValue) { op in
+                                Text(op.rawValue)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(palette.muted)
+                            }
+                        }
+                        Text("运算")
+                            .font(.system(size: 8.5, weight: .medium))
+                            .foregroundStyle(palette.muted)
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background(palette.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(
+                model.entryOperator == nil ? palette.surface2 : palette.accentSoft,
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(palette.line, lineWidth: 1)
+                    .stroke(
+                        model.entryOperator == nil ? palette.line : palette.accent.opacity(0.35),
+                        lineWidth: 1
+                    )
             )
         }
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.68, level: model.hapticLevel))

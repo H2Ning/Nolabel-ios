@@ -83,6 +83,7 @@ jobs:
           capture entry-light --preview --preview-screen entry --preview-theme light --preview-amount 123
           capture entry-grouped --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-cash-mode 2
           capture entry-calc --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-calc
+          capture entry-operator-selected --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-operator-selected
           capture entry-expanded --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-cash-mode 3
           capture entry-piles --preview --preview-screen entry --preview-theme dark --preview-amount 4234.30
           capture entry-bundle --preview --preview-screen entry --preview-theme dark --preview-amount 100000
