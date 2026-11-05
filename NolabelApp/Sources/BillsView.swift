@@ -132,10 +132,18 @@ struct BillsView: View {
                     .tracking(0.2)
                     .foregroundStyle(palette.muted)
                 Spacer()
-                Text(model.monthPeriod)
-                    .scalableFont(12, weight: .medium)
-                    .foregroundStyle(palette.muted)
-                    .contentTransition(.numericText())
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .scalableFont(8, weight: .bold)
+                        .foregroundStyle(palette.faint)
+                    Text(model.monthPeriod)
+                        .scalableFont(12, weight: .medium)
+                        .foregroundStyle(palette.muted)
+                        .contentTransition(.numericText())
+                    Image(systemName: "chevron.right")
+                        .scalableFont(8, weight: .bold)
+                        .foregroundStyle(palette.faint)
+                }
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -210,6 +218,7 @@ struct BillsView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel("该月支出 \(Formats.money(model.monthExpense)) 元，收入 \(Formats.money(model.monthIncome)) 元，\(model.monthBills.count) 笔，\(model.monthNotes) 张现钞")
+        .accessibilityHint("左右滑动切换月份，轻点打开现金广场")
     }
 
     private var monthListTransition: AnyTransition {

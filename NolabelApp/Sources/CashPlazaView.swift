@@ -391,6 +391,33 @@ struct CashPlazaView: View {
                     .symbolSize(18)
                 }
                 .chartXSelection(value: $selectedDayLabel)
+                .chartOverlay { proxy in
+                    GeometryReader { geometry in
+                        if let label = selectedDayLabel,
+                           let point = snapshot.points.first(where: { $0.label == label }),
+                           let plotFrame = proxy.plotFrame,
+                           let x = proxy.position(forX: label),
+                           let y = proxy.position(forY: point.cumulative) {
+                            let plot = geometry[plotFrame]
+                            let pointX = plot.origin.x + x
+                            let pointY = plot.origin.y + y
+                            Path { path in
+                                path.move(to: CGPoint(x: pointX, y: plot.minY))
+                                path.addLine(to: CGPoint(x: pointX, y: plot.maxY))
+                                path.move(to: CGPoint(x: plot.minX, y: pointY))
+                                path.addLine(to: CGPoint(x: plot.maxX, y: pointY))
+                            }
+                            .stroke(
+                                palette.accent.opacity(0.45),
+                                style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+                            )
+                            Circle()
+                                .fill(palette.accent)
+                                .frame(width: 6, height: 6)
+                                .position(x: pointX, y: pointY)
+                        }
+                    }
+                }
                 .chartYScale(domain: 0...snapshot.chartMax)
                 .chartXAxis {
                     AxisMarks(preset: .aligned, values: snapshot.tickLabels) { value in

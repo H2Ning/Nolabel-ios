@@ -10,7 +10,6 @@ struct EntryView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let stageHeight = max(184, min(360, proxy.size.height - 382))
             ZStack(alignment: .top) {
                 palette.pageBG.ignoresSafeArea()
 
@@ -40,23 +39,27 @@ struct EntryView: View {
                     onSelectMode: { model.setCashMode($0) },
                     onReady: {}
                 )
-                .frame(height: stageHeight)
+                .frame(maxWidth: .infinity, minHeight: 140, maxHeight: 360)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
+                .layoutPriority(0)
 
-                Spacer(minLength: 12)
+                // Fixed gap: the stage gives up height first.
+                Color.clear.frame(height: 12)
 
                 entryCard
                     .padding(.horizontal, 20)
-                    .padding(.bottom, noteFocused ? 28 : 0)
-                    .layoutPriority(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(2)
 
-                if !noteFocused {
+                if noteFocused {
+                    Color.clear.frame(height: 28)
+                } else {
                     keypad
                         .padding(.horizontal, 20)
                         .padding(.top, 12)
                         .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
-                        .layoutPriority(1)
+                        .layoutPriority(2)
                         .transition(.opacity)
                 }
                 }
