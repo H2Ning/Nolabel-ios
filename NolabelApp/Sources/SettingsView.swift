@@ -52,6 +52,10 @@ struct SettingsPage: View {
         }
         .contentShape(Rectangle())
         .toolbar(.hidden, for: .navigationBar)
+        .background(
+            InteractivePopGestureEnabler()
+                .frame(width: 0, height: 0)
+        )
         .onAppear {
             username = model.savedUsername
         }
