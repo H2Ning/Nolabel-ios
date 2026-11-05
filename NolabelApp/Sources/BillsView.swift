@@ -207,12 +207,12 @@ struct BillsView: View {
             if model.monthBills.isEmpty {
                 emptyState
             } else {
-                VStack(spacing: 12) {
+                LazyVStack(spacing: 12) {
                     ForEach(model.monthGroups()) { group in
                         DayCapsuleView(model: model, group: group, palette: palette)
                     }
                 }
-                .animation(reduceMotion ? nil : AppMotion.spring, value: model.monthBills)
+                .animation(reduceMotion ? nil : AppMotion.spring, value: model.monthDataVersion)
             }
         }
     }
@@ -332,13 +332,15 @@ struct DayCapsuleView: View {
             .padding(.bottom, 9)
             .background(palette.surface2.opacity(palette.isDark ? 0.55 : 0.62))
 
-            ForEach(Array(group.bills.enumerated()), id: \.element.id) { index, bill in
-                SwipeBillRow(
-                    model: model,
-                    bill: bill,
-                    palette: palette,
-                    showDivider: index < group.bills.count - 1
-                )
+            LazyVStack(spacing: 0) {
+                ForEach(Array(group.bills.enumerated()), id: \.element.id) { index, bill in
+                    SwipeBillRow(
+                        model: model,
+                        bill: bill,
+                        palette: palette,
+                        showDivider: index < group.bills.count - 1
+                    )
+                }
             }
         }
         .background(palette.surface)

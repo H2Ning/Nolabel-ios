@@ -52,7 +52,9 @@ final class AppModel {
     var pendingDeleteBill: Bill?
     var cashPlazaOpen = false
 
-    var bills: [Bill] = []
+    var bills: [Bill] = [] {
+        didSet { billsRevision &+= 1 }
+    }
     var user: AccountUser?
     var authReady = false
     var authLoading = false
@@ -108,27 +110,80 @@ final class AppModel {
 
     var selectedMonthKey: String { DateHelp.monthKey(selectedMonth) }
 
-    var monthBills: [Bill] {
-        bills
+    /// A cheap value that changes whenever the selected month's visible data
+    /// changes. Views use it to invalidate their own derived values.
+    var monthDataVersion: String {
+        "\(billsRevision)|\(selectedMonthKey)|\(sortDesc)"
+    }
+
+    private struct MonthSnapshot {
+        let bills: [Bill]
+        let expense: Int
+        let income: Int
+        let notes: Int
+        let groups: [DayGroup]
+    }
+
+    private var billsRevision = 0
+    private var cachedMonthSnapshot: MonthSnapshot?
+    private var cachedMonthSnapshotKey = ""
+
+    private func monthSnapshot() -> MonthSnapshot {
+        let key = monthDataVersion
+        if key == cachedMonthSnapshotKey, let cached = cachedMonthSnapshot {
+            return cached
+        }
+
+        let sorted = bills
             .filter { $0.monthKey == selectedMonthKey }
             .sorted { lhs, rhs in
                 if lhs.iso != rhs.iso { return sortDesc ? lhs.iso > rhs.iso : lhs.iso < rhs.iso }
                 if lhs.createdAt != rhs.createdAt { return sortDesc ? lhs.createdAt > rhs.createdAt : lhs.createdAt < rhs.createdAt }
                 return lhs.id > rhs.id
             }
+
+        var expense = 0
+        var income = 0
+        var notes = 0
+        var order: [String] = []
+        var grouped: [String: [Bill]] = [:]
+        for bill in sorted {
+            if bill.type == .expense { expense += bill.cents } else { income += bill.cents }
+            notes += bill.count
+            if grouped[bill.iso] == nil {
+                order.append(bill.iso)
+                grouped[bill.iso] = []
+            }
+            grouped[bill.iso]?.append(bill)
+        }
+
+        let groups = order.map { iso -> DayGroup in
+            let items = grouped[iso] ?? []
+            var dayExpense = 0
+            var dayIncome = 0
+            for bill in items {
+                if bill.type == .expense { dayExpense += bill.cents } else { dayIncome += bill.cents }
+            }
+            return DayGroup(iso: iso, bills: items, expense: dayExpense, income: dayIncome)
+        }
+
+        let snapshot = MonthSnapshot(
+            bills: sorted,
+            expense: expense,
+            income: income,
+            notes: notes,
+            groups: groups
+        )
+        cachedMonthSnapshot = snapshot
+        cachedMonthSnapshotKey = key
+        return snapshot
     }
 
-    var monthExpense: Int {
-        monthBills.filter { $0.type == .expense }.reduce(0) { $0 + $1.cents }
-    }
-
-    var monthIncome: Int {
-        monthBills.filter { $0.type == .income }.reduce(0) { $0 + $1.cents }
-    }
-
-    var monthNotes: Int {
-        monthBills.reduce(0) { $0 + $1.count }
-    }
+    var monthBills: [Bill] { monthSnapshot().bills }
+    var monthExpense: Int { monthSnapshot().expense }
+    var monthIncome: Int { monthSnapshot().income }
+    var monthNotes: Int { monthSnapshot().notes }
+    func monthGroups() -> [DayGroup] { monthSnapshot().groups }
 
     var monthTitle: String { DateHelp.monthTitle(selectedMonth) }
     var monthPeriod: String {
@@ -943,24 +998,6 @@ final class AppModel {
         entryError = ""
     }
 
-    func monthGroups() -> [DayGroup] {
-        let sorted = monthBills
-        var order: [String] = []
-        var grouped: [String: [Bill]] = [:]
-        for bill in sorted {
-            if grouped[bill.iso] == nil {
-                order.append(bill.iso)
-                grouped[bill.iso] = []
-            }
-            grouped[bill.iso]?.append(bill)
-        }
-        return order.map { iso in
-            let items = grouped[iso] ?? []
-            let expense = items.filter { $0.type == .expense }.reduce(0) { $0 + $1.cents }
-            let income = items.filter { $0.type == .income }.reduce(0) { $0 + $1.cents }
-            return DayGroup(iso: iso, bills: items, expense: expense, income: income)
-        }
-    }
 }
 
 struct DayGroup: Identifiable {

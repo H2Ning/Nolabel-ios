@@ -137,7 +137,7 @@ struct Denomination: Identifiable, Hashable {
     var baseDepth: CGFloat { baseWidth / ratio }
 
     static let all: [Denomination] = [
-        Denomination(id: "100", value: 10_000, name: "100元", imageName: "100", physicalWidth: 155, ratio: 640.0 / 314.0, sideColor: 0xC98D9B, sideLineColor: 0xA16B79, sideDarkColor: 0x83515F),
+        Denomination(id: "100", value: 10_000, name: "100元", imageName: "100", physicalWidth: 155, ratio: 632.0 / 314.0, sideColor: 0xC98D9B, sideLineColor: 0xA16B79, sideDarkColor: 0x83515F),
         Denomination(id: "50", value: 5_000, name: "50元", imageName: "50", physicalWidth: 150, ratio: 600.0 / 280.0, sideColor: 0x89A991, sideLineColor: 0x677F6E, sideDarkColor: 0x506452),
         Denomination(id: "20", value: 2_000, name: "20元", imageName: "20", physicalWidth: 145, ratio: 638.0 / 311.0, sideColor: 0xB39580, sideLineColor: 0x8B705D, sideDarkColor: 0x6D5646),
         Denomination(id: "10", value: 1_000, name: "10元", imageName: "10", physicalWidth: 140, ratio: 432.0 / 211.0, sideColor: 0x819AB6, sideLineColor: 0x607892, sideDarkColor: 0x4B5E75),

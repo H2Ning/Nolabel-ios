@@ -13,97 +13,99 @@ struct CashPlazaView: View {
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
     @State private var analysisOpen = ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis")
 
-    private var bills: [Bill] { model.monthBills }
     private var monthTitle: String { model.monthTitle }
 
-    private var expenseBills: [Bill] {
-        bills.filter { $0.type == .expense }
-    }
+    private struct PlazaSnapshot {
+        let expenseCount: Int
+        let totalCents: Int
+        let tallies: [CashGroup]
+        let totalNotes: Int
+        let points: [PlazaDay]
+        let chartMax: Double
+        let tickLabels: [String]
 
-    private var totalCents: Int {
-        expenseBills.reduce(0) { $0 + $1.cents }
-    }
+        init(bills: [Bill]) {
+            let expenses = bills.filter { $0.type == .expense }
+            expenseCount = expenses.count
+            totalCents = expenses.reduce(0) { $0 + $1.cents }
 
-    private var tallies: [CashGroup] {
-        var counts: [String: Int] = [:]
-        for bill in expenseBills {
-            let groups: [CashGroup]
-            if bill.groups.isEmpty {
-                groups = CashBreakdown.groups(for: bill.cents)
-            } else {
-                groups = bill.groups.compactMap { group in
-                    guard let denomination = Denomination.find(group.key) else { return nil }
-                    return CashGroup(denomination: denomination, count: group.count)
+            var counts: [String: Int] = [:]
+            for bill in expenses {
+                let groups: [CashGroup]
+                if bill.groups.isEmpty {
+                    groups = CashBreakdown.groups(for: bill.cents)
+                } else {
+                    groups = bill.groups.compactMap { group in
+                        guard let denomination = Denomination.find(group.key) else { return nil }
+                        return CashGroup(denomination: denomination, count: group.count)
+                    }
+                }
+                for group in groups {
+                    counts[group.denomination.id, default: 0] += group.count
                 }
             }
-            for group in groups {
-                counts[group.denomination.id, default: 0] += group.count
+            let tallies = Denomination.all.compactMap { denomination -> CashGroup? in
+                guard let count = counts[denomination.id], count > 0 else { return nil }
+                return CashGroup(denomination: denomination, count: count)
             }
-        }
-        return Denomination.all.compactMap { denomination in
-            guard let count = counts[denomination.id], count > 0 else { return nil }
-            return CashGroup(denomination: denomination, count: count)
-        }
-    }
+            self.tallies = tallies
+            totalNotes = CashBreakdown.totalNotes(tallies)
 
-    private var totalNotes: Int {
-        CashBreakdown.totalNotes(tallies)
-    }
+            let calendar = Calendar.current
+            let dates = expenses.compactMap { DateHelp.date(from: $0.iso) }
+            var points: [PlazaDay] = []
+            if let first = dates.min(), let last = dates.max() {
+                var daily: [Date: Int] = [:]
+                for bill in expenses {
+                    guard let date = DateHelp.date(from: bill.iso) else { continue }
+                    daily[calendar.startOfDay(for: date), default: 0] += bill.cents
+                }
+                var cumulative = 0
+                var day = calendar.startOfDay(for: first)
+                let end = calendar.startOfDay(for: last)
+                while day <= end {
+                    let value = daily[day] ?? 0
+                    cumulative += value
+                    let components = calendar.dateComponents([.month, .day], from: day)
+                    points.append(PlazaDay(
+                        date: day,
+                        label: "\(components.month ?? 0)/\(components.day ?? 0)",
+                        daily: Double(value) / 100,
+                        cumulative: Double(cumulative) / 100
+                    ))
+                    guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+                    day = next
+                }
+            }
+            self.points = points
 
-    private var points: [PlazaDay] {
-        let calendar = Calendar.current
-        let dates = expenseBills.compactMap { DateHelp.date(from: $0.iso) }
-        guard let first = dates.min(), let last = dates.max() else { return [] }
+            let maximum = points.map { max($0.daily, $0.cumulative) }.max() ?? 0
+            if maximum > 0 {
+                let rough = maximum / 4
+                let magnitude = pow(10, floor(log10(rough)))
+                let step = max(1, ceil(rough / magnitude) * magnitude)
+                chartMax = ceil(maximum / step) * step
+            } else {
+                chartMax = 100
+            }
 
-        var daily: [Date: Int] = [:]
-        for bill in expenseBills {
-            guard let date = DateHelp.date(from: bill.iso) else { continue }
-            daily[calendar.startOfDay(for: date), default: 0] += bill.cents
-        }
-
-        let start = calendar.startOfDay(for: first)
-        let end = calendar.startOfDay(for: last)
-        var result: [PlazaDay] = []
-        var cumulative = 0
-        var day = start
-        while day <= end {
-            let value = daily[day] ?? 0
-            cumulative += value
-            let components = calendar.dateComponents([.month, .day], from: day)
-            result.append(PlazaDay(
-                date: day,
-                label: "\(components.month ?? 0)/\(components.day ?? 0)",
-                daily: Double(value) / 100,
-                cumulative: Double(cumulative) / 100
-            ))
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
-        }
-        return result
-    }
-
-    private var chartMax: Double {
-        let maximum = points.map { max($0.daily, $0.cumulative) }.max() ?? 0
-        guard maximum > 0 else { return 100 }
-        let rough = maximum / 4
-        let magnitude = pow(10, floor(log10(rough)))
-        let step = max(1, ceil(rough / magnitude) * magnitude)
-        return ceil(maximum / step) * step
-    }
-
-    private var tickLabels: [String] {
-        let stride = max(1, Int(ceil(Double(points.count) / 6.0)))
-        return points.enumerated().compactMap { index, point in
-            index % stride == 0 ? point.label : nil
+            let labelStride = max(1, Int(ceil(Double(points.count) / 6.0)))
+            tickLabels = points.enumerated().compactMap { index, point in
+                index % labelStride == 0 ? point.label : nil
+            }
         }
     }
 
     var body: some View {
+        content(PlazaSnapshot(bills: model.monthBills))
+    }
+
+    private func content(_ snapshot: PlazaSnapshot) -> some View {
         ZStack {
             palette.pageBG.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                header
+                header(snapshot)
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 14)
@@ -112,7 +114,7 @@ struct CashPlazaView: View {
                     ScrollView {
                         VStack(spacing: 14) {
                             if !analysisOpen {
-                                stage
+                                stage(snapshot)
                                     .transition(
                                         .asymmetric(
                                             insertion: .opacity.combined(with: .scale(scale: 0.98, anchor: .top)),
@@ -121,21 +123,24 @@ struct CashPlazaView: View {
                                     )
                             }
 
-                            chartButton
+                            chartButton(snapshot)
 
                             if analysisOpen {
-                                CashPlazaAnalysisView(
-                                    bills: bills,
-                                    month: model.selectedMonth,
-                                    palette: palette
-                                )
+                                VStack(spacing: 0) {
+                                    CashPlazaAnalysisView(
+                                        bills: model.monthBills,
+                                        month: model.selectedMonth,
+                                        palette: palette
+                                    )
+                                    .id("plazaAnalysis-\(model.monthDataVersion)")
+                                }
                                 .id("plazaAnalysisBottom")
                                 .transition(.opacity.combined(with: .scale(scale: 0.99, anchor: .top)))
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 2)
-                        .padding(.bottom, 30)
+                        .padding(.bottom, 36)
                         .id("plazaTop")
                     }
                     .scrollIndicators(.hidden)
@@ -158,7 +163,7 @@ struct CashPlazaView: View {
         .animation(reduceMotion ? nil : AppMotion.spring, value: analysisOpen)
     }
 
-    private var header: some View {
+    private func header(_ snapshot: PlazaSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Button(action: onClose) {
                 Image(systemName: "xmark")
@@ -176,7 +181,7 @@ struct CashPlazaView: View {
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(palette.ink)
-                Text("\(monthTitle) · \(expenseBills.count) 笔 · \(totalNotes) 张现钞")
+                Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(palette.muted)
@@ -185,13 +190,13 @@ struct CashPlazaView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var stage: some View {
+    private func stage(_ snapshot: PlazaSnapshot) -> some View {
         Group {
-            if tallies.isEmpty {
+            if snapshot.tallies.isEmpty {
                 emptyStage
             } else {
                 CashStageView(
-                    source: .groups(tallies),
+                    source: .groups(snapshot.tallies),
                     palette: palette,
                     yaw: $stageYaw,
                     pitch: $stagePitch,
@@ -252,34 +257,34 @@ struct CashPlazaView: View {
         )
     }
 
-    private var chartButton: some View {
+    private func chartButton(_ snapshot: PlazaSnapshot) -> some View {
         Button {
             Haptics.pick()
             withAnimation(reduceMotion ? nil : AppMotion.spring) {
                 analysisOpen.toggle()
             }
         } label: {
-            chartCard
+            chartCard(snapshot)
         }
         .buttonStyle(PressableStyle(scale: 0.985))
         .accessibilityLabel(
             analysisOpen
                 ? "收起账单分析，返回现金广场"
-                : "每日支出与累计支出，共 \(Formats.money(totalCents)) 元"
+                : "每日支出与累计支出，共 \(Formats.money(snapshot.totalCents)) 元"
         )
         .accessibilityHint(
             analysisOpen ? "轻点返回现金展示" : "轻点隐藏现金展示，查看本月花费分析"
         )
     }
 
-    private var chartCard: some View {
+    private func chartCard(_ snapshot: PlazaSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("每日支出与累计支出")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(palette.ink)
-                    Text("¥\(Formats.money(totalCents))")
+                    Text("¥\(Formats.money(snapshot.totalCents))")
                         .font(.system(size: 25, weight: .bold, design: .rounded))
                         .tracking(-0.5)
                         .monospacedDigit()
@@ -292,15 +297,15 @@ struct CashPlazaView: View {
                 }
             }
 
-            if points.isEmpty {
+            if snapshot.points.isEmpty {
                 Text("暂无支出")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.muted)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 190)
+                    .frame(height: 164)
             } else {
-                Chart(points) { point in
-                    dailyBar(point)
+                Chart(snapshot.points) { point in
+                    dailyBar(point, count: snapshot.points.count)
 
                     LineMark(
                         x: .value("日期", point.label),
@@ -317,9 +322,9 @@ struct CashPlazaView: View {
                     .foregroundStyle(palette.accent)
                     .symbolSize(18)
                 }
-                .chartYScale(domain: 0...chartMax)
+                .chartYScale(domain: 0...snapshot.chartMax)
                 .chartXAxis {
-                    AxisMarks(values: tickLabels) { _ in
+                    AxisMarks(values: snapshot.tickLabels) { _ in
                         AxisGridLine().foregroundStyle(palette.line.opacity(0.4))
                         AxisTick().foregroundStyle(palette.line)
                         AxisValueLabel()
@@ -340,8 +345,8 @@ struct CashPlazaView: View {
                         }
                     }
                 }
-                .frame(height: 190)
-                .animation(AppMotion.grace, value: points.count)
+                .frame(height: 164)
+                .animation(AppMotion.grace, value: snapshot.points.count)
             }
 
             Rectangle()
@@ -359,6 +364,7 @@ struct CashPlazaView: View {
                     .font(.system(size: 8, weight: .bold))
             }
             .foregroundStyle(palette.muted)
+            .contentShape(Rectangle())
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -367,11 +373,12 @@ struct CashPlazaView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     @ChartContentBuilder
-    private func dailyBar(_ point: PlazaDay) -> some ChartContent {
-        if points.count <= 6 {
+    private func dailyBar(_ point: PlazaDay, count: Int) -> some ChartContent {
+        if count <= 6 {
             BarMark(
                 x: .value("日期", point.label),
                 y: .value("每日支出", point.daily),

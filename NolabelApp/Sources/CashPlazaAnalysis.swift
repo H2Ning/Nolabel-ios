@@ -321,7 +321,6 @@ struct CashPlazaAnalysisView: View {
                 statsGrid
             }
             verdictCard
-            footnote
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -482,10 +481,7 @@ struct CashPlazaAnalysisView: View {
 
     private var incomeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(
-                "钱从哪来",
-                detail: "\(analysis.incomeCount) 笔 · ¥\(Formats.money(analysis.incomeTotal))"
-            )
+            sectionHeader("钱从哪来", detail: "收入")
             if analysis.incomeItems.isEmpty {
                 Text("这个月没有收入记录。花的是之前的存量，或者你忘了记。")
                     .font(.system(size: 12.5, weight: .regular))
@@ -510,10 +506,7 @@ struct CashPlazaAnalysisView: View {
 
     private var expenseSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(
-                "钱怎么没的",
-                detail: "\(analysis.expenseCount) 笔 · ¥\(Formats.money(analysis.expenseTotal))"
-            )
+            sectionHeader("钱怎么没的", detail: "支出")
             if analysis.expenseItems.isEmpty {
                 Text("这个月没有支出。钱还在，账单是空的。")
                     .font(.system(size: 12.5, weight: .regular))
@@ -548,10 +541,10 @@ struct CashPlazaAnalysisView: View {
     }
 
     private var expenseSummary: Text {
-        Text("平均一笔 ").foregroundColor(palette.muted)
-            + Text("¥\(Formats.money(analysis.averageExpense))").foregroundColor(palette.ink).fontWeight(.semibold)
-            + Text("，\(analysis.spendingDays) 个花钱日日均 ").foregroundColor(palette.muted)
+        Text("日均花费 ").foregroundColor(palette.muted)
             + Text("¥\(Formats.money(analysis.dailyAverage))").foregroundColor(palette.ink).fontWeight(.semibold)
+            + Text("，平均一笔 ").foregroundColor(palette.muted)
+            + Text("¥\(Formats.money(analysis.averageExpense))").foregroundColor(palette.ink).fontWeight(.semibold)
             + Text("。").foregroundColor(palette.muted)
     }
 
@@ -738,23 +731,18 @@ struct CashPlazaAnalysisView: View {
         )
     }
 
-    private var footnote: some View {
-        Text("按备注归类，相同备注算一类；没写备注的归到「未备注」。现钞张数按每笔金额的面额拆分统计。")
-            .font(.system(size: 10, weight: .regular))
-            .foregroundStyle(palette.muted)
-            .lineSpacing(2)
-    }
-
     private func sectionHeader(_ title: String, detail: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(title)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(palette.ink)
-            Spacer(minLength: 8)
+            Rectangle()
+                .fill(palette.line)
+                .frame(width: 1, height: 12)
             Text(detail)
-                .font(.system(size: 10, weight: .medium))
-                .monospacedDigit()
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(palette.muted)
+            Spacer(minLength: 0)
         }
     }
 

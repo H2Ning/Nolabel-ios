@@ -877,9 +877,6 @@ final class CashSceneCanvas: UIView {
         }
 
         let size = CGSize(width: CGFloat(pixelWidth) / scale, height: CGFloat(pixelHeight) / scale)
-        let base = edgeColor(for: denom, edge: edge)
-        let line = Self.scaledColor(base, by: 0.78)
-        let dark = Self.scaledColor(base, by: 0.58)
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
         format.opaque = true
@@ -887,46 +884,21 @@ final class CashSceneCanvas: UIView {
         let image = renderer.image { context in
             let cg = context.cgContext
             let rect = CGRect(origin: .zero, size: size)
-            cg.setFillColor(base.cgColor)
-            cg.fill(rect)
 
-            // Give each note in the stack a hair of color variation. The
-            // strip should read as layered paper, not one painted board.
-            let rawStep = CGFloat(pixelSpacing) / scale
-            let rawBands = vertical
-                ? Int(ceil(size.height / max(rawStep, 0.5)))
-                : Int(ceil(size.width / max(rawStep, 0.5)))
-            let bandCount = min(64, max(1, rawBands))
-            let bandStep = vertical
-                ? size.height / CGFloat(bandCount)
-                : size.width / CGFloat(bandCount)
-            let seed = "\(denom.id)|\(edge.rawValue)"
-            for index in 0..<bandCount {
-                let amount = Self.jitter(seed: seed, index: index)
-                cg.setFillColor(Self.scaledColor(base, by: 1 + amount).cgColor)
-                if vertical {
-                    let y = CGFloat(index) * bandStep
-                    cg.fill(CGRect(
-                        x: 0,
-                        y: y,
-                        width: size.width,
-                        height: min(bandStep, max(0, size.height - y))
-                    ))
-                } else {
-                    let x = CGFloat(index) * bandStep
-                    cg.fill(CGRect(
-                        x: x,
-                        y: 0,
-                        width: min(bandStep, max(0, size.width - x)),
-                        height: size.height
-                    ))
-                }
+            // The banknote's own edge, pixel for pixel, stretched across the
+            // cuboid face. No averaged color and no painted-on substitute.
+            if let strip = edgeStripImage(denom: denom, edge: edge) {
+                cg.interpolationQuality = .medium
+                cg.draw(strip, in: rect)
+            } else {
+                cg.setFillColor(UIColor(hex: denom.sideColor).cgColor)
+                cg.fill(rect)
             }
 
             let colors = [
-                UIColor.white.withAlphaComponent(0.16).cgColor,
+                UIColor.white.withAlphaComponent(0.14).cgColor,
                 UIColor.clear.cgColor,
-                dark.withAlphaComponent(0.18).cgColor
+                UIColor.black.withAlphaComponent(0.22).cgColor
             ] as CFArray
             if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.35, 1]) {
                 cg.drawLinearGradient(
@@ -937,21 +909,28 @@ final class CashSceneCanvas: UIView {
                 )
             }
 
-            cg.setStrokeColor(line.withAlphaComponent(0.58).cgColor)
+            // A thin line per note. Cap the count so a tall pile does not
+            // spend its time drawing hundreds of nearly invisible hairlines.
+            let step = CGFloat(pixelSpacing) / scale
+            let length = vertical ? size.height : size.width
+            let rawCount = Int(ceil(length / max(step, 0.5)))
+            let lineCount = min(96, max(1, rawCount))
+            let lineStep = length / CGFloat(lineCount)
+            cg.setStrokeColor(UIColor.black.withAlphaComponent(0.22).cgColor)
             cg.setLineWidth(max(0.4, 0.6 / scale))
             if vertical {
                 var x: CGFloat = 0
-                while x <= size.width {
+                for _ in 0...lineCount {
                     cg.move(to: CGPoint(x: x, y: 0))
                     cg.addLine(to: CGPoint(x: x, y: size.height))
-                    x += CGFloat(pixelSpacing) / scale
+                    x += lineStep
                 }
             } else {
                 var y: CGFloat = 0
-                while y <= size.height {
+                for _ in 0...lineCount {
                     cg.move(to: CGPoint(x: 0, y: y))
                     cg.addLine(to: CGPoint(x: size.width, y: y))
-                    y += CGFloat(pixelSpacing) / scale
+                    y += lineStep
                 }
             }
             cg.strokePath()
@@ -960,101 +939,33 @@ final class CashSceneCanvas: UIView {
         return image.cgImage
     }
 
-    private func edgeColor(for denom: Denomination, edge: NoteEdge) -> UIColor {
+    private func edgeStripImage(denom: Denomination, edge: NoteEdge) -> CGImage? {
         let key = "\(denom.id)|\(edge.rawValue)" as NSString
-        if let cached = Self.edgeColors.object(forKey: key) {
-            return cached
+        if let cached = Self.edgeStrips.object(forKey: key) {
+            return cached.cgImage
         }
-        let sampled = sampleEdgeColor(denom: denom, edge: edge) ?? UIColor(hex: denom.sideColor)
-        Self.edgeColors.setObject(sampled, forKey: key)
-        return sampled
-    }
-
-    private func sampleEdgeColor(denom: Denomination, edge: NoteEdge) -> UIColor? {
         guard let image = noteImage(denom.imageName)?.cgImage else { return nil }
         let width = CGFloat(image.width)
         let height = CGFloat(image.height)
-        let shortSide = min(width, height)
-        let band = max(1, (shortSide * 0.035).rounded())
-        let inset = max(1, (shortSide * 0.02).rounded())
+        let inset = max(1, (min(width, height) * 0.01).rounded())
         let rect: CGRect
         switch edge {
         case .left:
-            rect = CGRect(x: inset, y: inset, width: band, height: max(1, height - inset * 2))
+            rect = CGRect(x: inset, y: 0, width: 1, height: height)
         case .right:
-            rect = CGRect(
-                x: max(inset, width - inset - band),
-                y: inset,
-                width: band,
-                height: max(1, height - inset * 2)
-            )
+            rect = CGRect(x: max(0, width - inset - 1), y: 0, width: 1, height: height)
         case .top:
-            rect = CGRect(x: inset, y: inset, width: max(1, width - inset * 2), height: band)
+            rect = CGRect(x: 0, y: inset, width: width, height: 1)
         case .bottom:
-            rect = CGRect(
-                x: inset,
-                y: max(inset, height - inset - band),
-                width: max(1, width - inset * 2),
-                height: band
-            )
+            rect = CGRect(x: 0, y: max(0, height - inset - 1), width: width, height: 1)
         }
-        guard let crop = image.cropping(to: rect.integral) else { return nil }
-
-        var color: UIColor?
-        var pixel = [UInt8](repeating: 0, count: 4)
-        pixel.withUnsafeMutableBytes { buffer in
-            guard let base = buffer.baseAddress,
-                  let context = CGContext(
-                      data: base,
-                      width: 1,
-                      height: 1,
-                      bitsPerComponent: 8,
-                      bytesPerRow: 4,
-                      space: CGColorSpaceCreateDeviceRGB(),
-                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-                  ) else {
-                return
-            }
-            context.interpolationQuality = .medium
-            context.draw(crop, in: CGRect(x: 0, y: 0, width: 1, height: 1))
-            let bytes = base.assumingMemoryBound(to: UInt8.self)
-            color = UIColor(
-                red: CGFloat(bytes[0]) / 255,
-                green: CGFloat(bytes[1]) / 255,
-                blue: CGFloat(bytes[2]) / 255,
-                alpha: 1
-            )
-        }
-        return color
-    }
-
-    private static func scaledColor(_ color: UIColor, by factor: CGFloat) -> UIColor {
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-        guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return color }
-        return UIColor(
-            red: min(1, max(0, red * factor)),
-            green: min(1, max(0, green * factor)),
-            blue: min(1, max(0, blue * factor)),
-            alpha: alpha
-        )
-    }
-
-    private static func jitter(seed: String, index: Int) -> CGFloat {
-        var hash: UInt64 = 5381
-        for byte in seed.utf8 {
-            hash = (hash &* 33) &+ UInt64(byte)
-        }
-        hash ^= UInt64(bitPattern: Int64(index))
-        hash = hash &* 6364136223846793005 &+ 1442695040888963407
-        let normalized = CGFloat(hash & 0xFF) / 255 - 0.5
-        return normalized * 0.03
+        guard let strip = image.cropping(to: rect.integral) else { return nil }
+        Self.edgeStrips.setObject(UIImage(cgImage: strip, scale: 1, orientation: .up), forKey: key)
+        return strip
     }
 
     private static let noteImages = NSCache<NSString, UIImage>()
-    private static let edgeColors = NSCache<NSString, UIColor>()
+    private static let edgeStrips = NSCache<NSString, UIImage>()
     private static let sideImages = NSCache<NSString, UIImage>()
     private static let boxImages = NSCache<NSString, UIImage>()
     private static let wrapperImages = NSCache<NSString, UIImage>()
