@@ -738,6 +738,7 @@ struct DateOverlay: View {
     @State private var date = Date()
     @State private var appeared = false
     @State private var closing = false
+    @State private var arrived = false
     @State private var landed = false
 
     var body: some View {
@@ -860,37 +861,45 @@ struct DateOverlay: View {
     private var collapsed: Bool { !appeared || landed }
 
     private func offsetX(_ dx: CGFloat) -> CGFloat {
-        if collapsed { return dx }
+        if !appeared || arrived || landed { return dx }
         return closing ? dx * 0.55 : 0
     }
 
     private func offsetY(_ dy: CGFloat) -> CGFloat {
-        if collapsed { return dy }
+        if !appeared || arrived || landed { return dy }
         return closing ? dy * 0.08 : 0
     }
 
     private var scaleX: CGFloat {
-        if collapsed { return 0.015 }
-        return closing ? 0.9 : 1
+        if !appeared || landed { return 0.015 }
+        if arrived { return 0.38 }
+        return closing ? 0.92 : 1
     }
 
     private var scaleY: CGFloat {
-        if collapsed { return 0.03 }
-        return closing ? 1.1 : 1
+        if !appeared || landed { return 0.03 }
+        if arrived { return 0.6 }
+        return closing ? 1.08 : 1
     }
 
     private var tiltDegrees: Double {
-        if collapsed { return -30 }
+        if !appeared || landed { return -30 }
+        if arrived { return -24 }
         return closing ? -9 : 0
     }
 
     private func dismiss(confirmed: Bool) {
         guard !closing else { return }
-        withAnimation(.easeOut(duration: 0.18)) { closing = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-            withAnimation(.easeIn(duration: 0.4)) { landed = true }
+        withAnimation(.easeOut(duration: 0.2)) { closing = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            // Travel to the date pill while still large, so the convergence
+            // point reads as the pill instead of the screen centre.
+            withAnimation(.easeInOut(duration: 0.26)) { arrived = true }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.62) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.46) {
+            withAnimation(.easeIn(duration: 0.2)) { landed = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
             if confirmed {
                 model.confirmDate(date)
             } else {
