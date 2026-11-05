@@ -99,13 +99,15 @@ struct RootView: View {
             Haptics.prepare()
             await model.bootstrap()
         }
-        .fullScreenCover(
+        .sheet(
             isPresented: Binding(
                 get: { model.entryOpen },
                 set: { if !$0 { model.closeEntry() } }
             )
         ) {
             EntryView(model: model, palette: palette)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationTitle("账单")
