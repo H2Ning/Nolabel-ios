@@ -52,8 +52,7 @@ struct CashStageView: View {
                 if !groups.isEmpty {
                     modeBadge
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                        .padding(11)
-                        .allowsHitTesting(false)
+                        .padding(8)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
@@ -67,7 +66,6 @@ struct CashStageView: View {
                 TapGesture().onEnded {
                     if !groups.isEmpty {
                         momentum.stop()
-                        onCycle()
                     }
                 }
             )
@@ -91,9 +89,12 @@ struct CashStageView: View {
                     signalReady()
                 }
             }
-            .accessibilityElement(children: .ignore)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint("轻点切换现金摆放方式")
+            .accessibilityHint("轻点停止旋转，右上角按钮切换摆放方式")
+            .accessibilityAction {
+                momentum.stop()
+            }
         }
     }
 
@@ -141,12 +142,32 @@ struct CashStageView: View {
     }
 
     private var modeBadge: some View {
-        Text(modeLabel)
-            .font(.system(size: 9, weight: .medium))
-            .foregroundStyle(palette.muted)
-            .padding(.horizontal, 8)
-            .frame(height: 20)
-            .background(palette.isDark ? Color.black.opacity(0.18) : Color.white.opacity(0.36), in: Capsule())
+        Button {
+            momentum.stop()
+            Haptics.pick()
+            onCycle()
+        } label: {
+            HStack(spacing: 4) {
+                Text(modeLabel)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+            }
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(palette.ink2)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(
+                palette.isDark ? Color.black.opacity(0.22) : Color.white.opacity(0.46),
+                in: Capsule()
+            )
+            .overlay(Capsule().stroke(palette.line, lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(PressableStyle(scale: 0.95))
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityLabel("切换现金摆放方式，当前\(modeLabel)")
+        .accessibilityHint("轻点切换整叠、分组或展开")
     }
 
     private func signalReady() {
@@ -225,7 +246,7 @@ struct CashStageView: View {
         case 3: modeText = "全部展开"
         default: modeText = "整叠摆放"
         }
-        return "共 \(total) 张：\(pieces)。当前\(modeText)。左右拖动可旋转，轻点切换摆放方式。"
+        return "共 \(total) 张：\(pieces)。当前\(modeText)。左右拖动可旋转，轻点停止旋转，右上角切换摆放方式。"
     }
 }
 

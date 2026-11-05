@@ -168,8 +168,7 @@ final class CashSceneCanvas: UIView {
                     spec: layerSpec,
                     isTopLayer: index == item.layers.count - 1,
                     showBand: item.showBand,
-                    showSeal: item.showSeal,
-                    isBundle: item.kind == .bundle
+                    showSeal: item.showSeal
                 )
             }
         }
@@ -182,8 +181,7 @@ final class CashSceneCanvas: UIView {
         spec: CashLayerSpec,
         isTopLayer: Bool,
         showBand: Bool,
-        showSeal: Bool,
-        isBundle: Bool
+        showSeal: Bool
     ) {
         let denom = spec.denomination
         let width = spec.width
@@ -224,7 +222,8 @@ final class CashSceneCanvas: UIView {
             height: thickness,
             spacing: spec.noteStep,
             vertical: false,
-            edge: .bottom
+            edge: .bottom,
+            flipHorizontal: true
         )
 
         // Exposed back face of the bottom of the cuboid.
@@ -247,21 +246,6 @@ final class CashSceneCanvas: UIView {
             rotation: rotationY(-.pi / 2)
         )
         container.addSublayer(left)
-        if showBand && isBundle {
-            let leftWrap = sideFace(
-                image: nil,
-                width: thickness,
-                height: depth,
-                center: CGPoint(x: -width / 2 - 0.06, y: 0),
-                z: zCenter,
-                rotation: rotationY(-.pi / 2)
-            )
-            leftWrap.contents = wrapperImage(width: thickness, height: depth)
-            leftWrap.contentsGravity = .resize
-            leftWrap.contentsScale = UIScreen.main.scale
-            leftWrap.backgroundColor = UIColor(white: 0.985, alpha: 0.99).cgColor
-            container.addSublayer(leftWrap)
-        }
 
         let right = sideFace(
             image: rightSide,
@@ -309,14 +293,13 @@ final class CashSceneCanvas: UIView {
         container.addSublayer(face)
 
         if showBand {
-            addBand(to: face, width: width, depth: depth, isBundle: isBundle)
+            addBand(to: face, width: width, depth: depth)
             addBandEdges(
                 to: container,
                 width: width,
                 height: thickness,
                 depth: depth,
-                zCenter: zCenter,
-                isBundle: isBundle
+                zCenter: zCenter
             )
         }
         if showSeal, isTopLayer {
@@ -345,26 +328,9 @@ final class CashSceneCanvas: UIView {
         return layer
     }
 
-    private static let bandJitter: [CGFloat] = [
-        0.500, 0.486, 0.512, 0.492, 0.505,
-        0.479, 0.518, 0.494, 0.501, 0.489
-    ]
-
-    private func addBundleWrapper(to face: CALayer, width: CGFloat, height: CGFloat) {
-        let wrapper = CALayer()
-        wrapper.bounds = CGRect(x: 0, y: 0, width: width * 0.38, height: height)
-        wrapper.position = CGPoint(x: width * 0.19, y: height / 2)
-        wrapper.contents = wrapperImage(width: width * 0.38, height: height)
-        wrapper.contentsGravity = .resize
-        wrapper.contentsScale = UIScreen.main.scale
-        wrapper.backgroundColor = UIColor(white: 0.985, alpha: 0.985).cgColor
-        wrapper.actions = Self.noActions
-        face.addSublayer(wrapper)
-    }
-
-    private func addBand(to face: CALayer, width: CGFloat, depth: CGFloat, isBundle: Bool) {
+    private func addBand(to face: CALayer, width: CGFloat, depth: CGFloat) {
         let bandWidth = max(2, width * 0.10)
-        let ratio = isBundle ? Self.bandJitter[Self.bandJitter.count - 1] : 0.5
+        let ratio: CGFloat = 0.5
         let topBand = CALayer()
         topBand.bounds = CGRect(x: 0, y: 0, width: bandWidth, height: depth)
         topBand.position = CGPoint(x: width * ratio, y: depth * 0.5)
@@ -400,8 +366,7 @@ final class CashSceneCanvas: UIView {
         width: CGFloat,
         height: CGFloat,
         depth: CGFloat,
-        zCenter: CGFloat,
-        isBundle: Bool
+        zCenter: CGFloat
     ) {
         let bandWidth = max(2, width * 0.10)
         let faceSize = CGRect(x: 0, y: 0, width: width, height: height)
@@ -424,46 +389,22 @@ final class CashSceneCanvas: UIView {
         back.actions = Self.noActions
         container.addSublayer(back)
 
-        if isBundle {
-            addBundleWrapper(to: front, width: width, height: height)
-            addBundleWrapper(to: back, width: width, height: height)
-            let layerHeight = height / CGFloat(Self.bandJitter.count)
-            for (index, ratio) in Self.bandJitter.enumerated() {
-                addFrontBand(
-                    to: front,
-                    width: width,
-                    bandWidth: bandWidth,
-                    ratio: ratio,
-                    y: (CGFloat(index) + 0.5) * layerHeight,
-                    height: layerHeight
-                )
-                addFrontBand(
-                    to: back,
-                    width: width,
-                    bandWidth: bandWidth,
-                    ratio: ratio,
-                    y: (CGFloat(index) + 0.5) * layerHeight,
-                    height: layerHeight
-                )
-            }
-        } else {
-            addFrontBand(
-                to: front,
-                width: width,
-                bandWidth: bandWidth,
-                ratio: 0.5,
-                y: height / 2,
-                height: height
-            )
-            addFrontBand(
-                to: back,
-                width: width,
-                bandWidth: bandWidth,
-                ratio: 0.5,
-                y: height / 2,
-                height: height
-            )
-        }
+        addFrontBand(
+            to: front,
+            width: width,
+            bandWidth: bandWidth,
+            ratio: 0.5,
+            y: height / 2,
+            height: height
+        )
+        addFrontBand(
+            to: back,
+            width: width,
+            bandWidth: bandWidth,
+            ratio: 0.5,
+            y: height / 2,
+            height: height
+        )
     }
 
     private func addFrontBand(
@@ -697,52 +638,6 @@ final class CashSceneCanvas: UIView {
         front.addSublayer(sticker)
     }
 
-    private func wrapperImage(width: CGFloat, height: CGFloat) -> CGImage? {
-        let scale = UIScreen.main.scale
-        let pixelWidth = max(1, Int((width * scale).rounded()))
-        let pixelHeight = max(1, Int((height * scale).rounded()))
-        let key = "wrap|\(pixelWidth)|\(pixelHeight)" as NSString
-        if let cached = Self.wrapperImages.object(forKey: key) {
-            return cached.cgImage
-        }
-
-        let size = CGSize(width: CGFloat(pixelWidth) / scale, height: CGFloat(pixelHeight) / scale)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = scale
-        format.opaque = true
-        let renderer = UIGraphicsImageRenderer(size: size, format: format)
-        let image = renderer.image { context in
-            let cg = context.cgContext
-            cg.setFillColor(UIColor(white: 0.985, alpha: 1).cgColor)
-            cg.fill(CGRect(origin: .zero, size: size))
-            cg.setStrokeColor(UIColor(hex: 0xC98D9B).withAlphaComponent(0.13).cgColor)
-            cg.setLineWidth(0.4)
-            var y: CGFloat = 0
-            while y <= size.height {
-                cg.move(to: CGPoint(x: 0, y: y))
-                cg.addLine(to: CGPoint(x: size.width, y: y))
-                y += 3
-            }
-            cg.strokePath()
-
-            let colors = [
-                UIColor.white.withAlphaComponent(0.22).cgColor,
-                UIColor.clear.cgColor,
-                UIColor(hex: 0x6B5B4B).withAlphaComponent(0.06).cgColor
-            ] as CFArray
-            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.35, 1]) {
-                cg.drawLinearGradient(
-                    gradient,
-                    start: CGPoint(x: 0, y: 0),
-                    end: CGPoint(x: 0, y: size.height),
-                    options: []
-                )
-            }
-        }
-        Self.wrapperImages.setObject(image, forKey: key)
-        return image.cgImage
-    }
-
     private func cardboardImage(width: CGFloat, height: CGFloat, vertical: Bool) -> CGImage? {
         let scale = UIScreen.main.scale
         let pixelWidth = max(1, Int((width * scale).rounded()))
@@ -865,7 +760,8 @@ final class CashSceneCanvas: UIView {
         height: CGFloat,
         spacing: CGFloat,
         vertical: Bool,
-        edge: NoteEdge
+        edge: NoteEdge,
+        flipHorizontal: Bool = false
     ) -> CGImage? {
         let scale = UIScreen.main.scale
         let pixelWidth = max(1, Int((width * scale).rounded()))
@@ -888,17 +784,25 @@ final class CashSceneCanvas: UIView {
             // The banknote's own edge, pixel for pixel, stretched across the
             // cuboid face. No averaged color and no painted-on substitute.
             if let strip = edgeStripImage(denom: denom, edge: edge) {
-                cg.interpolationQuality = .medium
-                cg.draw(strip, in: rect)
+                cg.interpolationQuality = .high
+                if flipHorizontal {
+                    cg.saveGState()
+                    cg.translateBy(x: size.width, y: 0)
+                    cg.scaleBy(x: -1, y: 1)
+                    cg.draw(strip, in: rect)
+                    cg.restoreGState()
+                } else {
+                    cg.draw(strip, in: rect)
+                }
             } else {
                 cg.setFillColor(UIColor(hex: denom.sideColor).cgColor)
                 cg.fill(rect)
             }
 
             let colors = [
-                UIColor.white.withAlphaComponent(0.14).cgColor,
+                UIColor.white.withAlphaComponent(0.10).cgColor,
                 UIColor.clear.cgColor,
-                UIColor.black.withAlphaComponent(0.22).cgColor
+                UIColor.black.withAlphaComponent(0.10).cgColor
             ] as CFArray
             if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.35, 1]) {
                 cg.drawLinearGradient(
@@ -916,7 +820,7 @@ final class CashSceneCanvas: UIView {
             let rawCount = Int(ceil(length / max(step, 0.5)))
             let lineCount = min(96, max(1, rawCount))
             let lineStep = length / CGFloat(lineCount)
-            cg.setStrokeColor(UIColor.black.withAlphaComponent(0.22).cgColor)
+            cg.setStrokeColor(UIColor.black.withAlphaComponent(0.16).cgColor)
             cg.setLineWidth(max(0.4, 0.6 / scale))
             if vertical {
                 var x: CGFloat = 0
@@ -947,19 +851,38 @@ final class CashSceneCanvas: UIView {
         guard let image = noteImage(denom.imageName)?.cgImage else { return nil }
         let width = CGFloat(image.width)
         let height = CGFloat(image.height)
-        let inset = max(1, (min(width, height) * 0.01).rounded())
+        let shortSide = min(width, height)
+        let inset = max(1, (shortSide * 0.004).rounded())
+        let band = max(2, (shortSide * 0.012).rounded())
         let rect: CGRect
+        let outputSize: CGSize
         switch edge {
         case .left:
-            rect = CGRect(x: inset, y: 0, width: 1, height: height)
+            rect = CGRect(x: inset, y: 0, width: band, height: height)
+            outputSize = CGSize(width: 1, height: height)
         case .right:
-            rect = CGRect(x: max(0, width - inset - 1), y: 0, width: 1, height: height)
+            rect = CGRect(x: max(0, width - inset - band), y: 0, width: band, height: height)
+            outputSize = CGSize(width: 1, height: height)
         case .top:
-            rect = CGRect(x: 0, y: inset, width: width, height: 1)
+            rect = CGRect(x: 0, y: inset, width: width, height: band)
+            outputSize = CGSize(width: width, height: 1)
         case .bottom:
-            rect = CGRect(x: 0, y: max(0, height - inset - 1), width: width, height: 1)
+            rect = CGRect(x: 0, y: max(0, height - inset - band), width: width, height: band)
+            outputSize = CGSize(width: width, height: 1)
         }
-        guard let strip = image.cropping(to: rect.integral) else { return nil }
+        guard let bandImage = image.cropping(to: rect.integral) else { return nil }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: outputSize, format: format)
+        let stripImage = renderer.image { context in
+            context.cgContext.interpolationQuality = .high
+            context.cgContext.draw(
+                bandImage,
+                in: CGRect(origin: .zero, size: outputSize)
+            )
+        }
+        guard let strip = stripImage.cgImage else { return nil }
         Self.edgeStrips.setObject(UIImage(cgImage: strip, scale: 1, orientation: .up), forKey: key)
         return strip
     }
@@ -968,7 +891,6 @@ final class CashSceneCanvas: UIView {
     private static let edgeStrips = NSCache<NSString, UIImage>()
     private static let sideImages = NSCache<NSString, UIImage>()
     private static let boxImages = NSCache<NSString, UIImage>()
-    private static let wrapperImages = NSCache<NSString, UIImage>()
 
     private static let shadowImage: CGImage? = {
         let size = CGSize(width: 128, height: 96)

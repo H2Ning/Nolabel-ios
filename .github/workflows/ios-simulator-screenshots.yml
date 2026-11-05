@@ -93,6 +93,9 @@ jobs:
           capture entry-expanded --preview --preview-screen entry --preview-theme dark --preview-amount 52145 --preview-cash-mode 3
           capture entry-piles --preview --preview-screen entry --preview-theme dark --preview-amount 4234.30
           capture entry-bundle --preview --preview-screen entry --preview-theme dark --preview-amount 100000
+          capture entry-stack-10k --preview --preview-screen entry --preview-theme dark --preview-amount 10000
+          capture entry-stack-10k-light --preview --preview-screen entry --preview-theme light --preview-amount 10000
+          capture entry-bundle-light --preview --preview-screen entry --preview-theme light --preview-amount 100000
           capture entry-box --preview --preview-screen entry --preview-theme dark --preview-amount 1000000
           capture bills-open --preview --preview-screen bills --preview-theme dark --preview-open
           capture settings-dark --preview --preview-screen settings --preview-theme dark
