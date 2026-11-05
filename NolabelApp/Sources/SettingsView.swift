@@ -778,6 +778,9 @@ struct DateOverlay: View {
         }
         .onAppear {
             date = model.entryDate
+            if ProcessInfo.processInfo.arguments.contains("--preview") {
+                print("NOLABEL_DEBUG overlayFrame=\(frame) center=\(center) target=\(target) travel=\(dx),\(dy)")
+            }
             DispatchQueue.main.async {
                 withAnimation(.spring(response: 0.48, dampingFraction: 0.82)) {
                     appeared = true

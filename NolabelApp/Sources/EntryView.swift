@@ -61,7 +61,6 @@ struct EntryView: View {
         .onTapGesture {
             noteFocused = false
         }
-        .onPreferenceChange(DateLabelFrameKey.self) { dateLabelFrame = $0 }
         .overlay {
             if model.dateSheetOpen {
                 DateOverlay(
@@ -136,14 +135,14 @@ struct EntryView: View {
                 }
                 .buttonStyle(PressableStyle(scale: 0.96))
                 .accessibilityLabel("修改日期和时间")
-                .background(
-                    GeometryReader { geo in
-                        Color.clear.preference(
-                            key: DateLabelFrameKey.self,
-                            value: geo.frame(in: .global)
-                        )
+                .onGeometryChange(for: CGRect.self) { geo in
+                    geo.frame(in: .global)
+                } action: { frame in
+                    dateLabelFrame = frame
+                    if ProcessInfo.processInfo.arguments.contains("--preview") {
+                        print("NOLABEL_DEBUG dateFrame=\(frame)")
                     }
-                )
+                }
             }
             .padding(.top, 12)
             .padding(.bottom, 2)
@@ -322,13 +321,5 @@ struct EntryView: View {
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86, level: model.hapticLevel))
         .disabled(model.entryPreviewCents <= 0 || model.writing)
         .accessibilityLabel("保存这笔账")
-    }
-}
-
-private struct DateLabelFrameKey: PreferenceKey {
-    static var defaultValue: CGRect = .zero
-
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-        value = nextValue()
     }
 }
