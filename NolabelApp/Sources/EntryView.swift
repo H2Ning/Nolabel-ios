@@ -37,7 +37,7 @@ struct EntryView: View {
                     yaw: $model.cashYaw,
                     pitch: $model.cashPitch,
                     mode: model.cashMode,
-                    onCycle: { model.cycleCashMode() },
+                    onSelectMode: { model.setCashMode($0) },
                     onReady: {}
                 )
                 .frame(height: stageHeight)
@@ -48,6 +48,7 @@ struct EntryView: View {
 
                 entryCard
                     .padding(.horizontal, 20)
+                    .padding(.bottom, noteFocused ? 28 : 0)
                     .layoutPriority(1)
 
                 if !noteFocused {
@@ -66,14 +67,15 @@ struct EntryView: View {
         }
         .animation(.easeOut(duration: 0.18), value: noteFocused)
         .onDisappear { stopBackspaceRepeat() }
-        .overlay {
-            // Always mounted so the sheet can be reopened while its close
-            // animation is still running; closed state ignores touches.
-            DateOverlay(model: model, palette: palette)
-                .opacity(model.dateSheetOpen ? 1 : 0)
-                .allowsHitTesting(model.dateSheetOpen)
-                .accessibilityHidden(!model.dateSheetOpen)
-                .animation(AppMotion.spring, value: model.dateSheetOpen)
+        .sheet(
+            isPresented: Binding(
+                get: { model.dateSheetOpen },
+                set: { if !$0 { model.dateSheetOpen = false } }
+            )
+        ) {
+            DatePickerSheet(model: model, palette: palette)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -336,5 +338,50 @@ struct EntryView: View {
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86, level: model.hapticLevel))
         .disabled(model.entryPreviewCents <= 0 || model.writing)
         .accessibilityLabel("保存这笔账")
+    }
+}
+
+
+struct DatePickerSheet: View {
+    @Bindable var model: AppModel
+    let palette: AppPalette
+    @State private var date = Date()
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    DatePicker("日期", selection: $date, displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .tint(palette.accent)
+                        .labelsHidden()
+
+                    DatePicker("时间", selection: $date, displayedComponents: .hourAndMinute)
+                        .datePickerStyle(.wheel)
+                        .labelsHidden()
+                        .frame(maxHeight: 160)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+            }
+            .background(palette.pageBG.ignoresSafeArea())
+            .navigationTitle("修改时间")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        Haptics.soft()
+                        model.dateSheetOpen = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        Haptics.complete()
+                        model.confirmDate(date)
+                    }
+                }
+            }
+        }
+        .onAppear { date = model.entryDate }
     }
 }

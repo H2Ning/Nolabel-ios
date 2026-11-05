@@ -8,7 +8,7 @@ struct CashStageView: View {
     @Binding var yaw: Double
     @Binding var pitch: Double
     let mode: Int
-    let onCycle: () -> Void
+    let onSelectMode: (Int) -> Void
     let onReady: () -> Void
 
     @StateObject private var momentum = CashRotationMomentum()
@@ -182,20 +182,29 @@ struct CashStageView: View {
     }
 
     private var modeBadge: some View {
-        Button {
-            momentum.stop()
-            Haptics.pick()
-            onCycle()
+        Menu {
+            ForEach([1, 2, 3], id: \.self) { value in
+                Button {
+                    momentum.stop()
+                    onSelectMode(value)
+                } label: {
+                    if value == mode {
+                        Label(modeLabel(for: value), systemImage: "checkmark")
+                    } else {
+                        Text(modeLabel(for: value))
+                    }
+                }
+            }
         } label: {
             HStack(spacing: 4) {
                 Text(modeLabel)
-                Image(systemName: "arrow.left.arrow.right")
-                    .scalableFont(7, weight: .bold)
+                Image(systemName: "chevron.up.chevron.down")
+                    .scalableFont(8, weight: .bold)
             }
-            .scalableFont(9, weight: .semibold)
+            .scalableFont(11, weight: .semibold)
             .foregroundStyle(palette.ink2)
-            .padding(.horizontal, 10)
-            .frame(height: 30)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 32)
             .background(
                 palette.isDark ? Color.black.opacity(0.22) : Color.white.opacity(0.46),
                 in: Capsule()
@@ -203,11 +212,10 @@ struct CashStageView: View {
             .overlay(Capsule().stroke(palette.line, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(PressableStyle(scale: 0.95))
         .frame(minWidth: 44, minHeight: 44)
         .contentShape(Rectangle())
-        .accessibilityLabel("切换现金摆放方式，当前\(modeLabel)")
-        .accessibilityHint("轻点切换整叠、分组或展开")
+        .accessibilityLabel("现金摆放方式，当前\(modeLabel)")
+        .accessibilityHint("打开菜单选择整叠、分组或展开")
     }
 
     private func signalReady() {
@@ -216,8 +224,10 @@ struct CashStageView: View {
         onReady()
     }
 
-    private var modeLabel: String {
-        switch mode {
+    private var modeLabel: String { modeLabel(for: mode) }
+
+    private func modeLabel(for value: Int) -> String {
+        switch value {
         case 2: "分组"
         case 3: "展开"
         default: "整叠"

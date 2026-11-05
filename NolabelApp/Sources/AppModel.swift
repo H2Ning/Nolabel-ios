@@ -792,7 +792,12 @@ final class AppModel {
     }
 
     func cycleCashMode() {
-        cashMode = cashMode % 3 + 1
+        setCashMode(cashMode % 3 + 1)
+    }
+
+    func setCashMode(_ value: Int) {
+        guard (1...3).contains(value) else { return }
+        cashMode = value
         defaults.set(cashMode, forKey: cashModeKey)
         Haptics.cashMode(cashMode)
     }

@@ -196,6 +196,17 @@ struct BillsView: View {
                 model.cashPlazaOpen = true
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 24)
+                .onEnded { value in
+                    let horizontal = value.translation.width
+                    guard abs(horizontal) > abs(value.translation.height),
+                          abs(horizontal) > 60 else { return }
+                    withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                        model.shiftMonth(horizontal < 0 ? 1 : -1)
+                    }
+                }
+        )
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel("该月支出 \(Formats.money(model.monthExpense)) 元，收入 \(Formats.money(model.monthIncome)) 元，\(model.monthBills.count) 笔，\(model.monthNotes) 张现钞")

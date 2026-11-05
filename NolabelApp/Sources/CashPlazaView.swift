@@ -273,9 +273,9 @@ struct CashPlazaView: View {
                     yaw: $stageYaw,
                     pitch: $stagePitch,
                     mode: model.plazaStageMode,
-                    onCycle: {
-                        model.plazaStageMode = model.plazaStageMode % 3 + 1
-                        Haptics.cashMode(model.plazaStageMode)
+                    onSelectMode: { value in
+                        model.plazaStageMode = value
+                        Haptics.cashMode(value)
                     },
                     onReady: {}
                 )
@@ -374,12 +374,6 @@ struct CashPlazaView: View {
             } else {
                 Chart(snapshot.points) { point in
                     dailyBar(point, count: snapshot.points.count)
-
-                    if let selectedDayLabel {
-                        RuleMark(x: .value("日期", selectedDayLabel))
-                            .foregroundStyle(palette.accent.opacity(0.35))
-                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    }
 
                     LineMark(
                         x: .value("日期", point.label),
