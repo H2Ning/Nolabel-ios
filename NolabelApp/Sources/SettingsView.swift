@@ -734,84 +734,27 @@ private struct SegmentPicker<Option: Hashable & Identifiable>: View where Option
 struct DateOverlay: View {
     @Bindable var model: AppModel
     let palette: AppPalette
-    var genieTarget: CGPoint? = nil
     @State private var date = Date()
-    @State private var appeared = false
-    @State private var closing = false
-    @State private var landed = false
-    @State private var dim = 0.0
-    @State private var veilOut = false
+    @State private var shown = false
 
     var body: some View {
         GeometryReader { proxy in
-            let frame = proxy.frame(in: .global)
-            let center = CGPoint(x: frame.midX, y: frame.midY)
-            let target = genieTarget ?? CGPoint(x: frame.maxX - 56, y: frame.maxY - 150)
-            let dx = target.x - center.x
-            let dy = target.y - center.y
-            let distance = max((dx * dx + dy * dy).squareRoot(), 1)
-            // Tilt around the axis perpendicular to the travel direction so the
-            // perspective points straight at the date/time convergence point.
-            let tiltAxis = (x: -dy / distance, y: dx / distance, z: CGFloat.zero)
-
             ZStack {
-                ZStack {
-                    // Night deepens toward black; day washes out toward white.
-                    Color.black.opacity(blackDim)
-                    Color.white.opacity(whiteDim)
-                }
-                .ignoresSafeArea()
-                .background(.ultraThinMaterial)
-                .contentShape(Rectangle())
-                // Swallow taps so the keypad behind the sheet never fires.
-                .onTapGesture { }
-                .opacity(veilOut ? 0 : 1)
+                Color.black.opacity(palette.isDark ? 0.48 : 0.24)
+                    .ignoresSafeArea()
+                    .background(.ultraThinMaterial)
+                    .contentShape(Rectangle())
+                    // Swallow taps so the keypad behind the sheet never fires.
+                    .onTapGesture { }
 
                 card(width: proxy.size.width)
-                    // Genie in and out: the sheet leaves from and returns to the
-                    // date pill, arcing sideways before it is crushed in.
-                    // Rasterise the glass before transforming it: otherwise the
-                    // material re-samples the backdrop as it shrinks and the
-                    // card changes colour mid-animation.
-                    .compositingGroup()
-                    // Scale and tilt first, translate last: offset is applied in
-                    // the parent space, so shrinking no longer shrinks the travel
-                    // and the card really converges on the pill.
-                    .scaleEffect(x: scaleX, y: scaleY)
-                    .rotation3DEffect(
-                        .degrees(tiltDegrees),
-                        axis: tiltAxis,
-                        anchor: .center,
-                        perspective: 0.6
-                    )
-                    .offset(x: offsetX(dx), y: offsetY(dy))
-                    .blur(radius: collapsed ? 1.5 : 0)
-            }
-            .onAppear {
-                nolabelDebugLog("overlayFrame=\(frame) center=\(center) target=\(target) travel=\(dx),\(dy) genieTarget=\(String(describing: genieTarget))")
+                    .scaleEffect(shown ? 1 : 0.96)
+                    .opacity(shown ? 1 : 0)
             }
         }
         .onAppear {
             date = model.entryDate
-            DispatchQueue.main.async {
-                withAnimation(.spring(response: 0.48, dampingFraction: 0.82)) {
-                    appeared = true
-                }
-            }
-        }
-        .task {
-            let arguments = ProcessInfo.processInfo.arguments
-            let delay: UInt64?
-            if arguments.contains("--preview-autoplay-date") {
-                delay = 1_600_000_000
-            } else if arguments.contains("--preview-autoplay-entry") {
-                delay = 900_000_000
-            } else {
-                delay = nil
-            }
-            guard let delay else { return }
-            try? await Task.sleep(nanoseconds: delay)
-            dismiss(confirmed: false)
+            withAnimation(AppMotion.spring) { shown = true }
         }
     }
 
@@ -873,56 +816,8 @@ struct DateOverlay: View {
         .shadow(color: palette.sheetShadow, radius: 30, y: 16)
     }
 
-    private var collapsed: Bool { !appeared || landed }
-
-    private var blackDim: Double {
-        guard appeared else { return 0 }
-        let base: Double = palette.isDark ? 0.48 : 0.24
-        let end: Double = palette.isDark ? 0.86 : 0.02
-        return base + (end - base) * dim
-    }
-
-    private var whiteDim: Double {
-        guard appeared, !palette.isDark else { return 0 }
-        return 0.55 * dim
-    }
-
-    private func offsetX(_ dx: CGFloat) -> CGFloat {
-        (!appeared || landed) ? dx : 0
-    }
-
-    private func offsetY(_ dy: CGFloat) -> CGFloat {
-        (!appeared || landed) ? dy : 0
-    }
-
-    private var scaleX: CGFloat {
-        (!appeared || landed) ? 0.03 : 1
-    }
-
-    private var scaleY: CGFloat {
-        (!appeared || landed) ? 0.055 : 1
-    }
-
-    private var tiltDegrees: Double {
-        (!appeared || landed) ? 30 : 0
-    }
-
     private func dismiss(confirmed: Bool) {
-        guard !closing else { return }
-        closing = true
-        withAnimation(.timingCurve(0.55, 0.0, 0.25, 1.0, duration: 0.58)) {
-            landed = true
-        }
-        // Dim deepens on its own curve: barely at first, then faster and darker
-        // as the sheet is swallowed by the pill.
-        withAnimation(.timingCurve(0.9, 0.0, 1.0, 1.0, duration: 0.58)) {
-            dim = 1
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.58) {
-            // The card is gone by now; dissolve the veil instead of cutting it.
-            withAnimation(.easeOut(duration: 0.2)) { veilOut = true }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        withAnimation(AppMotion.spring) {
             if confirmed {
                 model.confirmDate(date)
             } else {
