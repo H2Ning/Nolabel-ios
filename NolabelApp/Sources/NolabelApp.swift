@@ -32,6 +32,12 @@ struct RootView: View {
                     SettingsPage(sub: sub, model: model, palette: palette)
                 }
         }
+        .onOpenURL { url in
+            guard url.scheme == "nolabel" else { return }
+            if url.host == "verdict" {
+                model.openVerdictFromWidget()
+            }
+        }
     }
 
     private var rootContent: some View {

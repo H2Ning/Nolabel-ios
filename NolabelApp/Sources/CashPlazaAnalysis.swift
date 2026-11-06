@@ -355,7 +355,7 @@ struct MonthAnalysis {
         // MARK: Income has one pillar
         if let top = namedIncome, incomeCount >= 2, top.share >= 0.75 {
             return make(
-                "一柱擎天，财源独木",
+                "独木擎梁，财源一脉",
                 "收入 \(Formats.currencySymbol)\(Formats.money(incomeTotal))，其中「\(top.label)」一项占了 \(percent(top.share))。进项有余，来路却只有一条。"
             )
         }

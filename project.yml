@@ -12,7 +12,7 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.9"
-    CURRENT_PROJECT_VERSION: "95"
+    CURRENT_PROJECT_VERSION: "96"
 targets:
   Nolabel:
     type: application
@@ -21,13 +21,21 @@ targets:
       iOS: "26.0"
     dependencies:
       - package: SwiftfulHaptics
+      - target: NolabelWidgets
+        embed: true
     sources:
       - path: NolabelApp/Sources
+      - path: NolabelWidgets/Shared
       - path: NolabelApp/Resources/Notes
         type: folder
         buildPhase: resources
       - path: NolabelApp/Resources/Assets.xcassets
         buildPhase: resources
+    entitlements:
+      path: NolabelApp/Resources/Nolabel.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.h2ning.nolabel
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.h2ning.nolabel
@@ -41,6 +49,41 @@ targets:
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         CODE_SIGN_STYLE: Automatic
+  NolabelWidgets:
+    type: app-extension
+    subtype: widgetkit-extension
+    platform: iOS
+    deploymentTarget:
+      iOS: "26.0"
+    sources:
+      - path: NolabelWidgets/Sources
+      - path: NolabelWidgets/Shared
+    info:
+      path: NolabelWidgets/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: 诺诺小组件
+        CFBundlePackageType: XPC!
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: NolabelWidgets/Resources/NolabelWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.h2ning.nolabel
+    dependencies:
+      - sdk: SwiftUI.framework
+      - sdk: WidgetKit.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.h2ning.nolabel.widgets
+        PRODUCT_NAME: NolabelWidgets
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
 schemes:
   Nolabel:
     build:

@@ -101,7 +101,10 @@ final class AppModel {
     var cashPlazaOpen = false
 
     var bills: [Bill] = [] {
-        didSet { billsRevision &+= 1 }
+        didSet {
+            billsRevision &+= 1
+            updateWidgetSnapshot()
+        }
     }
     var user: AccountUser?
     var authReady = false
@@ -612,7 +615,6 @@ final class AppModel {
 
             bills = result
             accountLoaded = true
-            selectedMonth = DateHelp.monthStart(Date())
             persistCache(bills: result, owner: user.name)
             authMessage = ""
             autoRetryUsed = false
@@ -858,6 +860,48 @@ final class AppModel {
         deleteUndoSnapshot = nil
     }
 
+    /// Mirrors the current month's verdict into the widget's shared store.
+    private func updateWidgetSnapshot() {
+        let month = DateHelp.monthStart(Date())
+        let prefix = String(DateHelp.iso(from: month).prefix(7))
+        let monthBills = bills.filter { $0.iso.hasPrefix(prefix) }
+        let analysis = MonthAnalysis(bills: monthBills, month: month)
+        let metricLabel: String
+        let amountText: String
+        let countLabel: String
+        if analysis.expenseTotal > 0 {
+            metricLabel = "支出"
+            amountText = Formats.moneyValue(analysis.expenseTotal)
+            countLabel = "共 \(analysis.expenseCount) 笔"
+        } else if analysis.incomeTotal > 0 {
+            metricLabel = "收入"
+            amountText = Formats.moneyValue(analysis.incomeTotal)
+            countLabel = "共 \(analysis.incomeCount) 笔"
+        } else {
+            metricLabel = "本月"
+            amountText = Formats.moneyValue(0)
+            countLabel = "还没有账单"
+        }
+        let snapshot = VerdictSnapshot(
+            monthISO: VerdictSnapshot.currentMonthISO(month),
+            monthLabel: VerdictSnapshot.currentMonthLabel(month),
+            verdictTitle: analysis.verdict.title,
+            metricLabel: metricLabel,
+            amountText: amountText,
+            countLabel: countLabel
+        )
+        guard VerdictSnapshot.load() != snapshot else { return }
+        snapshot.save()
+    }
+
+    /// Opens the plaza on the verdict card for the current month.
+    func openVerdictFromWidget() {
+        selectedMonth = DateHelp.monthStart(Date())
+        openBillID = nil
+        cashPlazaOpen = true
+        plazaDetent = .medium
+    }
+
     func shiftMonth(_ value: Int) {
         let previousYear = Calendar.current.component(.year, from: selectedMonth)
         selectedMonth = DateHelp.shiftMonth(selectedMonth, by: value)
@@ -964,6 +1008,7 @@ final class AppModel {
         guard next != numberFormat else { return }
         numberFormat = next
         Formats.apply(next)
+        updateWidgetSnapshot()
         if let data = try? JSONEncoder().encode(next) {
             defaults.set(data, forKey: numberFormatKey)
         }
