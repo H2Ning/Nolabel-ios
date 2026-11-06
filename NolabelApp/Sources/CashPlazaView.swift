@@ -127,49 +127,47 @@ struct CashPlazaView: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(spacing: 14) {
+                        VStack(spacing: analysisOpen ? 14 : 20) {
                             stage(snapshot)
-                            // The large detent owns the analysis; medium stays
-                            // a complete cash view with nothing below the fold.
-                            if analysisOpen {
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text("本月账单分析")
-                                        .scalableFont(28, weight: .bold)
-                                        .tracking(-0.5)
-                                        .foregroundStyle(palette.ink)
-                                    analysisSubtitle(snapshot)
-                                        .scalableFont(12, weight: .medium)
-                                        .monospacedDigit()
+                            // The analysis stays below the fold at medium, so the
+                            // sheet's own drag reveals it instead of a detent pop.
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("本月账单分析")
+                                    .scalableFont(28, weight: .bold)
+                                    .tracking(-0.5)
+                                    .foregroundStyle(palette.ink)
+                                analysisSubtitle(snapshot)
+                                    .scalableFont(12, weight: .medium)
+                                    .monospacedDigit()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear.preference(
+                                        key: AnalysisHeaderOffsetKey.self,
+                                        value: geo.frame(in: .named("plazaContent")).maxY
+                                    )
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(
-                                    GeometryReader { geo in
-                                        Color.clear.preference(
-                                            key: AnalysisHeaderOffsetKey.self,
-                                            value: geo.frame(in: .named("plazaContent")).maxY
-                                        )
-                                    }
-                                )
-                                .opacity(showingAnalysisSection ? 0 : 1)
-                                MonthVerdictCard(
-                                    analysis: MonthAnalysis(
-                                        bills: model.monthBills,
-                                        month: model.selectedMonth
-                                    ),
+                            )
+                            .opacity(showingAnalysisSection ? 0 : 1)
+                            MonthVerdictCard(
+                                analysis: MonthAnalysis(
+                                    bills: model.monthBills,
+                                    month: model.selectedMonth
+                                ),
+                                palette: palette
+                            )
+                            chartCard(snapshot)
+                            VStack(spacing: 0) {
+                                CashPlazaAnalysisView(
+                                    bills: model.monthBills,
+                                    month: model.selectedMonth,
                                     palette: palette
                                 )
-                                chartCard(snapshot)
-                                VStack(spacing: 0) {
-                                    CashPlazaAnalysisView(
-                                        bills: model.monthBills,
-                                        month: model.selectedMonth,
-                                        palette: palette
-                                    )
-                                    .id("plazaAnalysis-\(model.monthDataVersion)")
-                                }
-                                .id("plazaAnalysisBottom")
-                                .transition(.opacity)
+                                .id("plazaAnalysis-\(model.monthDataVersion)")
                             }
+                            .id("plazaAnalysisBottom")
+                            .transition(.opacity)
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 2)
@@ -220,6 +218,7 @@ struct CashPlazaView: View {
                     }
                 }
             }
+            .ignoresSafeArea(.container, edges: .bottom)
         }
         .animation(reduceMotion ? nil : AppMotion.spring, value: analysisOpen)
         .onChange(of: detent) { _, newValue in
