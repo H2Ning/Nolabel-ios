@@ -98,7 +98,7 @@ enum Haptics {
             created.playsHapticsOnly = true
             created.isAutoShutdownEnabled = true
             created.resetHandler = { [weak created] in
-                try? created?.start()
+                _ = try? created?.start()
             }
             engine = created
         }
