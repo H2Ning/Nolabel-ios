@@ -49,13 +49,16 @@ struct CashPlazaView: View {
     }
 
     /// Small shows the heading and the verdict; medium adds the chart.
+    /// The fallbacks match the current layout at the default text size, so the
+    /// sheet does not visibly resize while it is presenting. The measured
+    /// values take over as soon as the content is laid out.
     private var smallDetentHeight: CGFloat {
-        guard verdictBottom > 0 else { return 300 }
+        guard verdictBottom > 0 else { return 268 }
         return navBarHeight + verdictBottom + 20 - bottomSafeArea
     }
 
     private var mediumDetentHeight: CGFloat {
-        guard chartBottom > 0 else { return 560 }
+        guard chartBottom > 0 else { return 538 }
         return navBarHeight + chartBottom + 20 - bottomSafeArea
     }
 
