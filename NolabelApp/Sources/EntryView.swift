@@ -9,77 +9,74 @@ struct EntryView: View {
     @State private var backspaceRepeatTask: Task<Void, Never>?
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .top) {
-                palette.pageBG.ignoresSafeArea()
+        NavigationStack {
+            GeometryReader { proxy in
+                ZStack(alignment: .top) {
+                    palette.pageBG.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                HStack {
+                    VStack(spacing: 0) {
+                    CashStageView(
+                        source: .cents(model.entryPreviewCents),
+                        palette: palette,
+                        yaw: $model.cashYaw,
+                        pitch: $model.cashPitch,
+                        mode: model.cashMode,
+                        onSelectMode: { model.setCashMode($0) },
+                        onReady: {}
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 140, maxHeight: 360)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .layoutPriority(0)
+
+                    // Fixed gap: the stage gives up height first.
+                    Color.clear.frame(height: 12)
+
+                    entryCard
+                        .padding(.horizontal, 20)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(2)
+
+                    if noteFocused {
+                        // Same gap the keypad used, so the card keeps its place.
+                        Color.clear.frame(height: 12)
+                    } else {
+                        keypad
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                            .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
+                            .layoutPriority(2)
+                            .transition(.opacity)
+                    }
+                    }
+                }
+            }
+            .onTapGesture {
+                noteFocused = false
+            }
+            .animation(.easeOut(duration: 0.18), value: noteFocused)
+            .onDisappear { stopBackspaceRepeat() }
+            .sheet(
+                isPresented: Binding(
+                    get: { model.dateSheetOpen },
+                    set: { if !$0 { model.dateSheetOpen = false } }
+                )
+            ) {
+                DatePickerSheet(model: model, palette: palette)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
                     Button(action: { model.closeEntry() }) {
                         Image(systemName: "xmark")
                             .scalableFont(15, weight: .semibold)
                             .foregroundStyle(palette.ink2)
-                            .frame(width: 46, height: 46)
-                            .contentShape(Circle())
                     }
-                    .buttonStyle(PressableStyle(scale: 0.92))
-                    .glassCircle()
                     .accessibilityLabel("取消并返回账单")
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 6)
-
-                CashStageView(
-                    source: .cents(model.entryPreviewCents),
-                    palette: palette,
-                    yaw: $model.cashYaw,
-                    pitch: $model.cashPitch,
-                    mode: model.cashMode,
-                    onSelectMode: { model.setCashMode($0) },
-                    onReady: {}
-                )
-                .frame(maxWidth: .infinity, minHeight: 140, maxHeight: 360)
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .layoutPriority(0)
-
-                // Fixed gap: the stage gives up height first.
-                Color.clear.frame(height: 12)
-
-                entryCard
-                    .padding(.horizontal, 20)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(2)
-
-                if noteFocused {
-                    // Same gap the keypad used, so the card keeps its place.
-                    Color.clear.frame(height: 12)
-                } else {
-                    keypad
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
-                        .layoutPriority(2)
-                        .transition(.opacity)
-                }
                 }
             }
-        }
-        .onTapGesture {
-            noteFocused = false
-        }
-        .animation(.easeOut(duration: 0.18), value: noteFocused)
-        .onDisappear { stopBackspaceRepeat() }
-        .sheet(
-            isPresented: Binding(
-                get: { model.dateSheetOpen },
-                set: { if !$0 { model.dateSheetOpen = false } }
-            )
-        ) {
-            DatePickerSheet(model: model, palette: palette)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
