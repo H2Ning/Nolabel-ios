@@ -311,7 +311,7 @@ struct SettingsPage: View {
                         .foregroundStyle(palette.accentInk)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: 46)
-                        .background(palette.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(palette.accent, in: RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
                     }
                     .buttonStyle(PressableStyle(scale: 0.98))
                     .disabled(model.authLoading)
@@ -320,9 +320,9 @@ struct SettingsPage: View {
             }
         }
         .background(sectionBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -390,9 +390,9 @@ struct SettingsPage: View {
             previewRow(cents: 123_456, type: .expense, title: "房租", time: "18:20")
         }
         .background(sectionBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -477,9 +477,9 @@ struct SettingsPage: View {
             }
         }
         .background(sectionBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -535,9 +535,9 @@ struct SettingsPage: View {
         }
         .padding(16)
         .background(sectionBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -551,9 +551,9 @@ struct SettingsPage: View {
         } label: {
             VStack(spacing: 7) {
                 HStack(spacing: 3) {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.micro, style: .continuous)
                         .fill(scheme.incomeColor(isDark: palette.isDark))
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.micro, style: .continuous)
                         .fill(scheme.expenseColor(isDark: palette.isDark))
                 }
                 .frame(height: 38)
@@ -567,11 +567,11 @@ struct SettingsPage: View {
             .padding(8)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.chip, style: .continuous)
                     .fill(selected ? palette.accentSoft : palette.surface2)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.chip, style: .continuous)
                     .stroke(selected ? palette.accent.opacity(0.55) : palette.line, lineWidth: 1)
             )
             .overlay(alignment: .topTrailing) {
@@ -626,10 +626,10 @@ struct SettingsPage: View {
     }
 
     private var fieldBackground: some View {
-        RoundedRectangle(cornerRadius: 11, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
             .fill(palette.surface)
             .overlay(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
                     .stroke(palette.line, lineWidth: 1)
             )
     }
@@ -650,9 +650,9 @@ struct SettingsPage: View {
             content()
         }
         .background(sectionBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }

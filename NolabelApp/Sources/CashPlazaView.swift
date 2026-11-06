@@ -1,6 +1,7 @@
 import Charts
 import Foundation
 import SwiftUI
+import UIKit
 
 struct CashPlazaView: View {
     @Bindable var model: AppModel
@@ -20,15 +21,25 @@ struct CashPlazaView: View {
 
     private var monthTitle: String { model.monthTitle }
 
+    /// A custom detent height is measured above the bottom safe area, so the
+    /// system adds that inset to the card. Remove it to keep the 20pt margin.
+    private var bottomSafeArea: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState == .foregroundActive })?
+            .windows.first(where: { $0.isKeyWindow })?
+            .safeAreaInsets.bottom ?? 0
+    }
+
     /// Small shows the heading and the verdict; medium adds the chart.
     private var smallDetentHeight: CGFloat {
         guard headerHeight > 0, verdictBottom > 0 else { return 300 }
-        return headerHeight + verdictBottom + 20
+        return headerHeight + verdictBottom + 20 - bottomSafeArea
     }
 
     private var mediumDetentHeight: CGFloat {
         guard headerHeight > 0, chartBottom > 0 else { return 560 }
-        return headerHeight + chartBottom + 20
+        return headerHeight + chartBottom + 20 - bottomSafeArea
     }
 
     private struct PlazaSnapshot {
@@ -325,7 +336,7 @@ struct CashPlazaView: View {
 
     private var emptyStage: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
@@ -361,9 +372,9 @@ struct CashPlazaView: View {
                 .foregroundStyle(palette.muted)
         }
         .frame(height: 360)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -494,12 +505,12 @@ struct CashPlazaView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
     }
 
     @ChartContentBuilder

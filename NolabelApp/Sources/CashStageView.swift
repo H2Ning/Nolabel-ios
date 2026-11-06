@@ -59,12 +59,12 @@ struct CashStageView: View {
                         .padding(.trailing, 12)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                     .stroke(palette.line, lineWidth: 1)
             )
-            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
             .gesture(rotationGesture, including: mode == 3 || groups.isEmpty ? .none : .all)
             .simultaneousGesture(
                 TapGesture().onEnded {
@@ -103,7 +103,7 @@ struct CashStageView: View {
     }
 
     private var stageBackground: some View {
-        RoundedRectangle(cornerRadius: 26, style: .continuous)
+        RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
@@ -323,9 +323,9 @@ private struct NoteThumbnail: View {
             }
         }
         .aspectRatio(denom.ratio, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.thumbnail, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.thumbnail, style: .continuous)
                 .stroke(Color.black.opacity(0.20), lineWidth: 0.5)
         )
     }

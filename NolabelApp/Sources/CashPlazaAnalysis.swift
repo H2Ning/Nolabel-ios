@@ -564,10 +564,10 @@ struct CashPlazaAnalysisView: View {
         .padding(16)
         .background(
             palette.surface2,
-            in: RoundedRectangle(cornerRadius: 26, style: .continuous)
+            in: RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -794,10 +794,10 @@ struct CashPlazaAnalysisView: View {
         }
         .background(
             palette.surface,
-            in: RoundedRectangle(cornerRadius: 26, style: .continuous)
+            in: RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -914,10 +914,10 @@ struct MonthVerdictCard: View {
         .padding(16)
         .background(
             palette.accentSoft,
-            in: RoundedRectangle(cornerRadius: 26, style: .continuous)
+            in: RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.accent.opacity(0.26), lineWidth: 1)
         )
     }

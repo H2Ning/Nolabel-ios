@@ -122,16 +122,18 @@ extension Color {
     }
 }
 
-extension View {
-    @ViewBuilder
-    func glassCard(cornerRadius: CGFloat = 22, tint: Color? = nil) -> some View {
-        if let tint {
-            self.glassEffect(.regular.tint(tint), in: .rect(cornerRadius: cornerRadius))
-        } else {
-            self.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-        }
-    }
+/// One radius scale for the whole app: cards share one corner, controls a
+/// tighter one, and small marks keep their own size.
+enum AppRadius {
+    static let card: CGFloat = 26
+    static let toast: CGFloat = 16
+    static let chip: CGFloat = 14
+    static let control: CGFloat = 12
+    static let micro: CGFloat = 7
+    static let thumbnail: CGFloat = 2
+}
 
+extension View {
     @ViewBuilder
     func glassCircle(interactive: Bool = true) -> some View {
         if interactive {
@@ -152,16 +154,6 @@ extension View {
         } else {
             self.glassEffect(.regular, in: .capsule)
         }
-    }
-
-    func cardSurface(_ palette: AppPalette, radius: CGFloat = 26) -> some View {
-        self
-            .background(palette.surface)
-            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(palette.line, lineWidth: 1)
-            )
     }
 }
 

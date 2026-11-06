@@ -170,9 +170,9 @@ struct EntryView: View {
         .padding(.top, 15)
         .padding(.bottom, 10)
         .background(palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
     }
@@ -253,9 +253,9 @@ struct EntryView: View {
                 .foregroundStyle(palette.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(palette.surface, in: RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
                         .stroke(palette.line, lineWidth: 1)
                 )
         }
@@ -271,9 +271,9 @@ struct EntryView: View {
                 .foregroundStyle(palette.ink2)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(palette.surface, in: RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
                         .stroke(palette.line, lineWidth: 1)
                 )
         }
@@ -302,9 +302,9 @@ struct EntryView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background(palette.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(palette.surface2, in: RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
                     .stroke(palette.line, lineWidth: 1)
             )
         }
@@ -322,7 +322,7 @@ struct EntryView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(palette.success, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(palette.success, in: RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
         }
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.76, level: model.hapticLevel))
     }
@@ -336,7 +336,7 @@ struct EntryView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(palette.primaryAction, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(palette.primaryAction, in: RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
                 .opacity(model.entryPreviewCents > 0 ? 1 : 0.55)
         }
         .buttonStyle(HapticKeyStyle(weight: .medium, intensity: 0.86, level: model.hapticLevel))

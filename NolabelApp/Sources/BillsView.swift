@@ -191,12 +191,12 @@ struct BillsView: View {
         .padding(.top, 18)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .onTapGesture {
             model.openBillID = nil
             Haptics.lift()
@@ -270,7 +270,7 @@ struct BillsView: View {
 
     private var emptyState: some View {
         VStack(spacing: 0) {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.micro, style: .continuous)
                 .fill(palette.surface)
                 .frame(width: 76, height: 58)
                 .overlay(
@@ -284,7 +284,7 @@ struct BillsView: View {
                     .padding(.horizontal, 8)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppRadius.micro, style: .continuous)
                         .stroke(palette.lineStrong, lineWidth: 1)
                 )
                 .rotationEffect(.degrees(-2))
@@ -297,11 +297,11 @@ struct BillsView: View {
             Button(action: { model.openBillID = nil; model.openEntry() }) {
                 Text("记一笔")
                     .scalableFont(14, weight: .semibold)
-                    .foregroundStyle(palette.ink)
+                    .foregroundStyle(palette.accentInk)
                     .padding(.horizontal, 18)
                     .frame(minHeight: 44)
-                    .background(palette.surface, in: Capsule())
-                    .overlay(Capsule().stroke(palette.line, lineWidth: 1))
+                    .glassCapsule(tint: palette.accent)
+                    .contentShape(Capsule())
             }
             .buttonStyle(PressableStyle(scale: 0.96))
             .padding(.top, 18)
@@ -399,9 +399,9 @@ struct DayCapsuleView: View {
             }
         }
         .background(palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
         .shadow(color: palette.isDark ? .black.opacity(0.12) : .black.opacity(0.06), radius: 12, y: 8)

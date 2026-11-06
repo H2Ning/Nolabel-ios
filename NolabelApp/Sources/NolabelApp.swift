@@ -67,9 +67,9 @@ struct RootView: View {
                     }
                     .padding(.horizontal, 16)
                     .frame(minHeight: 52)
-                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(palette.surface, in: RoundedRectangle(cornerRadius: AppRadius.toast, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: AppRadius.toast, style: .continuous)
                             .stroke(palette.line, lineWidth: 1)
                     )
                     .padding(.horizontal, 20)
