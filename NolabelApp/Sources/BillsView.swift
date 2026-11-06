@@ -5,7 +5,6 @@ struct BillsView: View {
     let palette: AppPalette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var monthShiftDirection = 1
-    private let topBarHeight: CGFloat = 44
 
     init(model: AppModel, palette: AppPalette) {
         self._model = Bindable(model)
@@ -14,21 +13,19 @@ struct BillsView: View {
 
     var body: some View {
         let _ = model.numberFormat
-        ScrollView {
-            VStack(spacing: 0) {
-                heading
-                summaryCard
-                listSection
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, topBarHeight)
-            .padding(.bottom, 128)
-        }
-        .scrollIndicators(.hidden)
-        .scrollDismissesKeyboard(.interactively)
-        .overlay(alignment: .top) {
+        VStack(spacing: 0) {
             topBar
-                .background(.bar, ignoresSafeAreaEdges: .top)
+            ScrollView {
+                VStack(spacing: 0) {
+                    heading
+                    summaryCard
+                    listSection
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 128)
+            }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
         }
         .overlay(alignment: .bottomLeading) {
             addButton
@@ -52,7 +49,7 @@ struct BillsView: View {
                 Image(systemName: "person")
                     .scalableFont(17, weight: .medium)
                     .foregroundStyle(palette.ink2)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 46, height: 46)
                     .contentShape(Circle())
             }
             .buttonStyle(PressableStyle(scale: 0.94))
@@ -81,11 +78,13 @@ struct BillsView: View {
                         }
                     }
                 }
-                .frame(height: 44)
+                .frame(height: 46)
                 .glassEffect(.regular, in: .capsule)
             }
         }
         .padding(.horizontal, 20)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
     }
 
     private func monthButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
@@ -93,7 +92,7 @@ struct BillsView: View {
             Image(systemName: systemName)
                 .scalableFont(16, weight: .medium)
                 .foregroundStyle(palette.ink2)
-                .frame(width: 44, height: 44)
+                .frame(width: 46, height: 46)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle(scale: 0.92))

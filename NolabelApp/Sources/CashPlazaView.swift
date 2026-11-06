@@ -13,7 +13,7 @@ struct CashPlazaView: View {
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
     @State private var selectedDayLabel: String?
-    private let plazaHeaderHeight: CGFloat = 74
+    @State private var headerHeight: CGFloat = 0
     @State private var verdictBottom: CGFloat = 0
     @State private var chartBottom: CGFloat = 0
     @State private var expandedGridHeight: CGFloat = 0
@@ -33,13 +33,13 @@ struct CashPlazaView: View {
 
     /// Small shows the heading and the verdict; medium adds the chart.
     private var smallDetentHeight: CGFloat {
-        guard verdictBottom > 0 else { return 300 }
-        return verdictBottom + 20 - bottomSafeArea
+        guard headerHeight > 0, verdictBottom > 0 else { return 300 }
+        return headerHeight + verdictBottom + 20 - bottomSafeArea
     }
 
     private var mediumDetentHeight: CGFloat {
-        guard chartBottom > 0 else { return 560 }
-        return chartBottom + 20 - bottomSafeArea
+        guard headerHeight > 0, chartBottom > 0 else { return 560 }
+        return headerHeight + chartBottom + 20 - bottomSafeArea
     }
 
     private struct PlazaSnapshot {
@@ -145,7 +145,18 @@ struct CashPlazaView: View {
         ZStack {
             palette.pageBG.ignoresSafeArea()
 
-            ScrollViewReader { proxy in
+            VStack(spacing: 0) {
+                header
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 14)
+                    .onGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.size.height
+                    } action: { height in
+                        headerHeight = height
+                    }
+
+                ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 22) {
                             analysisTitle(snapshot)
@@ -188,19 +199,12 @@ struct CashPlazaView: View {
                             stage(snapshot)
                         }
                         .padding(.horizontal, 20)
-                        .padding(.top, plazaHeaderHeight + 2)
+                        .padding(.top, 2)
                         .padding(.bottom, 20)
                         .id("plazaTop")
                         .coordinateSpace(name: "plazaContent")
                     }
                     .scrollIndicators(.hidden)
-                    .overlay(alignment: .top) {
-                        header
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
-                            .padding(.bottom, 14)
-                            .background(.bar, ignoresSafeAreaEdges: .top)
-                    }
                     .onChange(of: detent) { _, newValue in
                         // The system sheet owns the drag; a detent change is the threshold.
                         if detentHeightUpdate {
@@ -233,8 +237,9 @@ struct CashPlazaView: View {
                         }
                     }
                 }
+            }
+            .ignoresSafeArea(.container, edges: .bottom)
         }
-        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     private var header: some View {
