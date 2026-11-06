@@ -6,9 +6,12 @@ import UIKit
 struct CashPlazaView: View {
     @Bindable var model: AppModel
     let palette: AppPalette
+    @Binding var detent: PlazaDetent
     let onClose: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var smallDetentHeight: CGFloat
+    @State private var mediumDetentHeight: CGFloat
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
     @State private var selectedDayLabel: String?
@@ -21,14 +24,19 @@ struct CashPlazaView: View {
     @State private var chartBottom: CGFloat = 0
     @State private var expandedGridHeight: CGFloat = 0
 
-    /// The sheet's selection follows this intent, not a stored height, so a
-    /// measured height change never invalidates the selected detent.
-    private enum PlazaDetent: Hashable {
-        case small, medium, large
+    init(
+        model: AppModel,
+        palette: AppPalette,
+        detent: Binding<PlazaDetent>,
+        onClose: @escaping () -> Void
+    ) {
+        self._model = Bindable(model)
+        self.palette = palette
+        self._detent = detent
+        self.onClose = onClose
+        _smallDetentHeight = State(initialValue: model.plazaSmallHeight ?? 268)
+        _mediumDetentHeight = State(initialValue: model.plazaMediumHeight ?? 538)
     }
-
-    @State private var activeDetent: PlazaDetent =
-        ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis") ? .large : .medium
 
     private var monthTitle: String { model.monthTitle }
 
@@ -42,24 +50,37 @@ struct CashPlazaView: View {
             .safeAreaInsets.bottom ?? 0
     }
 
-    /// The bar sits at the card's top edge. If the scroll view reports no
-    /// top inset, fall back to the standard compact bar height.
-    private var navBarHeight: CGFloat {
-        barInset > 0 ? barInset : 44
-    }
-
-    /// Small shows the heading and the verdict; medium adds the chart.
-    /// The fallbacks match the current layout at the default text size, so the
-    /// sheet does not visibly resize while it is presenting. The measured
-    /// values take over as soon as the content is laid out.
-    private var smallDetentHeight: CGFloat {
-        guard verdictBottom > 0 else { return 268 }
-        return navBarHeight + verdictBottom + 20 - bottomSafeArea
-    }
-
-    private var mediumDetentHeight: CGFloat {
-        guard chartBottom > 0 else { return 538 }
-        return navBarHeight + chartBottom + 20 - bottomSafeArea
+    /// Caches the content heights for the next presentation. The selected
+    /// detent only moves by sub-pixel amounts, so measuring never resizes the
+    /// sheet while it is open; the other detent is free to update.
+    private func cacheMeasuredHeights() {
+        guard barInset > 0 else { return }
+        if verdictBottom > 0 {
+            let small = barInset + verdictBottom + 20 - bottomSafeArea
+            if detent == .small {
+                if abs(smallDetentHeight - small) < 2 {
+                    smallDetentHeight = small
+                }
+            } else if abs(smallDetentHeight - small) > 0.5 {
+                smallDetentHeight = small
+            }
+            if abs((model.plazaSmallHeight ?? 0) - small) > 0.5 {
+                model.plazaSmallHeight = small
+            }
+        }
+        if chartBottom > 0 {
+            let medium = barInset + chartBottom + 20 - bottomSafeArea
+            if detent == .medium {
+                if abs(mediumDetentHeight - medium) < 2 {
+                    mediumDetentHeight = medium
+                }
+            } else if abs(mediumDetentHeight - medium) > 0.5 {
+                mediumDetentHeight = medium
+            }
+            if abs((model.plazaMediumHeight ?? 0) - medium) > 0.5 {
+                model.plazaMediumHeight = medium
+            }
+        }
     }
 
     private struct PlazaSnapshot {
@@ -176,8 +197,8 @@ struct CashPlazaView: View {
         .presentationDetents(
             [.height(smallDetentHeight), .height(mediumDetentHeight), .large],
             selection: Binding(
-                get: { presentationDetent(for: activeDetent) },
-                set: { activeDetent = plazaDetent(for: $0) }
+                get: { presentationDetent(for: detent) },
+                set: { detent = plazaDetent(for: $0) }
             )
         )
         .presentationDragIndicator(.visible)
@@ -238,6 +259,7 @@ struct CashPlazaView: View {
                         } action: { bottom in
                             if bottom.isFinite, bottom > 0 {
                                 verdictBottom = bottom
+                                cacheMeasuredHeights()
                             }
                         }
 
@@ -247,6 +269,7 @@ struct CashPlazaView: View {
                             } action: { bottom in
                                 if bottom.isFinite, bottom > 0 {
                                     chartBottom = bottom
+                                    cacheMeasuredHeights()
                                 }
                             }
 
@@ -287,6 +310,7 @@ struct CashPlazaView: View {
                 } action: { _, value in
                     if value > 0, abs(value - barInset) > 0.5 {
                         barInset = value
+                        cacheMeasuredHeights()
                     }
                 }
                 .onChange(of: scrollOffset) { _, value in
@@ -299,7 +323,7 @@ struct CashPlazaView: View {
                         plazaSectionActive = true
                     }
                 }
-                .onChange(of: activeDetent) { _, newValue in
+                .onChange(of: detent) { _, newValue in
                     // The system sheet owns the drag; a detent change is the threshold.
                     Haptics.detent()
                     if newValue != .large {

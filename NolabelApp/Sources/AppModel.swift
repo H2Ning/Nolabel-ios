@@ -3,6 +3,10 @@ import Observation
 import SwiftUI
 import UIKit
 
+enum PlazaDetent: Hashable {
+    case small, medium, large
+}
+
 enum SettingsSubview: Hashable {
     case main
     case personalization
@@ -43,6 +47,32 @@ enum EntryOperator: String, CaseIterable {
 final class AppModel {
     private let api = AccountAPI()
     private let defaults = UserDefaults.standard
+    private let plazaSmallHeightKey = "nolabel-plaza-small-height"
+    private let plazaMediumHeightKey = "nolabel-plaza-medium-height"
+
+    /// The last measured content heights. They are used as the sheet's detents
+    /// on the next presentation, so the sheet never resizes while it opens.
+    var plazaSmallHeight: CGFloat? {
+        get {
+            let value = defaults.double(forKey: plazaSmallHeightKey)
+            return value > 0 ? CGFloat(value) : nil
+        }
+        set {
+            guard let newValue else { return }
+            defaults.set(Double(newValue), forKey: plazaSmallHeightKey)
+        }
+    }
+
+    var plazaMediumHeight: CGFloat? {
+        get {
+            let value = defaults.double(forKey: plazaMediumHeightKey)
+            return value > 0 ? CGFloat(value) : nil
+        }
+        set {
+            guard let newValue else { return }
+            defaults.set(Double(newValue), forKey: plazaMediumHeightKey)
+        }
+    }
     private let cacheOwnerKey = "nolabel-cache-owner"
     private let themeKey = "nolabel-theme"
     private let sortKey = "nolabel-sort-desc"
