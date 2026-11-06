@@ -11,15 +11,25 @@ struct CashPlazaView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
-    @State private var showingAnalysisSection = false
-    @State private var analysisHeaderBottom: CGFloat = 0
     @State private var selectedDayLabel: String?
-    @State private var viewportHeight: CGFloat = 0
-
-    /// Large detent shows the analysis; medium shows the cash display.
-    private var analysisOpen: Bool { detent == .large }
+    @State private var headerHeight: CGFloat = 0
+    @State private var verdictBottom: CGFloat = 0
+    @State private var chartBottom: CGFloat = 0
+    @State private var expandedGridHeight: CGFloat = 0
+    @State private var detentHeightUpdate = false
 
     private var monthTitle: String { model.monthTitle }
+
+    /// Small shows the heading and the verdict; medium adds the chart.
+    private var smallDetentHeight: CGFloat {
+        guard headerHeight > 0, verdictBottom > 0 else { return 300 }
+        return headerHeight + verdictBottom + 20
+    }
+
+    private var mediumDetentHeight: CGFloat {
+        guard headerHeight > 0, chartBottom > 0 else { return 560 }
+        return headerHeight + chartBottom + 20
+    }
 
     private struct PlazaSnapshot {
         let incomeCount: Int
@@ -113,6 +123,11 @@ struct CashPlazaView: View {
 
     var body: some View {
         content(PlazaSnapshot(bills: model.monthBills))
+            .presentationDetents(
+                [.height(smallDetentHeight), .height(mediumDetentHeight), .large],
+                selection: $detent
+            )
+            .presentationDragIndicator(.visible)
     }
 
     private func content(_ snapshot: PlazaSnapshot) -> some View {
@@ -120,36 +135,21 @@ struct CashPlazaView: View {
             palette.pageBG.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                header(snapshot)
+                header
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 14)
+                    .onGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.size.height
+                    } action: { height in
+                        headerHeight = height
+                    }
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(spacing: analysisOpen ? 14 : 20) {
-                            stage(snapshot)
-                            // The analysis stays below the fold at medium, so the
-                            // sheet's own drag reveals it instead of a detent pop.
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text("本月账单分析")
-                                    .scalableFont(28, weight: .bold)
-                                    .tracking(-0.5)
-                                    .foregroundStyle(palette.ink)
-                                analysisSubtitle(snapshot)
-                                    .scalableFont(12, weight: .medium)
-                                    .monospacedDigit()
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                GeometryReader { geo in
-                                    Color.clear.preference(
-                                        key: AnalysisHeaderOffsetKey.self,
-                                        value: geo.frame(in: .named("plazaContent")).maxY
-                                    )
-                                }
-                            )
-                            .opacity(showingAnalysisSection ? 0 : 1)
+                        VStack(spacing: 22) {
+                            analysisTitle(snapshot)
+
                             MonthVerdictCard(
                                 analysis: MonthAnalysis(
                                     bills: model.monthBills,
@@ -157,7 +157,23 @@ struct CashPlazaView: View {
                                 ),
                                 palette: palette
                             )
+                            .onGeometryChange(for: CGFloat.self) { geometry in
+                                geometry.frame(in: .named("plazaContent")).maxY
+                            } action: { bottom in
+                                if bottom.isFinite, bottom > 0 {
+                                    verdictBottom = bottom
+                                }
+                            }
+
                             chartCard(snapshot)
+                                .onGeometryChange(for: CGFloat.self) { geometry in
+                                    geometry.frame(in: .named("plazaContent")).maxY
+                                } action: { bottom in
+                                    if bottom.isFinite, bottom > 0 {
+                                        chartBottom = bottom
+                                    }
+                                }
+
                             VStack(spacing: 0) {
                                 CashPlazaAnalysisView(
                                     bills: model.monthBills,
@@ -167,46 +183,39 @@ struct CashPlazaView: View {
                                 .id("plazaAnalysis-\(model.monthDataVersion)")
                             }
                             .id("plazaAnalysisBottom")
-                            .transition(.opacity)
+
+                            cashPlazaTitle(snapshot)
+                            stage(snapshot)
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 2)
-                        .padding(.bottom, analysisOpen ? 72 : 20)
+                        .padding(.bottom, 20)
                         .id("plazaTop")
                         .coordinateSpace(name: "plazaContent")
-                        .transition(.opacity)
                     }
                     .scrollIndicators(.hidden)
-                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                        geometry.containerSize.height
-                    } action: { _, height in
-                        if height.isFinite, height > 0 {
-                            viewportHeight = height
+                    .onChange(of: detent) { _, newValue in
+                        // The system sheet owns the drag; a detent change is the threshold.
+                        if detentHeightUpdate {
+                            detentHeightUpdate = false
+                        } else {
+                            Haptics.detent()
                         }
-                    }
-                    .onChange(of: analysisOpen) { _, isOpen in
-                        // Returning to the medium cash page should start at the top.
-                        if !isOpen {
+                        if newValue != .large {
                             withAnimation(reduceMotion ? nil : AppMotion.spring) {
                                 proxy.scrollTo("plazaTop", anchor: .top)
                             }
                         }
                     }
-                    .onPreferenceChange(AnalysisHeaderOffsetKey.self) { bottom in
-                        if bottom.isFinite, bottom > 0 {
-                            analysisHeaderBottom = bottom
-                        }
+                    .onChange(of: smallDetentHeight) { oldValue, newValue in
+                        guard detent == .height(oldValue) else { return }
+                        detentHeightUpdate = true
+                        detent = .height(newValue)
                     }
-                    .onScrollGeometryChange(for: Bool.self) { geometry in
-                        guard analysisHeaderBottom > 0 else { return false }
-                        // Visible top of the content, in content coordinates.
-                        let top = geometry.contentOffset.y + geometry.contentInsets.top
-                        // Only once the whole in-content title has left the viewport.
-                        return top >= analysisHeaderBottom - 4
-                    } action: { _, shouldShow in
-                        if shouldShow != showingAnalysisSection {
-                            showingAnalysisSection = shouldShow
-                        }
+                    .onChange(of: mediumDetentHeight) { oldValue, newValue in
+                        guard detent == .height(oldValue) else { return }
+                        detentHeightUpdate = true
+                        detent = .height(newValue)
                     }
                     .onAppear {
                         guard ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis-bottom") else {
@@ -220,18 +229,10 @@ struct CashPlazaView: View {
             }
             .ignoresSafeArea(.container, edges: .bottom)
         }
-        .animation(reduceMotion ? nil : AppMotion.spring, value: analysisOpen)
-        .onChange(of: detent) { _, newValue in
-            // The system sheet owns the drag; a detent change is the threshold.
-            Haptics.detent()
-            if newValue != .large {
-                showingAnalysisSection = false
-            }
-        }
     }
 
-    private func header(_ snapshot: PlazaSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private var header: some View {
+        HStack {
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .scalableFont(15, weight: .semibold)
@@ -241,25 +242,9 @@ struct CashPlazaView: View {
             }
             .buttonStyle(PressableStyle(scale: 0.92))
             .glassCircle()
-            .accessibilityLabel("关闭现金广场")
+            .accessibilityLabel("关闭")
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text(showingAnalysisSection ? "本月账单分析" : "现金广场")
-                    .scalableFont(28, weight: .bold)
-                    .tracking(-0.5)
-                    .foregroundStyle(palette.ink)
-                if showingAnalysisSection {
-                    analysisSubtitle(snapshot)
-                        .scalableFont(12, weight: .medium)
-                        .monospacedDigit()
-                } else {
-                    Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
-                        .scalableFont(12, weight: .medium)
-                        .monospacedDigit()
-                        .foregroundStyle(palette.muted)
-                }
-            }
-            .animation(AppMotion.grace, value: showingAnalysisSection)
+            Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -277,9 +262,39 @@ struct CashPlazaView: View {
                 .fontWeight(.semibold)
     }
 
+    private func analysisTitle(_ snapshot: PlazaSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("本月账单分析")
+                .scalableFont(28, weight: .bold)
+                .tracking(-0.5)
+                .foregroundStyle(palette.ink)
+            analysisSubtitle(snapshot)
+                .scalableFont(12, weight: .medium)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func cashPlazaTitle(_ snapshot: PlazaSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("现金广场")
+                .scalableFont(28, weight: .bold)
+                .tracking(-0.5)
+                .foregroundStyle(palette.ink)
+            Text("\(monthTitle) · \(snapshot.expenseCount) 笔 · \(snapshot.totalNotes) 张现钞")
+                .scalableFont(12, weight: .medium)
+                .monospacedDigit()
+                .foregroundStyle(palette.muted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var stageHeight: CGFloat {
-        // Medium fills the sheet down to the 20pt page margin; large stays 360.
-        min(360, max(160, viewportHeight - 22))
+        // 展开 mode hugs the rendered notes; the 3D modes keep the stage height.
+        if model.plazaStageMode == 3, expandedGridHeight > 0 {
+            return expandedGridHeight
+        }
+        return 360
     }
 
     private func stage(_ snapshot: PlazaSnapshot) -> some View {
@@ -297,9 +312,13 @@ struct CashPlazaView: View {
                         model.plazaStageMode = value
                         Haptics.cashMode(value)
                     },
-                    onReady: {}
+                    onReady: {},
+                    onExpandedContentHeight: { height in
+                        expandedGridHeight = height
+                    }
                 )
                 .frame(height: stageHeight)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.24), value: stageHeight)
             }
         }
     }
@@ -341,7 +360,7 @@ struct CashPlazaView: View {
                 .scalableFont(13, weight: .medium)
                 .foregroundStyle(palette.muted)
         }
-        .frame(height: stageHeight)
+        .frame(height: 360)
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
@@ -530,10 +549,3 @@ private struct PlazaDay: Identifiable {
     var id: Date { date }
 }
 
-private struct AnalysisHeaderOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}

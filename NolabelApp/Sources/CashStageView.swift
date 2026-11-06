@@ -10,6 +10,7 @@ struct CashStageView: View {
     let mode: Int
     let onSelectMode: (Int) -> Void
     let onReady: () -> Void
+    var onExpandedContentHeight: (CGFloat) -> Void = { _ in }
 
     @StateObject private var momentum = CashRotationMomentum()
     @State private var didSignalReady = false
@@ -34,7 +35,11 @@ struct CashStageView: View {
 
                 if !groups.isEmpty {
                     if mode == 3 {
-                        CashNoteGrid(source: source, palette: palette)
+                        CashNoteGrid(
+                            source: source,
+                            palette: palette,
+                            onContentHeight: onExpandedContentHeight
+                        )
                     } else {
                         CashScene3DView(
                             source: source,
@@ -262,6 +267,7 @@ struct CashStageView: View {
 private struct CashNoteGrid: View {
     let source: CashSceneSource
     let palette: AppPalette
+    let onContentHeight: (CGFloat) -> Void
 
     private var groups: [CashGroup] {
         switch source {
@@ -291,6 +297,11 @@ private struct CashNoteGrid: View {
             .padding(.horizontal, 12)
             .padding(.top, 12)
             .padding(.bottom, 56)
+            .onGeometryChange(for: CGFloat.self) { geometry in
+                geometry.size.height
+            } action: { height in
+                onContentHeight(height)
+            }
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)

@@ -218,7 +218,7 @@ struct BillsView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel("该月支出 \(Formats.money(model.monthExpense)) 元，收入 \(Formats.money(model.monthIncome)) 元，\(model.monthBills.count) 笔，\(model.monthNotes) 张现钞")
-        .accessibilityHint("左右滑动切换月份，轻点打开现金广场")
+        .accessibilityHint("左右滑动切换月份，轻点打开月度分析")
     }
 
     private var monthListTransition: AnyTransition {
