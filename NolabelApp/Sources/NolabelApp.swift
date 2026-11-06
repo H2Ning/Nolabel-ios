@@ -109,8 +109,6 @@ struct RootView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .toolbar(.hidden, for: .navigationBar)
-        .navigationTitle("账单")
         .sheet(
             isPresented: Binding(
                 get: { model.cashPlazaOpen },

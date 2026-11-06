@@ -13,7 +13,11 @@ struct CashPlazaView: View {
     @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
     @State private var stagePitch = Double(CashSceneLayout.packageTilt)
     @State private var selectedDayLabel: String?
-    @State private var headerHeight: CGFloat = 0
+    @State private var barInset: CGFloat = 0
+    @State private var analysisTitleBottom: CGFloat = 0
+    @State private var plazaTitleTop: CGFloat = .greatestFiniteMagnitude
+    @State private var scrollOffset: CGFloat = 0
+    @State private var plazaSectionActive = false
     @State private var verdictBottom: CGFloat = 0
     @State private var chartBottom: CGFloat = 0
     @State private var expandedGridHeight: CGFloat = 0
@@ -33,13 +37,13 @@ struct CashPlazaView: View {
 
     /// Small shows the heading and the verdict; medium adds the chart.
     private var smallDetentHeight: CGFloat {
-        guard headerHeight > 0, verdictBottom > 0 else { return 300 }
-        return headerHeight + verdictBottom + 20 - bottomSafeArea
+        guard barInset > 0, verdictBottom > 0 else { return 300 }
+        return barInset + verdictBottom + 20 - bottomSafeArea
     }
 
     private var mediumDetentHeight: CGFloat {
-        guard headerHeight > 0, chartBottom > 0 else { return 560 }
-        return headerHeight + chartBottom + 20 - bottomSafeArea
+        guard barInset > 0, chartBottom > 0 else { return 560 }
+        return barInset + chartBottom + 20 - bottomSafeArea
     }
 
     private struct PlazaSnapshot {
@@ -133,12 +137,44 @@ struct CashPlazaView: View {
     }
 
     var body: some View {
-        content(PlazaSnapshot(bills: model.monthBills))
-            .presentationDetents(
-                [.height(smallDetentHeight), .height(mediumDetentHeight), .large],
-                selection: $detent
-            )
-            .presentationDragIndicator(.visible)
+        NavigationStack {
+            content(PlazaSnapshot(bills: model.monthBills))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: onClose) {
+                            Image(systemName: "xmark")
+                                .scalableFont(15, weight: .semibold)
+                                .foregroundStyle(palette.ink2)
+                        }
+                        .accessibilityLabel("关闭")
+                    }
+                    ToolbarItem(placement: .principal) {
+                        Text(barTitle)
+                            .scalableFont(17, weight: .semibold)
+                            .foregroundStyle(palette.ink)
+                            .opacity(barTitleOpacity)
+                    }
+                }
+        }
+        .presentationDetents(
+            [.height(smallDetentHeight), .height(mediumDetentHeight), .large],
+            selection: $detent
+        )
+        .presentationDragIndicator(.visible)
+    }
+
+    private var barTitle: String {
+        plazaSectionActive ? "现金广场" : "本月账单分析"
+    }
+
+    /// The inline title fades in only after the large heading scrolls away,
+    /// and it fades back out when the heading returns to the top.
+    private var barTitleOpacity: Double {
+        if plazaSectionActive { return 1 }
+        guard analysisTitleBottom > 0 else { return 0 }
+        let start = max(0, analysisTitleBottom - 30)
+        return min(1, max(0, (scrollOffset - start) / 30))
     }
 
     private func content(_ snapshot: PlazaSnapshot) -> some View {
@@ -146,20 +182,17 @@ struct CashPlazaView: View {
             palette.pageBG.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                header
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 14)
-                    .onGeometryChange(for: CGFloat.self) { geometry in
-                        geometry.size.height
-                    } action: { height in
-                        headerHeight = height
-                    }
-
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 22) {
                             analysisTitle(snapshot)
+                                .onGeometryChange(for: CGFloat.self) { geometry in
+                                    geometry.frame(in: .named("plazaContent")).maxY
+                                } action: { bottom in
+                                    if bottom.isFinite, bottom > 0 {
+                                        analysisTitleBottom = bottom
+                                    }
+                                }
 
                             MonthVerdictCard(
                                 analysis: MonthAnalysis(
@@ -196,6 +229,13 @@ struct CashPlazaView: View {
                             .id("plazaAnalysisBottom")
 
                             cashPlazaTitle(snapshot)
+                                .onGeometryChange(for: CGFloat.self) { geometry in
+                                    geometry.frame(in: .named("plazaContent")).minY
+                                } action: { top in
+                                    if top.isFinite, top > 0 {
+                                        plazaTitleTop = top
+                                    }
+                                }
                             stage(snapshot)
                         }
                         .padding(.horizontal, 20)
@@ -205,6 +245,28 @@ struct CashPlazaView: View {
                         .coordinateSpace(name: "plazaContent")
                     }
                     .scrollIndicators(.hidden)
+                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.contentOffset.y + geometry.contentInsets.top
+                    } action: { _, value in
+                        scrollOffset = value
+                    }
+                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.contentInsets.top
+                    } action: { _, value in
+                        if value > 0, abs(value - barInset) > 0.5 {
+                            barInset = value
+                        }
+                    }
+                    .onChange(of: scrollOffset) { _, value in
+                        guard plazaTitleTop.isFinite else { return }
+                        if plazaSectionActive {
+                            if value < plazaTitleTop - 48 {
+                                plazaSectionActive = false
+                            }
+                        } else if value >= plazaTitleTop - 12 {
+                            plazaSectionActive = true
+                        }
+                    }
                     .onChange(of: detent) { _, newValue in
                         // The system sheet owns the drag; a detent change is the threshold.
                         if detentHeightUpdate {
@@ -240,24 +302,6 @@ struct CashPlazaView: View {
             }
             .ignoresSafeArea(.container, edges: .bottom)
         }
-    }
-
-    private var header: some View {
-        HStack {
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .scalableFont(15, weight: .semibold)
-                    .foregroundStyle(palette.ink2)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PressableStyle(scale: 0.92))
-            .glassCircle()
-            .accessibilityLabel("关闭")
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func analysisSubtitle(_ snapshot: PlazaSnapshot) -> Text {

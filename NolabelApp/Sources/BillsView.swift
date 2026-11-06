@@ -13,20 +13,17 @@ struct BillsView: View {
 
     var body: some View {
         let _ = model.numberFormat
-        VStack(spacing: 0) {
-            topBar
-            ScrollView {
-                VStack(spacing: 0) {
-                    heading
-                    summaryCard
-                    listSection
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 128)
+        ScrollView {
+            VStack(spacing: 0) {
+                monthMeta
+                summaryCard
+                listSection
             }
-            .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 128)
         }
+        .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
         .overlay(alignment: .bottomLeading) {
             addButton
                 .padding(.leading, 20)
@@ -41,87 +38,61 @@ struct BillsView: View {
                     .padding(.bottom, 28)
             }
         }
-    }
-
-    private var topBar: some View {
-        HStack(spacing: 12) {
-            Button(action: { model.openBillID = nil; model.openSettings() }) {
-                Image(systemName: "person")
-                    .scalableFont(17, weight: .medium)
-                    .foregroundStyle(palette.ink2)
-                    .frame(width: 46, height: 46)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PressableStyle(scale: 0.94))
-            .glassCircle()
-            .accessibilityLabel("设置")
-
-            Spacer(minLength: 0)
-
-            GlassEffectContainer(spacing: 0) {
-                HStack(spacing: 0) {
-                    monthButton(systemName: "chevron.left", label: "上个月") {
-                        model.openBillID = nil
-                        monthShiftDirection = -1
-                        withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                            model.shiftMonth(-1)
-                        }
-                    }
-                    Rectangle()
-                        .fill(palette.line)
-                        .frame(width: 1, height: 22)
-                    monthButton(systemName: "chevron.right", label: "下个月") {
-                        model.openBillID = nil
-                        monthShiftDirection = 1
-                        withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                            model.shiftMonth(1)
-                        }
-                    }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: { model.openBillID = nil; model.openSettings() }) {
+                    Image(systemName: "person")
+                        .scalableFont(17, weight: .medium)
+                        .foregroundStyle(palette.ink2)
                 }
-                .frame(height: 46)
-                .glassEffect(.regular, in: .capsule)
+                .accessibilityLabel("设置")
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button(action: { shiftMonth(-1) }) {
+                    Image(systemName: "chevron.left")
+                        .scalableFont(16, weight: .medium)
+                        .foregroundStyle(palette.ink2)
+                }
+                .accessibilityLabel("上个月")
+
+                Button(action: { shiftMonth(1) }) {
+                    Image(systemName: "chevron.right")
+                        .scalableFont(16, weight: .medium)
+                        .foregroundStyle(palette.ink2)
+                }
+                .accessibilityLabel("下个月")
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 6)
-        .padding(.bottom, 2)
+        .navigationTitle("账单")
+        .navigationBarTitleDisplayMode(.large)
     }
 
-    private func monthButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .scalableFont(16, weight: .medium)
-                .foregroundStyle(palette.ink2)
-                .frame(width: 46, height: 46)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle(scale: 0.92))
-        .accessibilityLabel(label)
-    }
-
-    private var heading: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(model.monthTitle)
-                    .scalableFont(12, weight: .medium)
-                    .tracking(1.1)
-                    .foregroundStyle(palette.muted)
-                    .contentTransition(.numericText())
-                Text("账单")
-                    .scalableFont(36, weight: .bold)
-                    .tracking(-0.8)
-                    .foregroundStyle(palette.ink)
-            }
+    /// The system large title owns the page title; the content keeps only the
+    /// month context line, which the bar cannot express as a subtitle.
+    private var monthMeta: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(model.monthTitle)
+                .scalableFont(13, weight: .medium)
+                .tracking(0.6)
+                .foregroundStyle(palette.muted)
+                .contentTransition(.numericText())
             Spacer()
             Text("\(model.monthBills.count) 笔")
                 .scalableFont(13, weight: .medium)
                 .monospacedDigit()
                 .foregroundStyle(palette.muted)
                 .contentTransition(.numericText())
-                .padding(.bottom, 4)
         }
-        .padding(.top, 18)
-        .padding(.bottom, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 14)
+    }
+
+    private func shiftMonth(_ direction: Int) {
+        model.openBillID = nil
+        monthShiftDirection = direction
+        withAnimation(reduceMotion ? nil : AppMotion.spring) {
+            model.shiftMonth(direction)
+        }
     }
 
     private var summaryCard: some View {
