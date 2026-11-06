@@ -369,6 +369,7 @@ struct SettingsPage: View {
             previewCard
             formatCard
             colorCard
+            currencyCard
         }
     }
 
@@ -586,6 +587,83 @@ struct SettingsPage: View {
         }
         .buttonStyle(PressableStyle(scale: 0.97))
         .accessibilityLabel(scheme.label)
+        .accessibilityValue(selected ? "已选择" : "")
+    }
+
+    private var currencyCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("货币符号")
+                .scalableFont(14, weight: .semibold)
+                .foregroundStyle(palette.ink)
+
+            HStack(spacing: 8) {
+                ForEach(CurrencySymbol.allCases) { currency in
+                    currencyOption(currency)
+                }
+            }
+        }
+        .padding(16)
+        .background(sectionBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .stroke(palette.line, lineWidth: 1)
+        )
+    }
+
+    /// Mirrors the income/expense color chips, but the swatch is a single
+    /// engraved coin so the currency mark reads as designed, not as a glyph.
+    private func currencyOption(_ currency: CurrencySymbol) -> some View {
+        let selected = model.numberFormat.currency == currency
+        return Button {
+            withAnimation(AppMotion.grace) {
+                model.updateNumberFormat { $0.currency = currency }
+            }
+        } label: {
+            VStack(spacing: 7) {
+                ZStack {
+                    Circle()
+                        .fill(selected ? palette.accentSoft : palette.surface)
+                    Circle()
+                        .stroke(selected ? palette.accent.opacity(0.55) : palette.lineStrong, lineWidth: 1)
+                    Circle()
+                        .stroke(selected ? palette.accent.opacity(0.22) : palette.line.opacity(0.7), lineWidth: 0.7)
+                        .padding(3.5)
+                    Text(currency.symbol)
+                        .scalableFont(19, weight: .bold, design: .serif)
+                        .foregroundStyle(selected ? palette.accent : palette.ink2)
+                }
+                .frame(width: 38, height: 38)
+
+                Text(currency.label)
+                    .scalableFont(10, weight: .semibold)
+                    .foregroundStyle(selected ? palette.accent : palette.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.chip, style: .continuous)
+                    .fill(selected ? palette.accentSoft : palette.surface2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.chip, style: .continuous)
+                    .stroke(selected ? palette.accent.opacity(0.55) : palette.line, lineWidth: 1)
+            )
+            .overlay(alignment: .topTrailing) {
+                if selected {
+                    Image(systemName: "checkmark")
+                        .scalableFont(8, weight: .black)
+                        .foregroundStyle(palette.accentInk)
+                        .frame(width: 14, height: 14)
+                        .background(palette.accent, in: Circle())
+                        .offset(x: 3, y: -3)
+                }
+            }
+        }
+        .buttonStyle(PressableStyle(scale: 0.97))
+        .accessibilityLabel("\(currency.label) \(currency.symbol)")
         .accessibilityValue(selected ? "已选择" : "")
     }
 

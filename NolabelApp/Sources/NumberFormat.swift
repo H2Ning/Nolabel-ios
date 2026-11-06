@@ -123,11 +123,58 @@ enum NumberColorScheme: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum CurrencySymbol: String, Codable, CaseIterable, Identifiable {
+    case yuan
+    case dollar
+    case euro
+    case pound
+
+    var id: String { rawValue }
+
+    var symbol: String {
+        switch self {
+        case .yuan: "¥"
+        case .dollar: "$"
+        case .euro: "€"
+        case .pound: "£"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .yuan: "人民币"
+        case .dollar: "美元"
+        case .euro: "欧元"
+        case .pound: "英镑"
+        }
+    }
+}
+
 struct NumberFormatSettings: Codable, Equatable {
     var incomeFormat: IncomeFormat = .plain
     var expenseFormat: ExpenseFormat = .minus
     var separator: AmountSeparator = .thousand
     var colorScheme: NumberColorScheme = .greenRed
+    var currency: CurrencySymbol = .yuan
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case incomeFormat
+        case expenseFormat
+        case separator
+        case colorScheme
+        case currency
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        incomeFormat = try container.decodeIfPresent(IncomeFormat.self, forKey: .incomeFormat) ?? .plain
+        expenseFormat = try container.decodeIfPresent(ExpenseFormat.self, forKey: .expenseFormat) ?? .minus
+        separator = try container.decodeIfPresent(AmountSeparator.self, forKey: .separator) ?? .thousand
+        colorScheme = try container.decodeIfPresent(NumberColorScheme.self, forKey: .colorScheme) ?? .greenRed
+        currency = try container.decodeIfPresent(CurrencySymbol.self, forKey: .currency) ?? .yuan
+    }
 
     var summary: String {
         "\(separator.summaryLabel) · \(colorScheme.shortLabel)"

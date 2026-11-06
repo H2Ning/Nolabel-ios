@@ -266,12 +266,14 @@ enum Formats {
         decimalString(cents: abs(cents), minimumFractionDigits: 2, maximumFractionDigits: 2)
     }
 
+    static var currencySymbol: String { settings.currency.symbol }
+
     static func moneyValue(_ cents: Int) -> String {
-        "¥\(money(cents))"
+        "\(currencySymbol)\(money(cents))"
     }
 
     static func signedMoney(_ cents: Int, type: BillType) -> String {
-        let body = "¥\(money(cents))"
+        let body = "\(currencySymbol)\(money(cents))"
         switch type {
         case .income:
             return settings.incomeFormat == .plus ? "+\(body)" : body

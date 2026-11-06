@@ -118,7 +118,7 @@ struct BillsView: View {
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("¥")
+                Text("\(Formats.currencySymbol)")
                     .scalableFont(20, weight: .semibold, design: .rounded)
                     .foregroundStyle(palette.accent)
                 Text(Formats.money(model.monthExpense))
@@ -309,7 +309,7 @@ struct DayCapsuleView: View {
     private var netText: String {
         if group.net > 0 { return Formats.signedMoney(group.net, type: .income) }
         if group.net < 0 { return Formats.signedMoney(-group.net, type: .expense) }
-        return "¥0.00"
+        return "\(Formats.currencySymbol)0.00"
     }
 
     private var netColor: Color {

@@ -134,7 +134,11 @@ enum CSVCodec {
             let dateText = field(dateIndex)
             let timeText = field(timeIndex)
             let typeText = field(typeIndex)
-            let amountText = field(amountIndex).replacingOccurrences(of: "¥", with: "")
+            let amountText = field(amountIndex)
+                .replacingOccurrences(of: "¥", with: "")
+                .replacingOccurrences(of: "$", with: "")
+                .replacingOccurrences(of: "€", with: "")
+                .replacingOccurrences(of: "£", with: "")
                 .replacingOccurrences(of: ",", with: "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             guard formatter.date(from: dateText) != nil else {

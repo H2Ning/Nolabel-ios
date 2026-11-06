@@ -447,7 +447,7 @@ struct CashPlazaView: View {
                     Text("每日支出与累计支出")
                         .scalableFont(15, weight: .semibold)
                         .foregroundStyle(palette.ink)
-                    Text("¥\(Formats.money(snapshot.totalCents))")
+                    Text("\(Formats.currencySymbol)\(Formats.money(snapshot.totalCents))")
                         .scalableFont(25, weight: .bold, design: .rounded)
                         .tracking(-0.5)
                         .monospacedDigit()
@@ -465,9 +465,9 @@ struct CashPlazaView: View {
                    let point = snapshot.points.first(where: { $0.label == label }) {
                     Text(label)
                         .foregroundStyle(palette.ink2)
-                    Text("支出 ¥\(Formats.money(Int((point.daily * 100).rounded())))")
+                    Text("支出 \(Formats.currencySymbol)\(Formats.money(Int((point.daily * 100).rounded())))")
                         .foregroundStyle(palette.expense)
-                    Text("累计 ¥\(Formats.money(Int((point.cumulative * 100).rounded())))")
+                    Text("累计 \(Formats.currencySymbol)\(Formats.money(Int((point.cumulative * 100).rounded())))")
                         .foregroundStyle(palette.accent)
                 }
             }
@@ -550,7 +550,7 @@ struct CashPlazaView: View {
                         AxisGridLine().foregroundStyle(palette.line.opacity(0.35))
                         AxisValueLabel {
                             if let amount = value.as(Double.self) {
-                                Text("¥\(Int(amount))")
+                                Text("\(Formats.currencySymbol)\(Int(amount))")
                                     .scalableFont(9, weight: .medium)
                                     .monospacedDigit()
                                     .foregroundStyle(palette.muted)
