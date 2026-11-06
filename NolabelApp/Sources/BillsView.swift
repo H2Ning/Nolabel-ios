@@ -181,8 +181,11 @@ struct BillsView: View {
                     let horizontal = value.translation.width
                     guard abs(horizontal) > abs(value.translation.height),
                           abs(horizontal) > 60 else { return }
+                    let direction = horizontal < 0 ? 1 : -1
+                    model.openBillID = nil
+                    monthShiftDirection = direction
                     withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                        model.shiftMonth(horizontal < 0 ? 1 : -1)
+                        model.shiftMonth(direction)
                     }
                 }
         )
