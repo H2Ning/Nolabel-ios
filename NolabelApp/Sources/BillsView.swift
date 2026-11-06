@@ -319,10 +319,10 @@ struct BillsView: View {
                 Text("记一笔")
                     .scalableFont(16, weight: .semibold)
             }
-            .foregroundStyle(palette.accentInk)
+            .foregroundStyle(palette.accent)
             .padding(.horizontal, 19)
             .frame(minHeight: 52)
-            .glassCapsule(tint: palette.accent)
+            .glassCapsule(tint: palette.accent.opacity(0.3), clear: true)
             .contentShape(Capsule())
         }
         .buttonStyle(PressableStyle(scale: 0.95))
