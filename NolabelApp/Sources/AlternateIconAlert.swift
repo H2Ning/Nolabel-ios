@@ -1,10 +1,12 @@
 import UIKit
 
 /// iOS presents its own confirmation alert whenever an alternate app icon is
-/// set. The app shows a "图标已更改" toast instead, so the system alert is
-/// swallowed for a short window around the change.
+/// set. The app shows a "图标已更改" toast instead, so the first alert presented
+/// in a short window around the change is swallowed. If the hook ever stops
+/// matching (a future iOS change), the system alert simply appears again.
 enum AlternateIconAlert {
     private static var installed = false
+    private static var armed = false
     private static var suppressDeadline = DispatchTime.now()
 
     static func install() {
@@ -20,11 +22,16 @@ enum AlternateIconAlert {
     }
 
     static func suppress(for seconds: Double = 1.5) {
+        armed = true
         suppressDeadline = .now() + seconds
     }
 
     static var isSuppressed: Bool {
-        DispatchTime.now() < suppressDeadline
+        armed && DispatchTime.now() < suppressDeadline
+    }
+
+    static func consume() {
+        armed = false
     }
 }
 
@@ -35,6 +42,7 @@ extension UIViewController {
         completion: (() -> Void)? = nil
     ) {
         if AlternateIconAlert.isSuppressed, viewControllerToPresent is UIAlertController {
+            AlternateIconAlert.consume()
             completion?()
             return
         }

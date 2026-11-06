@@ -347,7 +347,7 @@ struct DayCapsuleView: View {
                     .monospacedDigit()
                     .foregroundStyle(netTextColor)
                     .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
+                    .minimumScaleFactor(0.75)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(netColor, in: Capsule())
@@ -485,6 +485,9 @@ struct SwipeBillRow: View {
                 .accessibilityHidden(true)
             }
             .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: "删除") {
+                model.requestDelete(bill)
+            }
             .accessibilityAction {
                 guard !suppressTap else { return }
                 if isOpen {

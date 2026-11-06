@@ -69,7 +69,7 @@ struct AppPalette {
         ink: Color(hex: 0xF1F0EA),
         ink2: Color(hex: 0xC9CCC3),
         muted: Color(hex: 0x98A298),
-        faint: Color(hex: 0x687268),
+        faint: Color(hex: 0x7A857B),
         line: Color(hex: 0x8C9A8D).opacity(0.28),
         lineStrong: Color(hex: 0xAAB6AC).opacity(0.42),
         accent: Color(hex: 0xECBD57),

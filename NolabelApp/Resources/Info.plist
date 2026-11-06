@@ -45,5 +45,24 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.h2ning.nolabel.new-entry</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>记一笔</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>plus.circle.fill</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.h2ning.nolabel.analysis</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>本月分析</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>chart.bar.xaxis</string>
+		</dict>
+	</array>
 </dict>
 </plist>

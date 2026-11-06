@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct NolabelApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
 
     var body: some Scene {
@@ -18,8 +19,6 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var plazaDetent: PlazaDetent =
-        ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis") ? .large : .medium
 
     private var palette: AppPalette {
         .palette(colorScheme).withNumberColors(model.numberFormat.colorScheme)
@@ -99,6 +98,20 @@ struct RootView: View {
             AlternateIconAlert.install()
             Haptics.prepare()
             await model.bootstrap()
+            AppShortcutRouter.handler = { shortcut in
+                switch shortcut {
+                case .newEntry:
+                    model.openBillID = nil
+                    model.openEntry()
+                case .analysis:
+                    model.openBillID = nil
+                    model.cashPlazaOpen = true
+                }
+            }
+            if let pending = AppShortcutRouter.pending {
+                AppShortcutRouter.pending = nil
+                AppShortcutRouter.handler?(pending)
+            }
         }
         .sheet(
             isPresented: Binding(
@@ -119,7 +132,10 @@ struct RootView: View {
             CashPlazaView(
                 model: model,
                 palette: palette,
-                detent: $plazaDetent,
+                detent: Binding(
+                    get: { model.plazaDetent },
+                    set: { model.plazaDetent = $0 }
+                ),
                 onClose: {
                     Haptics.lower()
                     model.cashPlazaOpen = false

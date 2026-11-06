@@ -3,7 +3,7 @@ import Observation
 import SwiftUI
 import UIKit
 
-enum PlazaDetent: Hashable {
+enum PlazaDetent: String, Hashable {
     case small, medium, large
 }
 
@@ -82,6 +82,12 @@ final class AppModel {
     private let numberFormatKey = "nolabel-number-format"
     private let deleteConfirmKey = "nolabel-delete-confirm"
     private let usernameKey = "h2ning_username"
+    private let monthKey = "nolabel-selected-month"
+    private let plazaDetentKey = "nolabel-plaza-detent"
+    private let draftInputKey = "nolabel-entry-draft-input"
+    private let draftNoteKey = "nolabel-entry-draft-note"
+    private let draftTypeKey = "nolabel-entry-draft-type"
+    private let draftAtKey = "nolabel-entry-draft-at"
 
     let previewMode: Bool
     let previewProbe: Bool
@@ -111,7 +117,12 @@ final class AppModel {
     var appIcon: AppIconChoice
     var numberFormat: NumberFormatSettings
     var sortDesc: Bool
-    var selectedMonth: Date
+    var selectedMonth: Date {
+        didSet { defaults.set(selectedMonth, forKey: monthKey) }
+    }
+    var plazaDetent: PlazaDetent {
+        didSet { defaults.set(plazaDetent.rawValue, forKey: plazaDetentKey) }
+    }
     var settingsPath: [SettingsSubview] = []
 
     var settingsOpen: Bool {
@@ -154,11 +165,17 @@ final class AppModel {
 
     var entryOpen = false
     var entryEditingID: String?
-    var entryInput = ""
+    var entryInput = "" {
+        didSet { persistEntryDraft() }
+    }
     var entryTrailingDecimal = false
     var entryJustEvaluated = false
-    var entryType: BillType = .expense
-    var entryNote = ""
+    var entryType: BillType = .expense {
+        didSet { persistEntryDraft() }
+    }
+    var entryNote = "" {
+        didSet { persistEntryDraft() }
+    }
     var entryDate = Date()
     var entryAccumulator: Int?
     var entryOperator: EntryOperator?
@@ -339,7 +356,19 @@ final class AppModel {
         cashMode = (1...3).contains(storedCashMode) ? storedCashMode : 1
         let storedPlazaMode = defaults.integer(forKey: plazaStageModeKey)
         plazaStageMode = (1...3).contains(storedPlazaMode) ? storedPlazaMode : 2
-        selectedMonth = DateHelp.monthStart(Date())
+        if ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis") {
+            plazaDetent = .large
+        } else if let raw = defaults.string(forKey: plazaDetentKey),
+                  let stored = PlazaDetent(rawValue: raw) {
+            plazaDetent = stored
+        } else {
+            plazaDetent = .medium
+        }
+        if let storedMonth = defaults.object(forKey: monthKey) as? Date {
+            selectedMonth = DateHelp.monthStart(storedMonth)
+        } else {
+            selectedMonth = DateHelp.monthStart(Date())
+        }
 
         if let raw = BillStore.shared.loadRaw(), let envelope = BillsCodec.parse(raw) {
             bills = envelope.bills
@@ -991,6 +1020,7 @@ final class AppModel {
             entryType = .expense
             entryNote = ""
             entryDate = Date()
+            restoreEntryDraft()
         }
         entryAccumulator = nil
         entryOperator = nil
@@ -1006,6 +1036,7 @@ final class AppModel {
 
     func closeEntry() {
         guard entryOpen else { return }
+        let wasEditing = entryEditingID != nil
         entryOpen = false
         entryEditingID = nil
         entryInput = ""
@@ -1016,7 +1047,39 @@ final class AppModel {
         entryWaitingForOperand = false
         resetOperatorCycle()
         dateSheetOpen = false
+        if !wasEditing {
+            clearEntryDraft()
+        }
         Haptics.soft()
+    }
+
+    private func persistEntryDraft() {
+        guard entryOpen, entryEditingID == nil else { return }
+        defaults.set(entryInput, forKey: draftInputKey)
+        defaults.set(entryNote, forKey: draftNoteKey)
+        defaults.set(entryType.rawValue, forKey: draftTypeKey)
+        defaults.set(Date(), forKey: draftAtKey)
+    }
+
+    private func restoreEntryDraft() {
+        guard let savedAt = defaults.object(forKey: draftAtKey) as? Date,
+              Date().timeIntervalSince(savedAt) < 24 * 60 * 60 else {
+            clearEntryDraft()
+            return
+        }
+        let input = defaults.string(forKey: draftInputKey) ?? ""
+        let note = defaults.string(forKey: draftNoteKey) ?? ""
+        guard !input.isEmpty || !note.isEmpty else { return }
+        entryInput = input
+        entryNote = note
+        entryType = BillType(rawValue: defaults.string(forKey: draftTypeKey) ?? "") ?? .expense
+    }
+
+    private func clearEntryDraft() {
+        defaults.removeObject(forKey: draftInputKey)
+        defaults.removeObject(forKey: draftNoteKey)
+        defaults.removeObject(forKey: draftTypeKey)
+        defaults.removeObject(forKey: draftAtKey)
     }
 
     func saveEntry() async {
@@ -1032,8 +1095,13 @@ final class AppModel {
             Haptics.warning()
             return
         }
-        guard requireLogin() else { return }
+        guard requireLogin() else {
+            entryError = "请先在设置登录账号"
+            Haptics.warning()
+            return
+        }
 
+        let wasEditing = entryEditingID != nil
         let iso = DateHelp.iso(from: entryDate)
         let time = DateHelp.time(from: entryDate)
         let fields = (
@@ -1094,12 +1162,17 @@ final class AppModel {
             entryOperator = nil
             entryWaitingForOperand = false
             resetOperatorCycle()
+            if !wasEditing {
+                clearEntryDraft()
+            }
             Haptics.cashCounted()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 if self?.lastSavedBillID == bill.id {
                     self?.lastSavedBillID = nil
                 }
             }
+        } else {
+            entryError = settingsOpen ? "登录已过期，请重新登录" : "保存失败，请检查网络后重试"
         }
     }
 
