@@ -879,8 +879,9 @@ final class AppModel {
 
     /// Mirrors the selected month's verdict into the widget's shared store.
     func updateWidgetSnapshot() {
-        // A failed launch must not replace a good snapshot with an empty one.
-        if bills.isEmpty, !accountLoaded, VerdictSnapshot.load() != nil { return }
+        // Never publish the empty state before a ledger has actually loaded;
+        // a failed launch must not blank the widget.
+        guard accountLoaded || !bills.isEmpty else { return }
         let month = DateHelp.monthStart(selectedMonth)
         let analysis = MonthAnalysis(bills: monthBills, month: month)
         let metricLabel: String
