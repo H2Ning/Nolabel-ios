@@ -813,29 +813,21 @@ struct SettingsPage: View {
     }
 
     private var iconView: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("图标跟随系统浅色 / 深色外观显示。切换后系统会再弹一次确认，主屏幕上的图标随即更新。")
-                .scalableFont(12, weight: .regular)
-                .foregroundStyle(palette.muted)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 4)
-
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
-                spacing: 14
-            ) {
-                ForEach(AppIconChoice.displayOrder) { choice in
-                    iconCell(choice)
-                }
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
+            spacing: 14
+        ) {
+            ForEach(AppIconChoice.displayOrder) { choice in
+                iconCell(choice)
             }
-            .padding(14)
-            .background(sectionBackground)
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                    .stroke(palette.line, lineWidth: 1)
-            )
         }
+        .padding(14)
+        .background(sectionBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .stroke(palette.line, lineWidth: 1)
+        )
     }
 
     private func iconCell(_ choice: AppIconChoice) -> some View {
