@@ -35,15 +35,21 @@ struct CashPlazaView: View {
             .safeAreaInsets.bottom ?? 0
     }
 
+    /// The bar sits at the card's top edge. If the scroll view reports no
+    /// top inset, fall back to the standard compact bar height.
+    private var navBarHeight: CGFloat {
+        barInset > 0 ? barInset : 44
+    }
+
     /// Small shows the heading and the verdict; medium adds the chart.
     private var smallDetentHeight: CGFloat {
-        guard barInset > 0, verdictBottom > 0 else { return 300 }
-        return barInset + verdictBottom + 20 - bottomSafeArea
+        guard verdictBottom > 0 else { return 300 }
+        return navBarHeight + verdictBottom + 20 - bottomSafeArea
     }
 
     private var mediumDetentHeight: CGFloat {
-        guard barInset > 0, chartBottom > 0 else { return 560 }
-        return barInset + chartBottom + 20 - bottomSafeArea
+        guard chartBottom > 0 else { return 560 }
+        return navBarHeight + chartBottom + 20 - bottomSafeArea
     }
 
     private struct PlazaSnapshot {
@@ -181,122 +187,120 @@ struct CashPlazaView: View {
         ZStack {
             palette.pageBG.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(spacing: 22) {
-                            analysisTitle(snapshot)
-                                .onGeometryChange(for: CGFloat.self) { geometry in
-                                    geometry.frame(in: .named("plazaContent")).maxY
-                                } action: { bottom in
-                                    if bottom.isFinite, bottom > 0 {
-                                        analysisTitleBottom = bottom
-                                    }
-                                }
-
-                            MonthVerdictCard(
-                                analysis: MonthAnalysis(
-                                    bills: model.monthBills,
-                                    month: model.selectedMonth
-                                ),
-                                palette: palette
-                            )
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 22) {
+                        analysisTitle(snapshot)
                             .onGeometryChange(for: CGFloat.self) { geometry in
                                 geometry.frame(in: .named("plazaContent")).maxY
                             } action: { bottom in
                                 if bottom.isFinite, bottom > 0 {
-                                    verdictBottom = bottom
+                                    analysisTitleBottom = bottom
                                 }
                             }
 
-                            chartCard(snapshot)
-                                .onGeometryChange(for: CGFloat.self) { geometry in
-                                    geometry.frame(in: .named("plazaContent")).maxY
-                                } action: { bottom in
-                                    if bottom.isFinite, bottom > 0 {
-                                        chartBottom = bottom
-                                    }
-                                }
+                        MonthVerdictCard(
+                            analysis: MonthAnalysis(
+                                bills: model.monthBills,
+                                month: model.selectedMonth
+                            ),
+                            palette: palette
+                        )
+                        .onGeometryChange(for: CGFloat.self) { geometry in
+                            geometry.frame(in: .named("plazaContent")).maxY
+                        } action: { bottom in
+                            if bottom.isFinite, bottom > 0 {
+                                verdictBottom = bottom
+                            }
+                        }
 
-                            VStack(spacing: 0) {
-                                CashPlazaAnalysisView(
-                                    bills: model.monthBills,
-                                    month: model.selectedMonth,
-                                    palette: palette
-                                )
-                                .id("plazaAnalysis-\(model.monthDataVersion)")
-                            }
-                            .id("plazaAnalysisBottom")
-
-                            cashPlazaTitle(snapshot)
-                                .onGeometryChange(for: CGFloat.self) { geometry in
-                                    geometry.frame(in: .named("plazaContent")).minY
-                                } action: { top in
-                                    if top.isFinite, top > 0 {
-                                        plazaTitleTop = top
-                                    }
+                        chartCard(snapshot)
+                            .onGeometryChange(for: CGFloat.self) { geometry in
+                                geometry.frame(in: .named("plazaContent")).maxY
+                            } action: { bottom in
+                                if bottom.isFinite, bottom > 0 {
+                                    chartBottom = bottom
                                 }
-                            stage(snapshot)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 2)
-                        .padding(.bottom, 20)
-                        .id("plazaTop")
-                        .coordinateSpace(name: "plazaContent")
-                    }
-                    .scrollIndicators(.hidden)
-                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                        geometry.contentOffset.y + geometry.contentInsets.top
-                    } action: { _, value in
-                        scrollOffset = value
-                    }
-                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                        geometry.contentInsets.top
-                    } action: { _, value in
-                        if value > 0, abs(value - barInset) > 0.5 {
-                            barInset = value
-                        }
-                    }
-                    .onChange(of: scrollOffset) { _, value in
-                        guard plazaTitleTop.isFinite else { return }
-                        if plazaSectionActive {
-                            if value < plazaTitleTop - 48 {
-                                plazaSectionActive = false
                             }
-                        } else if value >= plazaTitleTop - 12 {
-                            plazaSectionActive = true
+
+                        VStack(spacing: 0) {
+                            CashPlazaAnalysisView(
+                                bills: model.monthBills,
+                                month: model.selectedMonth,
+                                palette: palette
+                            )
+                            .id("plazaAnalysis-\(model.monthDataVersion)")
                         }
-                    }
-                    .onChange(of: detent) { _, newValue in
-                        // The system sheet owns the drag; a detent change is the threshold.
-                        if detentHeightUpdate {
-                            detentHeightUpdate = false
-                        } else {
-                            Haptics.detent()
-                        }
-                        if newValue != .large {
-                            withAnimation(reduceMotion ? nil : AppMotion.spring) {
-                                proxy.scrollTo("plazaTop", anchor: .top)
+                        .id("plazaAnalysisBottom")
+
+                        cashPlazaTitle(snapshot)
+                            .onGeometryChange(for: CGFloat.self) { geometry in
+                                geometry.frame(in: .named("plazaContent")).minY
+                            } action: { top in
+                                if top.isFinite, top > 0 {
+                                    plazaTitleTop = top
+                                }
                             }
+                        stage(snapshot)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 2)
+                    .padding(.bottom, 20)
+                    .id("plazaTop")
+                    .coordinateSpace(name: "plazaContent")
+                }
+                .scrollIndicators(.hidden)
+                .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.contentOffset.y + geometry.contentInsets.top
+                } action: { _, value in
+                    scrollOffset = value
+                }
+                .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.contentInsets.top
+                } action: { _, value in
+                    if value > 0, abs(value - barInset) > 0.5 {
+                        barInset = value
+                    }
+                }
+                .onChange(of: scrollOffset) { _, value in
+                    guard plazaTitleTop.isFinite else { return }
+                    if plazaSectionActive {
+                        if value < plazaTitleTop - 48 {
+                            plazaSectionActive = false
+                        }
+                    } else if value >= plazaTitleTop - 12 {
+                        plazaSectionActive = true
+                    }
+                }
+                .onChange(of: detent) { _, newValue in
+                    // The system sheet owns the drag; a detent change is the threshold.
+                    if detentHeightUpdate {
+                        detentHeightUpdate = false
+                    } else {
+                        Haptics.detent()
+                    }
+                    if newValue != .large {
+                        withAnimation(reduceMotion ? nil : AppMotion.spring) {
+                            proxy.scrollTo("plazaTop", anchor: .top)
                         }
                     }
-                    .onChange(of: smallDetentHeight) { oldValue, newValue in
-                        guard detent == .height(oldValue) else { return }
-                        detentHeightUpdate = true
-                        detent = .height(newValue)
+                }
+                .onChange(of: smallDetentHeight) { oldValue, newValue in
+                    guard detent == .height(oldValue) else { return }
+                    detentHeightUpdate = true
+                    detent = .height(newValue)
+                }
+                .onChange(of: mediumDetentHeight) { oldValue, newValue in
+                    guard detent == .height(oldValue) else { return }
+                    detentHeightUpdate = true
+                    detent = .height(newValue)
+                }
+                .onAppear {
+                    guard ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis-bottom") else {
+                        return
                     }
-                    .onChange(of: mediumDetentHeight) { oldValue, newValue in
-                        guard detent == .height(oldValue) else { return }
-                        detentHeightUpdate = true
-                        detent = .height(newValue)
-                    }
-                    .onAppear {
-                        guard ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis-bottom") else {
-                            return
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                            proxy.scrollTo("plazaAnalysisBottom", anchor: .bottom)
-                        }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        proxy.scrollTo("plazaAnalysisBottom", anchor: .bottom)
                     }
                 }
             }
