@@ -22,7 +22,8 @@ struct EntryView: View {
                         pitch: $model.cashPitch,
                         mode: model.cashMode,
                         onSelectMode: { model.setCashMode($0) },
-                        onReady: {}
+                        onReady: {},
+                        modeBadgeAtBottom: true
                     )
                     .frame(maxWidth: .infinity, minHeight: 140, maxHeight: 360)
                     .padding(.horizontal, 20)

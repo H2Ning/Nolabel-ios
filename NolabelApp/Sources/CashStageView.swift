@@ -12,6 +12,10 @@ struct CashStageView: View {
     let onReady: () -> Void
     var onExpandedContentHeight: (CGFloat) -> Void = { _ in }
 
+    /// The plaza keeps its switch at the top-right; the entry stage uses the
+    /// original bottom-right position.
+    var modeBadgeAtBottom = false
+
     @StateObject private var momentum = CashRotationMomentum()
     @State private var didSignalReady = false
     @State private var dragOrigin: (yaw: Double, pitch: Double)?
@@ -38,6 +42,7 @@ struct CashStageView: View {
                         CashNoteGrid(
                             source: source,
                             palette: palette,
+                            badgeAtBottom: modeBadgeAtBottom,
                             onContentHeight: onExpandedContentHeight
                         )
                     } else {
@@ -54,8 +59,12 @@ struct CashStageView: View {
 
                 if !groups.isEmpty {
                     modeBadge
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                        .padding(.top, 5)
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity,
+                            alignment: modeBadgeAtBottom ? .bottomTrailing : .topTrailing
+                        )
+                        .padding(modeBadgeAtBottom ? .bottom : .top, 5)
                         .padding(.trailing, 12)
                 }
             }
@@ -95,7 +104,11 @@ struct CashStageView: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint("轻点停止旋转，右下角按钮切换摆放方式")
+            .accessibilityHint(
+                modeBadgeAtBottom
+                    ? "轻点停止旋转，右下角按钮切换摆放方式"
+                    : "轻点停止旋转，右上角按钮切换摆放方式"
+            )
             .accessibilityAction {
                 momentum.stop()
             }
@@ -267,6 +280,7 @@ struct CashStageView: View {
 private struct CashNoteGrid: View {
     let source: CashSceneSource
     let palette: AppPalette
+    let badgeAtBottom: Bool
     let onContentHeight: (CGFloat) -> Void
 
     private var groups: [CashGroup] {
@@ -295,8 +309,8 @@ private struct CashNoteGrid: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 56)
-            .padding(.bottom, 12)
+            .padding(.top, badgeAtBottom ? 12 : 56)
+            .padding(.bottom, badgeAtBottom ? 56 : 12)
             .onGeometryChange(for: CGFloat.self) { geometry in
                 geometry.size.height
             } action: { height in
