@@ -18,8 +18,6 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var plazaDetent: PresentationDetent =
-        ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis") ? .large : .height(560)
 
     private var palette: AppPalette {
         .palette(colorScheme).withNumberColors(model.numberFormat.colorScheme)
@@ -118,7 +116,6 @@ struct RootView: View {
             CashPlazaView(
                 model: model,
                 palette: palette,
-                detent: $plazaDetent,
                 onClose: {
                     Haptics.lower()
                     model.cashPlazaOpen = false

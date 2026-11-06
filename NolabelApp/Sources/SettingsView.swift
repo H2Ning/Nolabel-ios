@@ -90,7 +90,7 @@ struct SettingsPage: View {
                 Haptics.soft()
             }
             Button("清空全部", role: .destructive) {
-                Haptics.deleteConfirm()
+                Haptics.warning()
                 Task { await model.clearAllBills() }
             }
         } message: {

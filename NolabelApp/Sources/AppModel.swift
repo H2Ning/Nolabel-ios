@@ -732,7 +732,6 @@ final class AppModel {
             pendingDeleteBill = bill
             Haptics.deletePrompt()
         } else {
-            Haptics.deleteConfirm()
             Task { await delete(bill) }
         }
     }
@@ -745,7 +744,6 @@ final class AppModel {
     func confirmDeletePrompt() {
         guard let bill = pendingDeleteBill else { return }
         pendingDeleteBill = nil
-        Haptics.deleteConfirm()
         // Let the alert finish dismissing before the list mutates.
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 250_000_000)
@@ -758,6 +756,7 @@ final class AppModel {
         let snapshot = bills
         let next = bills.filter { $0.id != bill.id }
         if await saveBills(next) {
+            Haptics.deleteCommitted()
             openBillID = nil
             deleteUndoSnapshot = snapshot
             undoDeleteTitle = bill.title

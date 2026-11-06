@@ -6,7 +6,6 @@ import UIKit
 struct CashPlazaView: View {
     @Bindable var model: AppModel
     let palette: AppPalette
-    @Binding var detent: PresentationDetent
     let onClose: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -21,7 +20,15 @@ struct CashPlazaView: View {
     @State private var verdictBottom: CGFloat = 0
     @State private var chartBottom: CGFloat = 0
     @State private var expandedGridHeight: CGFloat = 0
-    @State private var detentHeightUpdate = false
+
+    /// The sheet's selection follows this intent, not a stored height, so a
+    /// measured height change never invalidates the selected detent.
+    private enum PlazaDetent: Hashable {
+        case small, medium, large
+    }
+
+    @State private var activeDetent: PlazaDetent =
+        ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis") ? .large : .medium
 
     private var monthTitle: String { model.monthTitle }
 
@@ -165,9 +172,26 @@ struct CashPlazaView: View {
         }
         .presentationDetents(
             [.height(smallDetentHeight), .height(mediumDetentHeight), .large],
-            selection: $detent
+            selection: Binding(
+                get: { presentationDetent(for: activeDetent) },
+                set: { activeDetent = plazaDetent(for: $0) }
+            )
         )
         .presentationDragIndicator(.visible)
+    }
+
+    private func presentationDetent(for kind: PlazaDetent) -> PresentationDetent {
+        switch kind {
+        case .small: return .height(smallDetentHeight)
+        case .medium: return .height(mediumDetentHeight)
+        case .large: return .large
+        }
+    }
+
+    private func plazaDetent(for detent: PresentationDetent) -> PlazaDetent {
+        if detent == .large { return .large }
+        if detent == .height(smallDetentHeight) { return .small }
+        return .medium
     }
 
     private var barTitle: String {
@@ -272,28 +296,14 @@ struct CashPlazaView: View {
                         plazaSectionActive = true
                     }
                 }
-                .onChange(of: detent) { _, newValue in
+                .onChange(of: activeDetent) { _, newValue in
                     // The system sheet owns the drag; a detent change is the threshold.
-                    if detentHeightUpdate {
-                        detentHeightUpdate = false
-                    } else {
-                        Haptics.detent()
-                    }
+                    Haptics.detent()
                     if newValue != .large {
                         withAnimation(reduceMotion ? nil : AppMotion.spring) {
                             proxy.scrollTo("plazaTop", anchor: .top)
                         }
                     }
-                }
-                .onChange(of: smallDetentHeight) { oldValue, newValue in
-                    guard detent == .height(oldValue) else { return }
-                    detentHeightUpdate = true
-                    detent = .height(newValue)
-                }
-                .onChange(of: mediumDetentHeight) { oldValue, newValue in
-                    guard detent == .height(oldValue) else { return }
-                    detentHeightUpdate = true
-                    detent = .height(newValue)
                 }
                 .onAppear {
                     guard ProcessInfo.processInfo.arguments.contains("--preview-plaza-analysis-bottom") else {
