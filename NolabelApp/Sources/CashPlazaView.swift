@@ -272,6 +272,10 @@ struct CashPlazaView: View {
                 .fontWeight(.semibold)
     }
 
+    private var stageHeight: CGFloat {
+        detent == .large ? 360 : 300
+    }
+
     private func stage(_ snapshot: PlazaSnapshot) -> some View {
         Group {
             if snapshot.tallies.isEmpty {
@@ -289,7 +293,7 @@ struct CashPlazaView: View {
                     },
                     onReady: {}
                 )
-                .frame(height: 360)
+                .frame(height: stageHeight)
             }
         }
     }
@@ -331,7 +335,7 @@ struct CashPlazaView: View {
                 .scalableFont(13, weight: .medium)
                 .foregroundStyle(palette.muted)
         }
-        .frame(height: 360)
+        .frame(height: stageHeight)
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
