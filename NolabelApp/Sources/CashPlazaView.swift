@@ -14,6 +14,7 @@ struct CashPlazaView: View {
     @State private var showingAnalysisSection = false
     @State private var analysisHeaderBottom: CGFloat = 0
     @State private var selectedDayLabel: String?
+    @State private var viewportHeight: CGFloat = 0
 
     /// Large detent shows the analysis; medium shows the cash display.
     private var analysisOpen: Bool { detent == .large }
@@ -128,38 +129,36 @@ struct CashPlazaView: View {
                     ScrollView {
                         VStack(spacing: 14) {
                             stage(snapshot)
-                            // Medium already carries the analysis heading and
-                            // verdict, so growing to large only appends content.
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text("本月账单分析")
-                                    .scalableFont(28, weight: .bold)
-                                    .tracking(-0.5)
-                                    .foregroundStyle(palette.ink)
-                                analysisSubtitle(snapshot)
-                                    .scalableFont(12, weight: .medium)
-                                    .monospacedDigit()
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                GeometryReader { geo in
-                                    Color.clear.preference(
-                                        key: AnalysisHeaderOffsetKey.self,
-                                        value: geo.frame(in: .named("plazaContent")).maxY
-                                    )
+                            // The large detent owns the analysis; medium stays
+                            // a complete cash view with nothing below the fold.
+                            if analysisOpen {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text("本月账单分析")
+                                        .scalableFont(28, weight: .bold)
+                                        .tracking(-0.5)
+                                        .foregroundStyle(palette.ink)
+                                    analysisSubtitle(snapshot)
+                                        .scalableFont(12, weight: .medium)
+                                        .monospacedDigit()
                                 }
-                            )
-                            .opacity(showingAnalysisSection ? 0 : 1)
-                            MonthVerdictCard(
-                                analysis: MonthAnalysis(
-                                    bills: model.monthBills,
-                                    month: model.selectedMonth
-                                ),
-                                palette: palette
-                            )
-                            if analysisOpen {
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    GeometryReader { geo in
+                                        Color.clear.preference(
+                                            key: AnalysisHeaderOffsetKey.self,
+                                            value: geo.frame(in: .named("plazaContent")).maxY
+                                        )
+                                    }
+                                )
+                                .opacity(showingAnalysisSection ? 0 : 1)
+                                MonthVerdictCard(
+                                    analysis: MonthAnalysis(
+                                        bills: model.monthBills,
+                                        month: model.selectedMonth
+                                    ),
+                                    palette: palette
+                                )
                                 chartCard(snapshot)
-                            }
-                            if analysisOpen {
                                 VStack(spacing: 0) {
                                     CashPlazaAnalysisView(
                                         bills: model.monthBills,
@@ -174,12 +173,19 @@ struct CashPlazaView: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 2)
-                        .padding(.bottom, 72)
+                        .padding(.bottom, analysisOpen ? 72 : 20)
                         .id("plazaTop")
                         .coordinateSpace(name: "plazaContent")
                         .transition(.opacity)
                     }
                     .scrollIndicators(.hidden)
+                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.containerSize.height
+                    } action: { _, height in
+                        if height.isFinite, height > 0 {
+                            viewportHeight = height
+                        }
+                    }
                     .onChange(of: analysisOpen) { _, isOpen in
                         // Returning to the medium cash page should start at the top.
                         if !isOpen {
@@ -273,7 +279,8 @@ struct CashPlazaView: View {
     }
 
     private var stageHeight: CGFloat {
-        detent == .large ? 360 : 300
+        // Medium fills the sheet down to the 20pt page margin; large stays 360.
+        min(360, max(160, viewportHeight - 22))
     }
 
     private func stage(_ snapshot: PlazaSnapshot) -> some View {
