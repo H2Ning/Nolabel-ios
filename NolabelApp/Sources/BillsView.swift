@@ -48,27 +48,38 @@ struct BillsView: View {
                 .accessibilityLabel("设置")
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button(action: { shiftMonth(-1) }) {
-                    Image(systemName: "chevron.left")
-                        .scalableFont(16, weight: .medium)
-                        .foregroundStyle(palette.ink2)
-                }
-                .accessibilityLabel("上个月")
+                HStack(spacing: 0) {
+                    Button(action: { shiftMonth(-1) }) {
+                        Image(systemName: "chevron.left")
+                            .scalableFont(16, weight: .medium)
+                            .foregroundStyle(palette.ink2)
+                            .frame(width: 38, height: 34)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("上个月")
 
-                Button(action: jumpToCurrentMonth) {
-                    Text("今")
-                        .scalableFont(14, weight: .semibold)
-                        .foregroundStyle(palette.ink2)
-                        .frame(minWidth: 22)
-                }
-                .accessibilityLabel("回到本月")
+                    toolbarDivider
 
-                Button(action: { shiftMonth(1) }) {
-                    Image(systemName: "chevron.right")
-                        .scalableFont(16, weight: .medium)
-                        .foregroundStyle(palette.ink2)
+                    Button(action: jumpToCurrentMonth) {
+                        Text("今")
+                            .scalableFont(14, weight: .semibold)
+                            .foregroundStyle(palette.ink2)
+                            .frame(width: 38, height: 34)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("回到本月")
+
+                    toolbarDivider
+
+                    Button(action: { shiftMonth(1) }) {
+                        Image(systemName: "chevron.right")
+                            .scalableFont(16, weight: .medium)
+                            .foregroundStyle(palette.ink2)
+                            .frame(width: 38, height: 34)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("下个月")
                 }
-                .accessibilityLabel("下个月")
             }
         }
         .navigationTitle("账单")
@@ -101,6 +112,13 @@ struct BillsView: View {
         withAnimation(reduceMotion ? nil : AppMotion.spring) {
             model.shiftMonth(direction)
         }
+    }
+
+    private var toolbarDivider: some View {
+        Rectangle()
+            .fill(palette.lineStrong)
+            .frame(width: 1, height: 14)
+            .accessibilityHidden(true)
     }
 
     private func jumpToCurrentMonth() {

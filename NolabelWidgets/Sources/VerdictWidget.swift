@@ -4,7 +4,6 @@ import WidgetKit
 struct VerdictEntry: TimelineEntry {
     let date: Date
     let snapshot: VerdictSnapshot?
-    let isCurrentMonth: Bool
     let monthLabel: String
     let sharedContainerAvailable: Bool
 }
@@ -14,7 +13,6 @@ struct VerdictProvider: TimelineProvider {
         VerdictEntry(
             date: Date(),
             snapshot: .placeholder,
-            isCurrentMonth: true,
             monthLabel: VerdictSnapshot.currentMonthLabel(),
             sharedContainerAvailable: true
         )
@@ -41,7 +39,6 @@ struct VerdictProvider: TimelineProvider {
         return VerdictEntry(
             date: Date(),
             snapshot: snapshot,
-            isCurrentMonth: snapshot?.monthISO == VerdictSnapshot.currentMonthISO(),
             monthLabel: VerdictSnapshot.currentMonthLabel(),
             sharedContainerAvailable: VerdictSnapshot.isSharedContainerAvailable
         )
@@ -63,14 +60,11 @@ struct VerdictWidgetView: View {
     }
 
     private var hasData: Bool {
-        entry.isCurrentMonth && entry.snapshot != nil
+        entry.snapshot != nil
     }
 
     private var displayMonth: String {
-        if hasData, let snapshot = entry.snapshot {
-            return snapshot.monthLabel
-        }
-        return entry.monthLabel
+        entry.snapshot?.monthLabel ?? entry.monthLabel
     }
 
     var body: some View {
@@ -98,7 +92,7 @@ struct VerdictWidgetView: View {
         HStack(alignment: .center, spacing: 5) {
             Image(systemName: "quote.opening")
                 .font(.system(size: 8, weight: .bold))
-            Text("本月判词")
+            Text("账本判词")
                 .font(.system(size: 9.5, weight: .semibold))
                 .tracking(0.8)
             Spacer(minLength: 4)
@@ -134,15 +128,11 @@ struct VerdictWidgetView: View {
     }
 
     private var emptyTitle: String {
-        if !entry.sharedContainerAvailable { return "共享未开启" }
-        if entry.snapshot == nil { return "尚未同步" }
-        return "本月账册未开"
+        entry.sharedContainerAvailable ? "尚未同步" : "共享未开启"
     }
 
     private var emptyDetail: String {
-        if !entry.sharedContainerAvailable { return "签名需包含 App Groups 权限" }
-        if entry.snapshot == nil { return "打开诺诺同步本月账本" }
-        return "先记一笔，判词才有下文。"
+        entry.sharedContainerAvailable ? "打开诺诺同步账本" : "签名需包含 App Groups 权限"
     }
 
     private func footer(_ snapshot: VerdictSnapshot) -> some View {
@@ -248,8 +238,8 @@ struct VerdictWidget: Widget {
                     VerdictWidgetBackground()
                 }
         }
-        .configurationDisplayName("本月判词")
-        .description("本月账本的判词和支出。")
+        .configurationDisplayName("账本判词")
+        .description("最近查看月份的判词和支出。")
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }

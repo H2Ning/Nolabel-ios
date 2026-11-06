@@ -121,7 +121,10 @@ final class AppModel {
     var numberFormat: NumberFormatSettings
     var sortDesc: Bool
     var selectedMonth: Date {
-        didSet { defaults.set(selectedMonth, forKey: monthKey) }
+        didSet {
+            defaults.set(selectedMonth, forKey: monthKey)
+            updateWidgetSnapshot()
+        }
     }
     var plazaDetent: PlazaDetent {
         didSet { defaults.set(plazaDetent.rawValue, forKey: plazaDetentKey) }
@@ -874,13 +877,11 @@ final class AppModel {
         deleteUndoSnapshot = nil
     }
 
-    /// Mirrors the current month's verdict into the widget's shared store.
+    /// Mirrors the selected month's verdict into the widget's shared store.
     func updateWidgetSnapshot() {
         // A failed launch must not replace a good snapshot with an empty one.
         if bills.isEmpty, !accountLoaded, VerdictSnapshot.load() != nil { return }
-        let month = DateHelp.monthStart(Date())
-        let prefix = String(DateHelp.iso(from: month).prefix(7))
-        let monthBills = bills.filter { $0.iso.hasPrefix(prefix) }
+        let month = DateHelp.monthStart(selectedMonth)
         let analysis = MonthAnalysis(bills: monthBills, month: month)
         let metricLabel: String
         let amountText: String
@@ -894,7 +895,7 @@ final class AppModel {
             amountText = Formats.moneyValue(analysis.incomeTotal)
             countLabel = "共 \(analysis.incomeCount) 笔"
         } else {
-            metricLabel = "本月"
+            metricLabel = "该月"
             amountText = Formats.moneyValue(0)
             countLabel = "还没有账单"
         }
@@ -910,9 +911,11 @@ final class AppModel {
         snapshot.save()
     }
 
-    /// Opens the plaza on the verdict card for the current month.
+    /// Opens the plaza on the month the widget is showing.
     func openVerdictFromWidget() {
-        selectedMonth = DateHelp.monthStart(Date())
+        if let month = VerdictSnapshot.load()?.monthStart {
+            selectedMonth = DateHelp.monthStart(month)
+        }
         openBillID = nil
         cashPlazaOpen = true
         plazaDetent = .medium

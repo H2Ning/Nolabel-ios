@@ -47,6 +47,14 @@ struct VerdictSnapshot: Codable, Equatable {
         return formatter.string(from: date)
     }
 
+    /// The first day of the snapshot's month, for the widget deep link.
+    var monthStart: Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM"
+        return formatter.date(from: monthISO)
+    }
+
     static func currentMonthLabel(_ date: Date = Date()) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
