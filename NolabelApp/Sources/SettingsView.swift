@@ -13,6 +13,9 @@ struct SettingsPage: View {
     @State private var showImporter = false
     @State private var showExporter = false
     @State private var showClearAllConfirm = false
+    @State private var iconToast: String?
+    @State private var iconToastTask: Task<Void, Never>?
+    @State private var iconSwitching = false
     @FocusState private var focusedField: Field?
 
     private enum Field { case username, password }
@@ -29,12 +32,18 @@ struct SettingsPage: View {
                     switch sub {
                     case .main:
                         mainView
+                    case .personalization:
+                        personalizationView
                     case .appearance:
                         appearanceView
+                    case .icon:
+                        iconView
                     case .numberFormat:
                         numberFormatView
                     case .haptics:
                         hapticsView
+                    case .dataSecurity:
+                        dataSecurityView
                     }
                 }
                 .padding(.horizontal, 20)
@@ -44,6 +53,22 @@ struct SettingsPage: View {
             .scrollIndicators(.hidden)
         }
         .contentShape(Rectangle())
+        .overlay(alignment: .bottom) {
+            if let iconToast {
+                Text(iconToast)
+                    .scalableFont(14, weight: .medium)
+                    .foregroundStyle(palette.ink)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 46)
+                    .background(palette.surface, in: Capsule())
+                    .overlay(Capsule().stroke(palette.line, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.12), radius: 12, y: 6)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: iconToast)
         .navigationTitle(settingsTitle)
         .navigationBarTitleDisplayMode(sub == .main ? .large : .inline)
         .onAppear {
@@ -115,57 +140,13 @@ struct SettingsPage: View {
         VStack(spacing: 12) {
             accountCard
             sectionCard {
-                settingsLink(title: "外观", value: model.themeMode.label) {
-                    model.settingsSubview = .appearance
+                settingsNavLink(title: "外观、个性化") {
+                    model.settingsSubview = .personalization
                 }
-                divider
-                settingsLink(title: "数字格式", value: model.numberFormat.summary) {
-                    model.settingsSubview = .numberFormat
-                }
-                divider
-                settingsLink(title: "触感", value: model.hapticLevel.label) {
-                    model.settingsSubview = .haptics
-                }
-                divider
-                Toggle(isOn: $model.deleteConfirmEnabled) {
-                    Text("删除前确认")
-                        .scalableFont(16, weight: .medium)
-                        .foregroundStyle(palette.ink)
-                }
-                .tint(palette.accent)
-                .padding(.horizontal, 16)
-                .frame(minHeight: 54)
             }
-            if model.user != nil && model.accountLoaded {
-                sectionCard {
-                    settingsAction(title: "账单导入") { showImporter = true }
-                    divider
-                    settingsAction(title: "账单导出") { showExporter = true }
-                        .disabled(model.bills.isEmpty)
-                        .opacity(model.bills.isEmpty ? 0.45 : 1)
-                    divider
-                    Button {
-                        Haptics.deletePrompt()
-                        showClearAllConfirm = true
-                    } label: {
-                        HStack {
-                            Text("清空全部账单")
-                                .scalableFont(16, weight: .medium)
-                                .foregroundStyle(palette.danger)
-                            Spacer()
-                            Text("\(model.bills.count) 笔")
-                                .scalableFont(15, weight: .medium)
-                                .foregroundStyle(palette.muted)
-                        }
-                        .frame(minHeight: 54)
-                        .padding(.horizontal, 16)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(model.bills.isEmpty)
-                    .opacity(model.bills.isEmpty ? 0.45 : 1)
-                    .accessibilityLabel("清空全部账单")
-                    .accessibilityHint("会先弹出确认，确认后删除全部 \(model.bills.count) 笔账单")
+            sectionCard {
+                settingsNavLink(title: "数据与安全") {
+                    model.settingsSubview = .dataSecurity
                 }
             }
             if model.authMessageIsError && !model.authMessage.isEmpty {
@@ -329,9 +310,12 @@ struct SettingsPage: View {
     private var settingsTitle: String {
         switch sub {
         case .main: return "设置"
+        case .personalization: return "外观、个性化"
         case .appearance: return "外观"
+        case .icon: return "图标"
         case .numberFormat: return "数字格式"
         case .haptics: return "触感"
+        case .dataSecurity: return "数据与安全"
         }
     }
 
@@ -732,6 +716,203 @@ struct SettingsPage: View {
             RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
+    }
+
+    private var personalizationView: some View {
+        sectionCard {
+            settingsLink(title: "外观", value: model.themeMode.label) {
+                model.settingsSubview = .appearance
+            }
+            divider
+            Button {
+                model.settingsSubview = .icon
+            } label: {
+                HStack(spacing: 10) {
+                    Text("图标")
+                        .scalableFont(16, weight: .medium)
+                        .foregroundStyle(palette.ink)
+                    Spacer(minLength: 8)
+                    Image(model.appIcon.previewName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 30, height: 30)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(palette.line, lineWidth: 0.8)
+                        )
+                        .accessibilityHidden(true)
+                    Image(systemName: "chevron.right")
+                        .scalableFont(13, weight: .semibold)
+                        .foregroundStyle(palette.muted)
+                }
+                .frame(minHeight: 56)
+                .padding(.horizontal, 16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("图标")
+            .accessibilityValue(model.appIcon.displayName)
+            divider
+            settingsLink(title: "格式", value: model.numberFormat.summary) {
+                model.settingsSubview = .numberFormat
+            }
+            divider
+            settingsLink(title: "触感", value: model.hapticLevel.label) {
+                model.settingsSubview = .haptics
+            }
+        }
+    }
+
+    private var dataSecurityView: some View {
+        VStack(spacing: 14) {
+            sectionCard {
+                Toggle(isOn: $model.deleteConfirmEnabled) {
+                    Text("删除前确认")
+                        .scalableFont(16, weight: .medium)
+                        .foregroundStyle(palette.ink)
+                }
+                .tint(palette.accent)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 54)
+            }
+            if model.user != nil && model.accountLoaded {
+                sectionCard {
+                    settingsAction(title: "账单导入") { showImporter = true }
+                    divider
+                    settingsAction(title: "账单导出") { showExporter = true }
+                        .disabled(model.bills.isEmpty)
+                        .opacity(model.bills.isEmpty ? 0.45 : 1)
+                }
+                sectionCard {
+                    Button {
+                        Haptics.deletePrompt()
+                        showClearAllConfirm = true
+                    } label: {
+                        HStack {
+                            Text("清空全部账单")
+                                .scalableFont(16, weight: .medium)
+                                .foregroundStyle(palette.danger)
+                            Spacer()
+                            Text("\(model.bills.count) 笔")
+                                .scalableFont(15, weight: .medium)
+                                .foregroundStyle(palette.muted)
+                        }
+                        .frame(minHeight: 54)
+                        .padding(.horizontal, 16)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.bills.isEmpty)
+                    .opacity(model.bills.isEmpty ? 0.45 : 1)
+                    .accessibilityLabel("清空全部账单")
+                    .accessibilityHint("会先弹出确认，确认后删除全部 \(model.bills.count) 笔账单")
+                }
+            }
+        }
+    }
+
+    private var iconView: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("图标跟随系统浅色 / 深色外观显示。切换后系统会再弹一次确认，主屏幕上的图标随即更新。")
+                .scalableFont(12, weight: .regular)
+                .foregroundStyle(palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
+
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4),
+                spacing: 14
+            ) {
+                ForEach(AppIconChoice.displayOrder) { choice in
+                    iconCell(choice)
+                }
+            }
+            .padding(14)
+            .background(sectionBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                    .stroke(palette.line, lineWidth: 1)
+            )
+        }
+    }
+
+    private func iconCell(_ choice: AppIconChoice) -> some View {
+        let selected = model.appIcon == choice
+        return Button {
+            selectIcon(choice)
+        } label: {
+            VStack(spacing: 6) {
+                Image(choice.previewName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 58, height: 58)
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(selected ? palette.accent : palette.line.opacity(0.7), lineWidth: selected ? 2.5 : 1)
+                    )
+                    .overlay(alignment: .topTrailing) {
+                        if selected {
+                            Image(systemName: "checkmark")
+                                .scalableFont(7, weight: .black)
+                                .foregroundStyle(palette.accentInk)
+                                .frame(width: 16, height: 16)
+                                .background(palette.accent, in: Circle())
+                                .overlay(Circle().stroke(palette.pageBG, lineWidth: 1.5))
+                                .offset(x: 4, y: -4)
+                        }
+                    }
+
+                Text(choice.displayName)
+                    .scalableFont(10, weight: .medium)
+                    .foregroundStyle(selected ? palette.accent : palette.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .buttonStyle(PressableStyle(scale: 0.95))
+        .accessibilityLabel("\(choice.displayName)图标")
+        .accessibilityValue(selected ? "已选择" : "")
+    }
+
+    private func selectIcon(_ choice: AppIconChoice) {
+        guard !iconSwitching else { return }
+        iconSwitching = true
+        Task { @MainActor in
+            let switched = await model.setAppIcon(choice)
+            iconSwitching = false
+            showIconToast(switched ? "已切换到「\(choice.displayName)」图标" : "图标切换失败")
+        }
+    }
+
+    private func showIconToast(_ text: String) {
+        withAnimation(AppMotion.spring) { iconToast = text }
+        iconToastTask?.cancel()
+        iconToastTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.18)) { iconToast = nil }
+        }
+    }
+
+    private func settingsNavLink(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .scalableFont(16, weight: .medium)
+                    .foregroundStyle(palette.ink)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .scalableFont(13, weight: .semibold)
+                    .foregroundStyle(palette.muted)
+            }
+            .frame(minHeight: 56)
+            .padding(.horizontal, 16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func settingsLink(title: String, value: String, action: @escaping () -> Void) -> some View {

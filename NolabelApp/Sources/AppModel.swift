@@ -5,9 +5,12 @@ import UIKit
 
 enum SettingsSubview: Hashable {
     case main
+    case personalization
     case appearance
+    case icon
     case numberFormat
     case haptics
+    case dataSecurity
 }
 
 enum EntryOperator: String, CaseIterable {
@@ -75,6 +78,7 @@ final class AppModel {
 
     var themeMode: ThemeMode
     var hapticLevel: HapticLevel
+    var appIcon: AppIconChoice
     var numberFormat: NumberFormatSettings
     var sortDesc: Bool
     var selectedMonth: Date
@@ -281,6 +285,7 @@ final class AppModel {
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
         hapticLevel = HapticLevel(rawValue: defaults.string(forKey: hapticKey) ?? "") ?? .rich
+        appIcon = AppIconChoice.current
         if let data = defaults.data(forKey: numberFormatKey),
            let stored = try? JSONDecoder().decode(NumberFormatSettings.self, from: data) {
             numberFormat = stored
@@ -848,6 +853,23 @@ final class AppModel {
             Haptics.warning()
             return false
         }
+    }
+
+    /// Switches the home-screen icon. The primary icon is set with `nil`,
+    /// every other choice uses its asset-catalog name.
+    func setAppIcon(_ choice: AppIconChoice) async -> Bool {
+        guard UIApplication.shared.supportsAlternateIcons else { return false }
+        if choice != appIcon {
+            do {
+                try await UIApplication.shared.setAlternateIconName(
+                    choice.isPrimary ? nil : choice.assetName
+                )
+                appIcon = choice
+            } catch {
+                return false
+            }
+        }
+        return true
     }
 
     func setHapticLevel(_ value: HapticLevel) {
