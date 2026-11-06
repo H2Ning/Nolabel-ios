@@ -55,6 +55,14 @@ struct BillsView: View {
                 }
                 .accessibilityLabel("上个月")
 
+                Button(action: jumpToCurrentMonth) {
+                    Text("今")
+                        .scalableFont(14, weight: .semibold)
+                        .foregroundStyle(palette.ink2)
+                        .frame(minWidth: 22)
+                }
+                .accessibilityLabel("回到本月")
+
                 Button(action: { shiftMonth(1) }) {
                     Image(systemName: "chevron.right")
                         .scalableFont(16, weight: .medium)
@@ -93,6 +101,22 @@ struct BillsView: View {
         withAnimation(reduceMotion ? nil : AppMotion.spring) {
             model.shiftMonth(direction)
         }
+    }
+
+    private func jumpToCurrentMonth() {
+        let current = DateHelp.monthStart(Date())
+        guard !Calendar.current.isDate(model.selectedMonth, equalTo: current, toGranularity: .month) else {
+            return
+        }
+        let direction = current > model.selectedMonth ? 1 : -1
+        let crossesYear = Calendar.current.component(.year, from: model.selectedMonth)
+            != Calendar.current.component(.year, from: current)
+        model.openBillID = nil
+        monthShiftDirection = direction
+        withAnimation(reduceMotion ? nil : AppMotion.spring) {
+            model.selectedMonth = current
+        }
+        Haptics.monthShift(crossesYear: crossesYear)
     }
 
     private var summaryCard: some View {

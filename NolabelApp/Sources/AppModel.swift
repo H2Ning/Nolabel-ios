@@ -394,7 +394,20 @@ final class AppModel {
             }
             return
         }
+        loadCachedBillsIfNeeded()
         await checkAuth()
+    }
+
+    /// Shows the last local ledger immediately so the first frame and the
+    /// widget do not wait for the account request. The owner check keeps
+    /// another account's cache from appearing after a switch.
+    private func loadCachedBillsIfNeeded() {
+        guard bills.isEmpty else { return }
+        guard let local = currentLocalEnvelope(), !local.bills.isEmpty else { return }
+        let owner = defaults.string(forKey: cacheOwnerKey)
+        let remembered = defaults.string(forKey: usernameKey)
+        guard owner == nil || owner == remembered else { return }
+        bills = local.bills
     }
 
     private func configurePreview(arguments: [String]) {
@@ -613,8 +626,8 @@ final class AppModel {
                 try await api.saveBills(result, updatedAt: Date().timeIntervalSince1970 * 1000)
             }
 
-            bills = result
             accountLoaded = true
+            bills = result
             persistCache(bills: result, owner: user.name)
             authMessage = ""
             autoRetryUsed = false
@@ -754,6 +767,7 @@ final class AppModel {
         authReady = true
         bills = []
         clearCache()
+        VerdictSnapshot.clear()
         authMessage = ""
         authMessageIsError = false
         settingsSubview = .main
@@ -861,7 +875,9 @@ final class AppModel {
     }
 
     /// Mirrors the current month's verdict into the widget's shared store.
-    private func updateWidgetSnapshot() {
+    func updateWidgetSnapshot() {
+        // A failed launch must not replace a good snapshot with an empty one.
+        if bills.isEmpty, !accountLoaded, VerdictSnapshot.load() != nil { return }
         let month = DateHelp.monthStart(Date())
         let prefix = String(DateHelp.iso(from: month).prefix(7))
         let monthBills = bills.filter { $0.iso.hasPrefix(prefix) }

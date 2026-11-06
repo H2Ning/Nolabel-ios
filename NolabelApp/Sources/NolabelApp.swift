@@ -19,6 +19,7 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private var palette: AppPalette {
         .palette(colorScheme).withNumberColors(model.numberFormat.colorScheme)
@@ -36,6 +37,11 @@ struct RootView: View {
             guard url.scheme == "nolabel" else { return }
             if url.host == "verdict" {
                 model.openVerdictFromWidget()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                model.updateWidgetSnapshot()
             }
         }
     }
@@ -103,7 +109,6 @@ struct RootView: View {
         .task {
             AlternateIconAlert.install()
             Haptics.prepare()
-            await model.bootstrap()
             AppShortcutRouter.handler = { shortcut in
                 switch shortcut {
                 case .newEntry:
@@ -118,6 +123,7 @@ struct RootView: View {
                 AppShortcutRouter.pending = nil
                 AppShortcutRouter.handler?(pending)
             }
+            await model.bootstrap()
         }
         .sheet(
             isPresented: Binding(

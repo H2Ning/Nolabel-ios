@@ -6,6 +6,7 @@ struct VerdictEntry: TimelineEntry {
     let snapshot: VerdictSnapshot?
     let isCurrentMonth: Bool
     let monthLabel: String
+    let sharedContainerAvailable: Bool
 }
 
 struct VerdictProvider: TimelineProvider {
@@ -14,7 +15,8 @@ struct VerdictProvider: TimelineProvider {
             date: Date(),
             snapshot: .placeholder,
             isCurrentMonth: true,
-            monthLabel: VerdictSnapshot.currentMonthLabel()
+            monthLabel: VerdictSnapshot.currentMonthLabel(),
+            sharedContainerAvailable: true
         )
     }
 
@@ -40,7 +42,8 @@ struct VerdictProvider: TimelineProvider {
             date: Date(),
             snapshot: snapshot,
             isCurrentMonth: snapshot?.monthISO == VerdictSnapshot.currentMonthISO(),
-            monthLabel: VerdictSnapshot.currentMonthLabel()
+            monthLabel: VerdictSnapshot.currentMonthLabel(),
+            sharedContainerAvailable: VerdictSnapshot.isSharedContainerAvailable
         )
     }
 }
@@ -119,15 +122,27 @@ struct VerdictWidgetView: View {
 
     private var emptyVerdict: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("账册未开")
+            Text(emptyTitle)
                 .font(.system(size: 19, weight: .semibold, design: .serif))
                 .tracking(1.2)
                 .foregroundStyle(isTinted ? Color.primary : palette.ink)
-            Text("先记一笔，判词才有下文。")
+            Text(emptyDetail)
                 .font(.system(size: 10, weight: .regular))
                 .foregroundStyle(isTinted ? Color.secondary : palette.muted)
                 .lineLimit(2)
         }
+    }
+
+    private var emptyTitle: String {
+        if !entry.sharedContainerAvailable { return "共享未开启" }
+        if entry.snapshot == nil { return "尚未同步" }
+        return "本月账册未开"
+    }
+
+    private var emptyDetail: String {
+        if !entry.sharedContainerAvailable { return "签名需包含 App Groups 权限" }
+        if entry.snapshot == nil { return "打开诺诺同步本月账本" }
+        return "先记一笔，判词才有下文。"
     }
 
     private func footer(_ snapshot: VerdictSnapshot) -> some View {
