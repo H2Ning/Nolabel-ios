@@ -101,10 +101,7 @@ final class AppModel {
     var cashPlazaOpen = false
 
     var bills: [Bill] = [] {
-        didSet {
-            billsRevision &+= 1
-            updateWidgetSnapshot()
-        }
+        didSet { billsRevision &+= 1 }
     }
     var user: AccountUser?
     var authReady = false
@@ -121,10 +118,7 @@ final class AppModel {
     var numberFormat: NumberFormatSettings
     var sortDesc: Bool
     var selectedMonth: Date {
-        didSet {
-            defaults.set(selectedMonth, forKey: monthKey)
-            updateWidgetSnapshot()
-        }
+        didSet { defaults.set(selectedMonth, forKey: monthKey) }
     }
     var plazaDetent: PlazaDetent {
         didSet { defaults.set(plazaDetent.rawValue, forKey: plazaDetentKey) }
@@ -770,7 +764,6 @@ final class AppModel {
         authReady = true
         bills = []
         clearCache()
-        VerdictSnapshot.clear()
         authMessage = ""
         authMessageIsError = false
         settingsSubview = .main
@@ -875,51 +868,6 @@ final class AppModel {
     private func clearUndo() {
         undoDeleteTitle = nil
         deleteUndoSnapshot = nil
-    }
-
-    /// Mirrors the selected month's verdict into the widget's shared store.
-    func updateWidgetSnapshot() {
-        // Never publish the empty state before a ledger has actually loaded;
-        // a failed launch must not blank the widget.
-        guard accountLoaded || !bills.isEmpty else { return }
-        let month = DateHelp.monthStart(selectedMonth)
-        let analysis = MonthAnalysis(bills: monthBills, month: month)
-        let metricLabel: String
-        let amountText: String
-        let countLabel: String
-        if analysis.expenseTotal > 0 {
-            metricLabel = "支出"
-            amountText = Formats.moneyValue(analysis.expenseTotal)
-            countLabel = "共 \(analysis.expenseCount) 笔"
-        } else if analysis.incomeTotal > 0 {
-            metricLabel = "收入"
-            amountText = Formats.moneyValue(analysis.incomeTotal)
-            countLabel = "共 \(analysis.incomeCount) 笔"
-        } else {
-            metricLabel = "该月"
-            amountText = Formats.moneyValue(0)
-            countLabel = "还没有账单"
-        }
-        let snapshot = VerdictSnapshot(
-            monthISO: VerdictSnapshot.currentMonthISO(month),
-            monthLabel: VerdictSnapshot.currentMonthLabel(month),
-            verdictTitle: analysis.verdict.title,
-            metricLabel: metricLabel,
-            amountText: amountText,
-            countLabel: countLabel
-        )
-        guard VerdictSnapshot.load() != snapshot else { return }
-        snapshot.save()
-    }
-
-    /// Opens the plaza on the month the widget is showing.
-    func openVerdictFromWidget() {
-        if let month = VerdictSnapshot.load()?.monthStart {
-            selectedMonth = DateHelp.monthStart(month)
-        }
-        openBillID = nil
-        cashPlazaOpen = true
-        plazaDetent = .medium
     }
 
     func shiftMonth(_ value: Int) {
@@ -1028,7 +976,6 @@ final class AppModel {
         guard next != numberFormat else { return }
         numberFormat = next
         Formats.apply(next)
-        updateWidgetSnapshot()
         if let data = try? JSONEncoder().encode(next) {
             defaults.set(data, forKey: numberFormatKey)
         }

@@ -5,7 +5,6 @@ on:
   push:
     paths:
       - "NolabelApp/**"
-      - "NolabelWidgets/**"
       - "ci/**"
       - "project.yml"
       - ".github/workflows/ios-unsigned-ipa.yml"

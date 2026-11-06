@@ -19,7 +19,6 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
 
     private var palette: AppPalette {
         .palette(colorScheme).withNumberColors(model.numberFormat.colorScheme)
@@ -32,17 +31,6 @@ struct RootView: View {
                 .navigationDestination(for: SettingsSubview.self) { sub in
                     SettingsPage(sub: sub, model: model, palette: palette)
                 }
-        }
-        .onOpenURL { url in
-            guard url.scheme == "nolabel" else { return }
-            if url.host == "verdict" {
-                model.openVerdictFromWidget()
-            }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                model.updateWidgetSnapshot()
-            }
         }
     }
 
