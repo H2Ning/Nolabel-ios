@@ -179,6 +179,12 @@ enum Haptics {
         impact(softGenerator, 0.42)
     }
 
+    /// Selecting the 丰富 level: SwiftfulHaptics' double-tap confirmation.
+    static func doubleTapConfirm() {
+        guard enabled else { return }
+        manager.playHaptic(option: .doubleTapLike())
+    }
+
     /// Saving a bill: the system success notification.
     static func cashCounted() {
         guard enabled else { return }

@@ -851,11 +851,18 @@ final class AppModel {
     }
 
     func setHapticLevel(_ value: HapticLevel) {
-        guard value != hapticLevel else { return }
-        hapticLevel = value
-        defaults.set(value.rawValue, forKey: hapticKey)
-        Haptics.setLevel(value)
-        Haptics.pick()
+        let changed = value != hapticLevel
+        if changed {
+            hapticLevel = value
+            defaults.set(value.rawValue, forKey: hapticKey)
+            Haptics.setLevel(value)
+        }
+        if value == .rich {
+            // Tapping 丰富 always auditions the double-tap confirmation.
+            Haptics.doubleTapConfirm()
+        } else if changed {
+            Haptics.pick()
+        }
     }
 
     func updateNumberFormat(_ change: (inout NumberFormatSettings) -> Void) {
