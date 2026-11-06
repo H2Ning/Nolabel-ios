@@ -4,17 +4,23 @@ options:
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
+packages:
+  SwiftfulHaptics:
+    url: https://github.com/SwiftfulThinking/SwiftfulHaptics
+    from: 2.0.5
 settings:
   base:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.9"
-    CURRENT_PROJECT_VERSION: "82"
+    CURRENT_PROJECT_VERSION: "83"
 targets:
   Nolabel:
     type: application
     platform: iOS
     deploymentTarget:
       iOS: "26.0"
+    dependencies:
+      - package: SwiftfulHaptics
     sources:
       - path: NolabelApp/Sources
       - path: NolabelApp/Resources/Notes

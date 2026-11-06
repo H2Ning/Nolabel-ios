@@ -35,6 +35,8 @@ struct SettingsPage: View {
                         numberFormatView
                     case .haptics:
                         hapticsView
+                    case .hapticLab:
+                        HapticLabView(palette: palette)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -333,6 +335,7 @@ struct SettingsPage: View {
         case .appearance: return "外观"
         case .numberFormat: return "数字格式"
         case .haptics: return "触感"
+        case .hapticLab: return "触感预设"
         }
     }
 
@@ -616,6 +619,31 @@ struct SettingsPage: View {
                     divider
                 }
             }
+
+            divider
+
+            Button {
+                model.settingsSubview = .hapticLab
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("试听保存 / 删除预设")
+                            .scalableFont(16, weight: .medium)
+                            .foregroundStyle(palette.ink)
+                        Text("临时页面 · 选好后告诉我编号")
+                            .scalableFont(11, weight: .regular)
+                            .foregroundStyle(palette.muted)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .scalableFont(12, weight: .semibold)
+                        .foregroundStyle(palette.faint)
+                }
+                .frame(minHeight: 54)
+                .padding(.horizontal, 16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
     }
 

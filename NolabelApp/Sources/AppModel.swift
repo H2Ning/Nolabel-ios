@@ -8,6 +8,7 @@ enum SettingsSubview: Hashable {
     case appearance
     case numberFormat
     case haptics
+    case hapticLab
 }
 
 enum EntryOperator: String, CaseIterable {
