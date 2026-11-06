@@ -413,6 +413,7 @@ struct SwipeBillRow: View {
     }
 
     var body: some View {
+        let _ = model.numberFormat
         ZStack(alignment: .trailing) {
             Button {
                 model.requestDelete(bill)
