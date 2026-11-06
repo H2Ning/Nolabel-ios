@@ -143,7 +143,6 @@ extension View {
         }
     }
 
-    @ViewBuilder
     func glassCapsule(interactive: Bool = true, tint: Color? = nil, clear: Bool = false) -> some View {
         var glass: Glass = clear ? .clear : .regular
         if let tint {
@@ -152,7 +151,7 @@ extension View {
         if interactive {
             glass = glass.interactive()
         }
-        self.glassEffect(glass, in: .capsule)
+        return self.glassEffect(glass, in: .capsule)
     }
 }
 
