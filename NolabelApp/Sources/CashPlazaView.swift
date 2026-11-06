@@ -128,39 +128,37 @@ struct CashPlazaView: View {
                     ScrollView {
                         VStack(spacing: 14) {
                             stage(snapshot)
-                            if analysisOpen {
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text("本月账单分析")
-                                        .scalableFont(28, weight: .bold)
-                                        .tracking(-0.5)
-                                        .foregroundStyle(palette.ink)
-                                    analysisSubtitle(snapshot)
-                                        .scalableFont(12, weight: .medium)
-                                        .monospacedDigit()
+                            // Medium already carries the analysis heading and
+                            // verdict, so growing to large only appends content.
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("本月账单分析")
+                                    .scalableFont(28, weight: .bold)
+                                    .tracking(-0.5)
+                                    .foregroundStyle(palette.ink)
+                                analysisSubtitle(snapshot)
+                                    .scalableFont(12, weight: .medium)
+                                    .monospacedDigit()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear.preference(
+                                        key: AnalysisHeaderOffsetKey.self,
+                                        value: geo.frame(in: .named("plazaContent")).maxY
+                                    )
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(
-                                    GeometryReader { geo in
-                                        Color.clear.preference(
-                                            key: AnalysisHeaderOffsetKey.self,
-                                            value: geo.frame(in: .named("plazaContent")).maxY
-                                        )
-                                    }
-                                )
-                                .opacity(showingAnalysisSection ? 0 : 1)
-                            }
+                            )
+                            .opacity(showingAnalysisSection ? 0 : 1)
+                            MonthVerdictCard(
+                                analysis: MonthAnalysis(
+                                    bills: model.monthBills,
+                                    month: model.selectedMonth
+                                ),
+                                palette: palette
+                            )
                             if analysisOpen {
-                                // The verdict leads the analysis; the chart follows.
-                                MonthVerdictCard(
-                                    analysis: MonthAnalysis(
-                                        bills: model.monthBills,
-                                        month: model.selectedMonth
-                                    ),
-                                    palette: palette
-                                )
-                                .transition(.opacity)
+                                chartCard(snapshot)
                             }
-                            chartCard(snapshot)
                             if analysisOpen {
                                 VStack(spacing: 0) {
                                     CashPlazaAnalysisView(
@@ -196,7 +194,7 @@ struct CashPlazaView: View {
                         }
                     }
                     .onScrollGeometryChange(for: Bool.self) { geometry in
-                        guard analysisOpen, analysisHeaderBottom > 0 else { return false }
+                        guard analysisHeaderBottom > 0 else { return false }
                         // Visible top of the content, in content coordinates.
                         let top = geometry.contentOffset.y + geometry.contentInsets.top
                         // Only once the whole in-content title has left the viewport.
