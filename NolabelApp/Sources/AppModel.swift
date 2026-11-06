@@ -107,6 +107,17 @@ final class AppModel {
             }
         }
     }
+    /// Pushes one settings page while keeping the stack, so Back always
+    /// returns to the previous page instead of the settings root.
+    func pushSettings(_ sub: SettingsSubview) {
+        guard !settingsPath.isEmpty else { return }
+        if sub == .main {
+            settingsPath = [.main]
+        } else if settingsPath.last != sub {
+            settingsPath.append(sub)
+        }
+    }
+
     var openBillID: String?
     var lastSavedBillID: String?
     var writing = false

@@ -140,13 +140,17 @@ struct SettingsPage: View {
         VStack(spacing: 12) {
             accountCard
             sectionCard {
-                settingsNavLink(title: "外观、个性化") {
-                    model.settingsSubview = .personalization
+                settingsNavLink(title: "外观") {
+                    model.pushSettings(.appearance)
+                }
+                divider
+                settingsNavLink(title: "个性化") {
+                    model.pushSettings(.personalization)
                 }
             }
             sectionCard {
                 settingsNavLink(title: "数据与安全") {
-                    model.settingsSubview = .dataSecurity
+                    model.pushSettings(.dataSecurity)
                 }
             }
             if model.authMessageIsError && !model.authMessage.isEmpty {
@@ -310,7 +314,7 @@ struct SettingsPage: View {
     private var settingsTitle: String {
         switch sub {
         case .main: return "设置"
-        case .personalization: return "外观、个性化"
+        case .personalization: return "个性化"
         case .appearance: return "外观"
         case .icon: return "图标"
         case .numberFormat: return "数字格式"
@@ -720,12 +724,8 @@ struct SettingsPage: View {
 
     private var personalizationView: some View {
         sectionCard {
-            settingsLink(title: "外观", value: model.themeMode.label) {
-                model.settingsSubview = .appearance
-            }
-            divider
             Button {
-                model.settingsSubview = .icon
+                model.pushSettings(.icon)
             } label: {
                 HStack(spacing: 10) {
                     Text("图标")
@@ -755,11 +755,11 @@ struct SettingsPage: View {
             .accessibilityValue(model.appIcon.displayName)
             divider
             settingsLink(title: "格式", value: model.numberFormat.summary) {
-                model.settingsSubview = .numberFormat
+                model.pushSettings(.numberFormat)
             }
             divider
             settingsLink(title: "触感", value: model.hapticLevel.label) {
-                model.settingsSubview = .haptics
+                model.pushSettings(.haptics)
             }
         }
     }
@@ -821,7 +821,7 @@ struct SettingsPage: View {
                 .padding(.horizontal, 4)
 
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4),
+                columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
                 spacing: 14
             ) {
                 ForEach(AppIconChoice.displayOrder) { choice in
@@ -843,36 +843,29 @@ struct SettingsPage: View {
         return Button {
             selectIcon(choice)
         } label: {
-            VStack(spacing: 6) {
-                Image(choice.previewName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 58, height: 58)
-                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .stroke(selected ? palette.accent : palette.line.opacity(0.7), lineWidth: selected ? 2.5 : 1)
-                    )
-                    .overlay(alignment: .topTrailing) {
-                        if selected {
-                            Image(systemName: "checkmark")
-                                .scalableFont(7, weight: .black)
-                                .foregroundStyle(palette.accentInk)
-                                .frame(width: 16, height: 16)
-                                .background(palette.accent, in: Circle())
-                                .overlay(Circle().stroke(palette.pageBG, lineWidth: 1.5))
-                                .offset(x: 4, y: -4)
-                        }
+            Image(choice.previewName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 88, height: 88)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(selected ? palette.accent : palette.line.opacity(0.7), lineWidth: selected ? 3 : 1)
+                )
+                .overlay(alignment: .topTrailing) {
+                    if selected {
+                        Image(systemName: "checkmark")
+                            .scalableFont(8, weight: .black)
+                            .foregroundStyle(palette.accentInk)
+                            .frame(width: 18, height: 18)
+                            .background(palette.accent, in: Circle())
+                            .overlay(Circle().stroke(palette.pageBG, lineWidth: 1.5))
+                            .offset(x: 5, y: -5)
                     }
-
-                Text(choice.displayName)
-                    .scalableFont(10, weight: .medium)
-                    .foregroundStyle(selected ? palette.accent : palette.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-        .buttonStyle(PressableStyle(scale: 0.95))
+        .buttonStyle(PressableStyle(scale: 0.94))
         .accessibilityLabel("\(choice.displayName)图标")
         .accessibilityValue(selected ? "已选择" : "")
     }

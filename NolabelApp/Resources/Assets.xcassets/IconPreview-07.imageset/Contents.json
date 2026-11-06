@@ -2,7 +2,8 @@
   "images": [
     {
       "filename": "preview.png",
-      "idiom": "universal"
+      "idiom": "universal",
+      "scale": "1x"
     },
     {
       "appearances": [
@@ -12,7 +13,16 @@
         }
       ],
       "filename": "preview-dark.png",
-      "idiom": "universal"
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "idiom": "universal",
+      "scale": "3x"
     }
   ],
   "info": {
