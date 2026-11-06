@@ -872,6 +872,7 @@ final class AppModel {
         guard UIApplication.shared.supportsAlternateIcons else { return false }
         if choice != appIcon {
             do {
+                AlternateIconAlert.suppress()
                 try await UIApplication.shared.setAlternateIconName(
                     choice.isPrimary ? nil : choice.assetName
                 )

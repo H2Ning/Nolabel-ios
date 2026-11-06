@@ -868,7 +868,7 @@ struct SettingsPage: View {
         Task { @MainActor in
             let switched = await model.setAppIcon(choice)
             iconSwitching = false
-            showIconToast(switched ? "已切换到「\(choice.displayName)」图标" : "图标切换失败")
+            showIconToast(switched ? "图标已更改" : "图标切换失败")
         }
     }
 

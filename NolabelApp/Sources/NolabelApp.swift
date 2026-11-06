@@ -94,6 +94,7 @@ struct RootView: View {
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.pendingDeleteBill?.id)
         .animation(reduceMotion ? nil : AppMotion.spring, value: model.undoDeleteTitle)
         .task {
+            AlternateIconAlert.install()
             Haptics.prepare()
             await model.bootstrap()
         }
