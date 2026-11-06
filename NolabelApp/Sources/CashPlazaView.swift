@@ -494,12 +494,12 @@ struct CashPlazaView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
     }
 
     @ChartContentBuilder

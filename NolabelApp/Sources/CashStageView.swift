@@ -54,8 +54,8 @@ struct CashStageView: View {
 
                 if !groups.isEmpty {
                     modeBadge
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                        .padding(.bottom, 5)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(.top, 5)
                         .padding(.trailing, 12)
                 }
             }
@@ -295,8 +295,8 @@ private struct CashNoteGrid: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 12)
-            .padding(.bottom, 56)
+            .padding(.top, 56)
+            .padding(.bottom, 12)
             .onGeometryChange(for: CGFloat.self) { geometry in
                 geometry.size.height
             } action: { height in
