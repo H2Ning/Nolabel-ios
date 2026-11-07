@@ -10,7 +10,6 @@ struct NolabelApp: App {
             RootView()
                 .environment(model)
                 .preferredColorScheme(model.preferredColorScheme)
-                .tint(model.themeMode == .light ? AppPalette.light.accent : AppPalette.dark.accent)
         }
     }
 }
@@ -32,6 +31,7 @@ struct RootView: View {
                     SettingsPage(sub: sub, model: model, palette: palette)
                 }
         }
+        .tint(palette.accentText)
     }
 
     private var rootContent: some View {
