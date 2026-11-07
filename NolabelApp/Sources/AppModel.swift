@@ -80,6 +80,7 @@ final class AppModel {
     private let hapticKey = "nolabel-haptic-level"
     private let numberFormatKey = "nolabel-number-format"
     private let deleteConfirmKey = "nolabel-delete-confirm"
+    private let showBillTimeKey = "nolabel-show-bill-time"
     private let monthKey = "nolabel-selected-month"
     private let plazaDetentKey = "nolabel-plaza-detent"
     private let draftInputKey = "nolabel-entry-draft-input"
@@ -110,6 +111,9 @@ final class AppModel {
     var appIcon: AppIconChoice
     var numberFormat: NumberFormatSettings
     var sortDesc: Bool
+    var showBillTime: Bool {
+        didSet { defaults.set(showBillTime, forKey: showBillTimeKey) }
+    }
     var selectedMonth: Date {
         didSet { defaults.set(selectedMonth, forKey: monthKey) }
     }
@@ -336,6 +340,7 @@ final class AppModel {
             numberFormat = NumberFormatSettings()
         }
         sortDesc = defaults.object(forKey: sortKey) as? Bool ?? true
+        showBillTime = defaults.object(forKey: showBillTimeKey) as? Bool ?? true
         deleteConfirmEnabled = defaults.object(forKey: deleteConfirmKey) as? Bool ?? true
         let storedCashMode = defaults.integer(forKey: cashModeKey)
         cashMode = (1...3).contains(storedCashMode) ? storedCashMode : 1
@@ -370,6 +375,11 @@ final class AppModel {
         }
         Formats.apply(numberFormat)
         Haptics.setLevel(hapticLevel)
+        if !AppIconChoice.isCurrentIconAllowed {
+            Task { @MainActor in
+                try? await UIApplication.shared.setAlternateIconName(nil)
+            }
+        }
     }
 
     private func configurePreview(arguments: [String]) {

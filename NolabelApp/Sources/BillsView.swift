@@ -483,16 +483,18 @@ struct SwipeBillRow: View {
                 Circle()
                     .fill(bill.type == .expense ? palette.expense : palette.income)
                     .frame(width: 6, height: 6)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: metaText.isEmpty ? 0 : 4) {
                     Text(bill.title)
                         .scalableFont(16, weight: .semibold)
                         .foregroundStyle(palette.ink)
                         .lineLimit(1)
-                    Text(metaText)
-                        .scalableFont(12, weight: .medium)
-                        .monospacedDigit()
-                        .foregroundStyle(palette.muted)
-                        .lineLimit(1)
+                    if !metaText.isEmpty {
+                        Text(metaText)
+                            .scalableFont(12, weight: .medium)
+                            .monospacedDigit()
+                            .foregroundStyle(palette.muted)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 8)
                 Text(bill.signedAmountText)
@@ -563,11 +565,8 @@ struct SwipeBillRow: View {
     }
 
     private var metaText: String {
-        var parts: [String] = []
-        if !bill.time.isEmpty { parts.append(bill.time) }
-        if bill.count > 0 { parts.append("\(bill.count) 张") }
-        if bill.kinds > 0 { parts.append("\(bill.kinds) 种面额") }
-        return parts.joined(separator: " · ")
+        guard model.showBillTime, !bill.time.isEmpty else { return "" }
+        return bill.time
     }
 
     private func handleRowTap() {

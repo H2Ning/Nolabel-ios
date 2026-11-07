@@ -142,12 +142,18 @@ struct SettingsPage: View {
                     model.pushSettings(.dataSecurity)
                 }
             }
-            Text("Alpha 0.1.0.0 · 本机账本")
+            Text(alphaVersionLabel)
                 .scalableFont(11, weight: .regular)
                 .foregroundStyle(palette.muted)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 4)
         }
+    }
+
+    private var alphaVersionLabel: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        return "Alpha \(version)（build \(build)）"
     }
 
     private var settingsTitle: String {
@@ -194,63 +200,109 @@ struct SettingsPage: View {
     private var numberFormatView: some View {
         VStack(spacing: 14) {
             previewCard
+            billTimeCard
             formatCard
             colorCard
             currencyCard
         }
     }
 
+    private struct PreviewBill: Identifiable {
+        let id: String
+        let title: String
+        let cents: Int
+        let type: BillType
+        let time: String
+    }
+
+    private var previewBills: [PreviewBill] {
+        [
+            PreviewBill(id: "preview-lottery", title: "中彩票", cents: 1_234_567, type: .income, time: "09:30"),
+            PreviewBill(id: "preview-rent", title: "房租", cents: 123_456, type: .expense, time: "18:20")
+        ]
+    }
+
     private var previewCard: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("预览")
-                    .scalableFont(14, weight: .semibold)
-                    .foregroundStyle(palette.ink)
-                Spacer()
+            HStack(spacing: 8) {
+                Text(DateHelp.dayTitle(DateHelp.todayISO))
+                    .scalableFont(13, weight: .semibold)
+                    .foregroundStyle(palette.ink2)
+                Spacer(minLength: 8)
+                Text("今天")
+                    .scalableFont(11, weight: .semibold)
+                    .foregroundStyle(palette.accent)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(palette.accentSoft, in: Capsule())
             }
             .padding(.horizontal, 16)
-            .padding(.top, 15)
-            .padding(.bottom, 10)
+            .padding(.top, 12)
+            .padding(.bottom, 9)
+            .background(palette.surface2.opacity(palette.isDark ? 0.55 : 0.62))
 
-            previewRow(cents: 1_234_567, type: .income, title: "尾款", time: "09:30")
-            divider
-            previewRow(cents: 123_456, type: .expense, title: "房租", time: "18:20")
+            ForEach(Array(previewBills.enumerated()), id: \.element.id) { index, bill in
+                previewBillRow(bill)
+                if index < previewBills.count - 1 {
+                    divider
+                }
+            }
         }
-        .background(sectionBackground)
+        .background(palette.surface)
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
+        .shadow(color: palette.isDark ? .black.opacity(0.12) : .black.opacity(0.06), radius: 12, y: 8)
     }
 
-    private func previewRow(cents: Int, type: BillType, title: String, time: String) -> some View {
+    private func previewBillRow(_ bill: PreviewBill) -> some View {
         HStack(spacing: 10) {
             Circle()
-                .fill(type == .expense ? palette.expense : palette.income)
+                .fill(bill.type == .expense ? palette.expense : palette.income)
                 .frame(width: 6, height: 6)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .scalableFont(14, weight: .semibold)
+            VStack(alignment: .leading, spacing: model.showBillTime ? 4 : 0) {
+                Text(bill.title)
+                    .scalableFont(16, weight: .semibold)
                     .foregroundStyle(palette.ink)
-                Text("\(DateHelp.dayTitle(DateHelp.todayISO)) · \(time)")
-                    .scalableFont(11, weight: .medium)
-                    .monospacedDigit()
-                    .foregroundStyle(palette.muted)
+                    .lineLimit(1)
+                if model.showBillTime, !bill.time.isEmpty {
+                    Text(bill.time)
+                        .scalableFont(12, weight: .medium)
+                        .monospacedDigit()
+                        .foregroundStyle(palette.muted)
+                        .lineLimit(1)
+                }
             }
-
             Spacer(minLength: 8)
-
-            Text(Formats.signedMoney(cents, type: type))
+            Text(Formats.signedMoney(bill.cents, type: bill.type))
                 .scalableFont(16, weight: .semibold, design: .rounded)
                 .monospacedDigit()
-                .foregroundStyle(type == .expense ? palette.expense : palette.income)
+                .foregroundStyle(bill.type == .expense ? palette.expense : palette.income)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
         }
-        .padding(.horizontal, 16)
+        .padding(.leading, 16)
+        .padding(.trailing, 16)
         .padding(.vertical, 13)
+    }
+
+    private var billTimeCard: some View {
+        sectionCard {
+            Toggle(isOn: $model.showBillTime) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("账单条显示时间")
+                        .scalableFont(16, weight: .medium)
+                        .foregroundStyle(palette.ink)
+                    Text("关闭后，备注居中显示")
+                        .scalableFont(11, weight: .regular)
+                        .foregroundStyle(palette.muted)
+                }
+            }
+            .tint(palette.accent)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 58)
+        }
     }
 
     private var formatCard: some View {
@@ -601,9 +653,11 @@ struct SettingsPage: View {
                 .frame(minHeight: 54)
             }
 
-            Text("账单只保存在本机，不会上传到服务器。")
+            Text("诺诺Nolabel是一款单机App，所有账单数据均存储在您的本地设备中。请注意，卸载App会导致您的所有数据丢失。我们不会获取您的任何数据，也无法对您的数据进行恢复。建议您及时通过「账单导出」备份数据。")
                 .scalableFont(12, weight: .regular)
                 .foregroundStyle(palette.muted)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
 
@@ -651,7 +705,7 @@ struct SettingsPage: View {
 
     private var iconView: some View {
         LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
+            columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2),
             spacing: 14
         ) {
             ForEach(AppIconChoice.displayOrder) { choice in

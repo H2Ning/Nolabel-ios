@@ -1,8 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// The fifteen alternate app icons. `AppIcon-11` (panda) is the primary icon;
-/// the other fourteen are declared as alternate icon sets at build time.
+/// The app currently exposes four icons in settings: panda (primary),
+/// dog, rabbit and orange cat. The other icon assets remain in the bundle
+/// for later, but are not shown in the picker.
 enum AppIconChoice: String, CaseIterable, Identifiable {
     case icon01 = "AppIcon-01"
     case icon02 = "AppIcon-02"
@@ -51,16 +52,22 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 
     static let primary: AppIconChoice = .icon11
 
-    /// Panda, chick, duck, dog and rabbit first, then the ten cats.
+    /// Panda, dog, rabbit and orange cat.
     static let displayOrder: [AppIconChoice] = [
-        .icon11, .icon12, .icon13, .icon14, .icon15,
-        .icon01, .icon02, .icon03, .icon04, .icon05,
-        .icon06, .icon07, .icon08, .icon09, .icon10
+        .icon11, .icon14, .icon15, .icon01
     ]
 
     static var current: AppIconChoice {
         guard let name = UIApplication.shared.alternateIconName,
-              let choice = AppIconChoice(rawValue: name) else { return .primary }
+              let choice = AppIconChoice(rawValue: name),
+              displayOrder.contains(choice) else { return .primary }
         return choice
+    }
+
+    /// True when no alternate icon is set, or the set icon is still in the picker.
+    static var isCurrentIconAllowed: Bool {
+        guard let name = UIApplication.shared.alternateIconName,
+              let choice = AppIconChoice(rawValue: name) else { return true }
+        return displayOrder.contains(choice)
     }
 }
