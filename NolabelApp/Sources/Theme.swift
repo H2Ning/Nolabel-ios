@@ -92,7 +92,7 @@ struct AppPalette {
         isDark: false,
         pageBG: Color(hex: 0xECE9DF),
         bg: Color(hex: 0xF4F5F1),
-        surface: Color(hex: 0xFDFEFB),
+        surface: Color(hex: 0xF8F7F1),
         surface2: Color(hex: 0xE8ECE7),
         ink: Color(hex: 0x0E1910),
         ink2: Color(hex: 0x2B362D),

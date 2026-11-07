@@ -315,7 +315,7 @@ struct SettingsPage: View {
             RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
                 .stroke(palette.line, lineWidth: 1)
         )
-        .shadow(color: palette.isDark ? .black.opacity(0.12) : .black.opacity(0.06), radius: 12, y: 8)
+        .shadow(color: palette.isDark ? .black.opacity(0.12) : .black.opacity(0.03), radius: 12, y: 8)
     }
 
     private func previewBillRow(_ bill: PreviewBill) -> some View {
