@@ -542,11 +542,11 @@ struct CashPlazaAnalysisView: View {
                     Text(netLabel)
                         .scalableFont(10.5, weight: .medium)
                         .foregroundStyle(palette.muted)
-                    Spacer(minLength: 8)
                     Text(signedNet)
                         .scalableFont(14, weight: .semibold, design: .rounded)
                         .monospacedDigit()
                         .foregroundStyle(netColor)
+                    Spacer(minLength: 8)
                     if let rateText {
                         Text(rateText)
                             .scalableFont(9.5, weight: .medium)
@@ -605,7 +605,7 @@ struct CashPlazaAnalysisView: View {
 
     private var netLabel: String {
         if analysis.incomeTotal == 0 { return "净流出" }
-        return analysis.net >= 0 ? "净结余" : "缺口"
+        return analysis.net >= 0 ? "结余" : "缺口"
     }
 
     private var signedNet: String {
