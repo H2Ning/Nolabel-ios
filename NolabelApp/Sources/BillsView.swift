@@ -483,16 +483,36 @@ struct SwipeBillRow: View {
                 Circle()
                     .fill(bill.type == .expense ? palette.expense : palette.income)
                     .frame(width: 6, height: 6)
-                VStack(alignment: .leading, spacing: metaText.isEmpty ? 0 : 4) {
-                    Text(bill.title)
-                        .scalableFont(16, weight: .semibold)
-                        .foregroundStyle(palette.ink)
-                        .lineLimit(1)
-                    if !metaText.isEmpty {
-                        Text(metaText)
+                ZStack(alignment: .leading) {
+                    // Keep the two-line height even when the time is hidden.
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(bill.title)
+                            .scalableFont(16, weight: .semibold)
+                            .lineLimit(1)
+                        Text(bill.time.isEmpty ? " " : bill.time)
                             .scalableFont(12, weight: .medium)
                             .monospacedDigit()
-                            .foregroundStyle(palette.muted)
+                            .lineLimit(1)
+                    }
+                    .hidden()
+                    .accessibilityHidden(true)
+
+                    if model.showBillTime, !metaText.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(bill.title)
+                                .scalableFont(16, weight: .semibold)
+                                .foregroundStyle(palette.ink)
+                                .lineLimit(1)
+                            Text(metaText)
+                                .scalableFont(12, weight: .medium)
+                                .monospacedDigit()
+                                .foregroundStyle(palette.muted)
+                                .lineLimit(1)
+                        }
+                    } else {
+                        Text(bill.title)
+                            .scalableFont(16, weight: .semibold)
+                            .foregroundStyle(palette.ink)
                             .lineLimit(1)
                     }
                 }

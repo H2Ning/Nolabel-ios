@@ -187,7 +187,7 @@ struct SettingsPage: View {
         case .personalization: return "个性化"
         case .appearance: return "外观"
         case .icon: return "图标"
-        case .numberFormat: return "数字格式"
+        case .numberFormat: return "账单样式"
         case .haptics: return "触感"
         case .dataSecurity: return "数据与安全"
         }
@@ -287,16 +287,35 @@ struct SettingsPage: View {
             Circle()
                 .fill(bill.type == .expense ? palette.expense : palette.income)
                 .frame(width: 6, height: 6)
-            VStack(alignment: .leading, spacing: model.showBillTime ? 4 : 0) {
-                Text(bill.title)
-                    .scalableFont(16, weight: .semibold)
-                    .foregroundStyle(palette.ink)
-                    .lineLimit(1)
-                if model.showBillTime, !bill.time.isEmpty {
-                    Text(bill.time)
+            ZStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(bill.title)
+                        .scalableFont(16, weight: .semibold)
+                        .lineLimit(1)
+                    Text(bill.time.isEmpty ? " " : bill.time)
                         .scalableFont(12, weight: .medium)
                         .monospacedDigit()
-                        .foregroundStyle(palette.muted)
+                        .lineLimit(1)
+                }
+                .hidden()
+                .accessibilityHidden(true)
+
+                if model.showBillTime, !bill.time.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(bill.title)
+                            .scalableFont(16, weight: .semibold)
+                            .foregroundStyle(palette.ink)
+                            .lineLimit(1)
+                        Text(bill.time)
+                            .scalableFont(12, weight: .medium)
+                            .monospacedDigit()
+                            .foregroundStyle(palette.muted)
+                            .lineLimit(1)
+                    }
+                } else {
+                    Text(bill.title)
+                        .scalableFont(16, weight: .semibold)
+                        .foregroundStyle(palette.ink)
                         .lineLimit(1)
                 }
             }
@@ -315,18 +334,13 @@ struct SettingsPage: View {
     private var billTimeCard: some View {
         sectionCard {
             Toggle(isOn: $model.showBillTime) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("账单条显示时间")
-                        .scalableFont(16, weight: .medium)
-                        .foregroundStyle(palette.ink)
-                    Text("关闭后，备注居中显示")
-                        .scalableFont(11, weight: .regular)
-                        .foregroundStyle(palette.muted)
-                }
+                Text("显示时间")
+                    .scalableFont(16, weight: .medium)
+                    .foregroundStyle(palette.ink)
             }
             .tint(palette.accent)
             .padding(.horizontal, 16)
-            .frame(minHeight: 58)
+            .frame(minHeight: 54)
         }
     }
 
@@ -655,7 +669,7 @@ struct SettingsPage: View {
             .accessibilityLabel("图标")
             .accessibilityValue(model.appIcon.displayName)
             divider
-            settingsLink(title: "格式", value: model.numberFormat.summary) {
+            settingsNavLink(title: "账单样式") {
                 model.pushSettings(.numberFormat)
             }
             divider
