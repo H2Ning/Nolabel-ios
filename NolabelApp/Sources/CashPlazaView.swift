@@ -504,7 +504,7 @@ struct CashPlazaView: View {
                     Text("支出 \(Formats.currencySymbol)\(Formats.money(Int((point.daily * 100).rounded())))")
                         .foregroundStyle(palette.expense)
                     Text("累计 \(Formats.currencySymbol)\(Formats.money(Int((point.cumulative * 100).rounded())))")
-                        .foregroundStyle(palette.accent)
+                        .foregroundStyle(palette.accentText)
                 }
             }
             .scalableFont(11, weight: .medium)
@@ -526,7 +526,7 @@ struct CashPlazaView: View {
                         x: .value("日期", point.label),
                         y: .value("累计支出", point.cumulative)
                     )
-                    .foregroundStyle(palette.accent)
+                    .foregroundStyle(palette.accentText)
                     .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
                     .interpolationMethod(.monotone)
 
@@ -534,7 +534,7 @@ struct CashPlazaView: View {
                         x: .value("日期", point.label),
                         y: .value("累计支出", point.cumulative)
                     )
-                    .foregroundStyle(palette.accent)
+                    .foregroundStyle(palette.accentText)
                     .symbolSize(18)
                 }
                 .chartXSelection(value: $selectedDayLabel)

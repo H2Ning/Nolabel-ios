@@ -884,7 +884,7 @@ struct MonthVerdictCard: View {
                     .scalableFont(9.5, weight: .semibold)
                     .tracking(0.8)
             }
-            .foregroundStyle(palette.accent)
+            .foregroundStyle(palette.accentText)
 
             Text(analysis.verdict.title)
                 .scalableSerif(21, weight: .semibold)

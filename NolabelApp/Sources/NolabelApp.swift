@@ -58,7 +58,7 @@ struct RootView: View {
                         } label: {
                             Text("撤销")
                                 .scalableFont(15, weight: .semibold)
-                                .foregroundStyle(palette.accent)
+                                .foregroundStyle(palette.accentText)
                                 .frame(minHeight: 44)
                                 .contentShape(Rectangle())
                         }

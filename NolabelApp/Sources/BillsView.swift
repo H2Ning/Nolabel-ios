@@ -162,7 +162,7 @@ struct BillsView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(Formats.currencySymbol)")
                     .scalableFont(20, weight: .semibold, design: .rounded)
-                    .foregroundStyle(palette.accent)
+                    .foregroundStyle(palette.accentText)
                 Text(Formats.money(model.monthExpense))
                     .scalableFont(43, weight: .bold, design: .rounded)
                     .tracking(-1.3)
@@ -335,7 +335,7 @@ struct BillsView: View {
                 Text("记一笔")
                     .scalableFont(16, weight: .semibold)
             }
-            .foregroundStyle(palette.accent)
+            .foregroundStyle(palette.accentText)
             .padding(.horizontal, 19)
             .frame(minHeight: 52)
             .glassCapsule(tint: palette.accent.opacity(0.3), clear: true)
@@ -379,7 +379,7 @@ struct DayCapsuleView: View {
                 if group.isToday {
                     Text("今天")
                         .scalableFont(11, weight: .semibold)
-                        .foregroundStyle(palette.accent)
+                        .foregroundStyle(palette.accentText)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
                         .background(palette.accentSoft, in: Capsule())

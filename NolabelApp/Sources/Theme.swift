@@ -37,6 +37,7 @@ struct AppPalette {
     let line: Color
     let lineStrong: Color
     let accent: Color
+    let accentText: Color
     let accentSoft: Color
     let accentInk: Color
     var expense: Color
@@ -73,6 +74,7 @@ struct AppPalette {
         line: Color(hex: 0x8C9A8D).opacity(0.28),
         lineStrong: Color(hex: 0xAAB6AC).opacity(0.42),
         accent: Color(hex: 0xECBD57),
+        accentText: Color(hex: 0xECBD57),
         accentSoft: Color(hex: 0xECBD57).opacity(0.14),
         accentInk: Color(hex: 0x231C0B),
         expense: Color(hex: 0xEF6856),
@@ -99,6 +101,7 @@ struct AppPalette {
         line: Color(hex: 0x59665B).opacity(0.18),
         lineStrong: Color(hex: 0x59665B).opacity(0.26),
         accent: Color(hex: 0x7C5600),
+        accentText: Color(hex: 0x5F4300),
         accentSoft: Color(hex: 0x7C5600).opacity(0.14),
         accentInk: Color(hex: 0xFFFDF7),
         expense: Color(hex: 0xAC1B18),

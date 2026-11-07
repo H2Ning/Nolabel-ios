@@ -100,7 +100,7 @@ struct EntryView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("\(Formats.currencySymbol)")
                         .scalableFont(20, weight: .semibold, design: .rounded)
-                        .foregroundStyle(palette.accent)
+                        .foregroundStyle(palette.accentText)
                     Text(model.entryDisplay)
                         .scalableFont(38, weight: .bold, design: .rounded)
                         .tracking(-1.2)

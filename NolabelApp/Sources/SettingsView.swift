@@ -46,6 +46,26 @@ struct SettingsPage: View {
                 .padding(.bottom, 40)
             }
             .scrollIndicators(.hidden)
+            .alert(
+                "导入 \(pendingImportBills.count) 笔账单",
+                isPresented: $showImportConfirm
+            ) {
+                Button("覆盖当前数据", role: .destructive) {
+                    let imported = pendingImportBills
+                    pendingImportBills = []
+                    Task { await model.commitCSVImport(imported, replacing: true) }
+                }
+                Button("合并") {
+                    let imported = pendingImportBills
+                    pendingImportBills = []
+                    Task { await model.commitCSVImport(imported, replacing: false) }
+                }
+                Button("取消", role: .cancel) {
+                    pendingImportBills = []
+                }
+            } message: {
+                Text("当前账本有 \(model.bills.count) 笔。覆盖会删除现有账单，只保留导入的 \(pendingImportBills.count) 笔；合并会保留现有账单，并按编号更新。")
+            }
         }
         .contentShape(Rectangle())
         .overlay(alignment: .bottom) {
@@ -113,27 +133,6 @@ struct SettingsPage: View {
             }
         } message: {
             Text("将删除全部 \(model.bills.count) 笔账单，只影响本机数据。此操作无法撤销。")
-        }
-        .confirmationDialog(
-            "导入 \(pendingImportBills.count) 笔账单",
-            isPresented: $showImportConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("覆盖当前数据", role: .destructive) {
-                let imported = pendingImportBills
-                pendingImportBills = []
-                Task { await model.commitCSVImport(imported, replacing: true) }
-            }
-            Button("合并") {
-                let imported = pendingImportBills
-                pendingImportBills = []
-                Task { await model.commitCSVImport(imported, replacing: false) }
-            }
-            Button("取消", role: .cancel) {
-                pendingImportBills = []
-            }
-        } message: {
-            Text("当前账本有 \(model.bills.count) 笔。覆盖会删除现有账单，只保留导入的 \(pendingImportBills.count) 笔；合并会保留现有账单，并按编号更新。")
         }
     }
 
@@ -207,7 +206,7 @@ struct SettingsPage: View {
                         if model.themeMode == mode {
                             Image(systemName: "checkmark")
                                 .scalableFont(14, weight: .semibold)
-                                .foregroundStyle(palette.accent)
+                                .foregroundStyle(palette.accentText)
                         }
                     }
                     .frame(minHeight: 54)
@@ -256,7 +255,7 @@ struct SettingsPage: View {
                 Spacer(minLength: 8)
                 Text("今天")
                     .scalableFont(11, weight: .semibold)
-                    .foregroundStyle(palette.accent)
+                    .foregroundStyle(palette.accentText)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(palette.accentSoft, in: Capsule())
@@ -388,7 +387,7 @@ struct SettingsPage: View {
                             .scalableFont(9, weight: .semibold)
                     }
                     .scalableFont(15, weight: .medium)
-                    .foregroundStyle(palette.accent)
+                    .foregroundStyle(palette.accentText)
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
@@ -599,7 +598,7 @@ struct SettingsPage: View {
                         if model.hapticLevel == level {
                             Image(systemName: "checkmark")
                                 .scalableFont(14, weight: .semibold)
-                                .foregroundStyle(palette.accent)
+                                .foregroundStyle(palette.accentText)
                         }
                     }
                     .frame(minHeight: 54)
