@@ -24,9 +24,8 @@ struct BillsView: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .bottom) {
             addButton
-                .padding(.leading, 20)
                 .padding(.bottom, 22)
         }
         .overlay(alignment: .bottom) {

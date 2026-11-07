@@ -105,6 +105,7 @@ final class AppModel {
     }
     var dataMessage = ""
     var dataMessageIsError = false
+    var externalCSVText: String?
 
     var themeMode: ThemeMode
     var hapticLevel: HapticLevel
@@ -643,6 +644,35 @@ final class AppModel {
         dataMessageIsError = false
         Haptics.success()
         return true
+    }
+
+    func receiveExternalCSVFile(_ url: URL) {
+        guard url.isFileURL else { return }
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url),
+              let text = String(data: data, encoding: .utf8) else {
+            dataMessage = "CSV 文件读取失败"
+            dataMessageIsError = true
+            settingsOpen = true
+            settingsSubview = .dataSecurity
+            return
+        }
+        receiveExternalCSV(text)
+    }
+
+    func receiveExternalCSV(_ text: String) {
+        if entryOpen { closeEntry() }
+        cashPlazaOpen = false
+        externalCSVText = text
+        settingsOpen = true
+        settingsSubview = .dataSecurity
+    }
+
+    func takeExternalCSV() -> String? {
+        guard let text = externalCSVText else { return nil }
+        externalCSVText = nil
+        return text
     }
 
     /// Switches the home-screen icon. The primary icon is set with `nil`,

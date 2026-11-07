@@ -86,6 +86,8 @@ struct SettingsPage: View {
         .animation(.easeOut(duration: 0.2), value: iconToast)
         .navigationTitle(settingsTitle)
         .navigationBarTitleDisplayMode(sub == .main ? .large : .inline)
+        .onAppear { consumeExternalCSVIfNeeded() }
+        .onChange(of: model.externalCSVText) { _, _ in consumeExternalCSVIfNeeded() }
         .fileImporter(
             isPresented: $showImporter,
             allowedContentTypes: [.commaSeparatedText, .plainText],
@@ -246,19 +248,54 @@ struct SettingsPage: View {
         ]
     }
 
+    private var previewNet: Int {
+        previewBills.reduce(0) { total, bill in
+            bill.type == .income ? total + bill.cents : total - bill.cents
+        }
+    }
+
+    private var previewNetText: String {
+        if previewNet > 0 { return Formats.signedMoney(previewNet, type: .income) }
+        if previewNet < 0 { return Formats.signedMoney(-previewNet, type: .expense) }
+        return "\(Formats.currencySymbol)0.00"
+    }
+
+    private var previewNetColor: Color {
+        if previewNet > 0 { return palette.income }
+        if previewNet < 0 { return palette.expense }
+        return palette.surface2
+    }
+
+    private var previewNetTextColor: Color {
+        guard previewNet != 0 else { return palette.ink }
+        let type: BillType = previewNet > 0 ? .income : .expense
+        return model.numberFormat.colorScheme.netTextColor(for: type, isDark: palette.isDark)
+    }
+
     private var previewCard: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Text(DateHelp.dayTitle(DateHelp.todayISO))
                     .scalableFont(13, weight: .semibold)
                     .foregroundStyle(palette.ink2)
-                Spacer(minLength: 8)
                 Text("今天")
                     .scalableFont(11, weight: .semibold)
                     .foregroundStyle(palette.accentText)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(palette.accentSoft, in: Capsule())
+                Rectangle()
+                    .fill(palette.line)
+                    .frame(height: 1)
+                Text(previewNetText)
+                    .scalableFont(16, weight: .semibold, design: .rounded)
+                    .monospacedDigit()
+                    .foregroundStyle(previewNetTextColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(previewNetColor, in: Capsule())
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -809,6 +846,13 @@ struct SettingsPage: View {
             guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 0.18)) { iconToast = nil }
         }
+    }
+
+    private func consumeExternalCSVIfNeeded() {
+        guard let text = model.takeExternalCSV() else { return }
+        guard let imported = model.parseCSVImport(text) else { return }
+        pendingImportBills = imported
+        showImportConfirm = true
     }
 
     private func settingsNavLink(title: String, action: @escaping () -> Void) -> some View {

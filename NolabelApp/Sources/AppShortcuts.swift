@@ -5,6 +5,29 @@ enum AppShortcut: String, Sendable {
     case analysis = "com.h2ning.nolabel.analysis"
 }
 
+/// Bridges files opened from other apps to the SwiftUI model.
+@MainActor
+enum CSVOpenRouter {
+    static var pending: URL?
+    static var handler: ((URL) -> Void)?
+    private static var lastHandled: (url: URL, at: Date)?
+
+    static func handle(_ url: URL) {
+        guard url.isFileURL else { return }
+        let now = Date()
+        if let lastHandled, lastHandled.url == url,
+           now.timeIntervalSince(lastHandled.at) < 0.8 {
+            return
+        }
+        lastHandled = (url, now)
+        if let handler {
+            handler(url)
+        } else {
+            pending = url
+        }
+    }
+}
+
 /// Bridges home-screen quick actions to the SwiftUI model. Cold-launch
 /// shortcuts wait here until the root view has bootstrapped.
 @MainActor
@@ -37,6 +60,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
            let shortcut = AppShortcut(rawValue: item.type) {
             Task { @MainActor in AppShortcutRouter.handle(shortcut) }
         }
+        return true
+    }
+
+    func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        guard url.isFileURL else { return false }
+        Task { @MainActor in CSVOpenRouter.handle(url) }
         return true
     }
 
@@ -86,6 +119,14 @@ final class NolabelSceneDelegate: NSObject, UIWindowSceneDelegate {
            let shortcut = AppShortcut(rawValue: item.type) {
             Task { @MainActor in AppShortcutRouter.handle(shortcut) }
         }
+        if let url = connectionOptions.urlContexts.first?.url {
+            Task { @MainActor in CSVOpenRouter.handle(url) }
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let url = URLContexts.first?.url else { return }
+        Task { @MainActor in CSVOpenRouter.handle(url) }
     }
 
     func windowScene(

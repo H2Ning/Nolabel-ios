@@ -111,6 +111,15 @@ struct RootView: View {
                 AppShortcutRouter.pending = nil
                 AppShortcutRouter.handler?(pending)
             }
+            CSVOpenRouter.handler = { url in
+                Task { @MainActor in
+                    model.receiveExternalCSVFile(url)
+                }
+            }
+            if let pending = CSVOpenRouter.pending {
+                CSVOpenRouter.pending = nil
+                CSVOpenRouter.handler?(pending)
+            }
         }
         .sheet(
             isPresented: Binding(
