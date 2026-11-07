@@ -6,19 +6,12 @@ struct SettingsPage: View {
     let sub: SettingsSubview
     @Bindable var model: AppModel
     let palette: AppPalette
-    @Environment(\.openURL) private var openURL
-
-    @State private var username = ""
-    @State private var password = ""
     @State private var showImporter = false
     @State private var showExporter = false
     @State private var showClearAllConfirm = false
     @State private var iconToast: String?
     @State private var iconToastTask: Task<Void, Never>?
     @State private var iconSwitching = false
-    @FocusState private var focusedField: Field?
-
-    private enum Field { case username, password }
 
     var body: some View {
         ZStack {
@@ -71,9 +64,6 @@ struct SettingsPage: View {
         .animation(.easeOut(duration: 0.2), value: iconToast)
         .navigationTitle(settingsTitle)
         .navigationBarTitleDisplayMode(sub == .main ? .large : .inline)
-        .onAppear {
-            username = model.savedUsername
-        }
         .fileImporter(
             isPresented: $showImporter,
             allowedContentTypes: [.commaSeparatedText, .plainText],
@@ -86,14 +76,14 @@ struct SettingsPage: View {
                 defer { if access { url.stopAccessingSecurityScopedResource() } }
                 guard let data = try? Data(contentsOf: url),
                       let text = String(data: data, encoding: .utf8) else {
-                    model.authMessage = "CSV 文件读取失败"
-                    model.authMessageIsError = true
+                    model.dataMessage = "CSV 文件读取失败"
+                    model.dataMessageIsError = true
                     return
                 }
                 Task { await model.importCSV(text) }
             case .failure:
-                model.authMessage = "CSV 文件读取失败"
-                model.authMessageIsError = true
+                model.dataMessage = "CSV 文件读取失败"
+                model.dataMessageIsError = true
             }
         }
         .fileExporter(
@@ -103,8 +93,8 @@ struct SettingsPage: View {
             defaultFilename: "Nolabel-\(DateHelp.todayISO).csv"
         ) { result in
             if case .failure = result {
-                model.authMessage = "CSV 文件导出失败"
-                model.authMessageIsError = true
+                model.dataMessage = "CSV 文件导出失败"
+                model.dataMessageIsError = true
                 Haptics.error()
             } else {
                 Haptics.success()
@@ -118,7 +108,7 @@ struct SettingsPage: View {
                 Task { await model.clearAllBills() }
             }
         } message: {
-            Text("将删除全部 \(model.bills.count) 笔账单，云端数据也会一并清空。此操作无法撤销。")
+            Text("将删除全部 \(model.bills.count) 笔账单，只影响本机数据。此操作无法撤销。")
         }
     }
 
@@ -138,7 +128,6 @@ struct SettingsPage: View {
 
     private var mainView: some View {
         VStack(spacing: 12) {
-            accountCard
             sectionCard {
                 settingsNavLink(title: "外观") {
                     model.pushSettings(.appearance)
@@ -153,162 +142,12 @@ struct SettingsPage: View {
                     model.pushSettings(.dataSecurity)
                 }
             }
-            if model.authMessageIsError && !model.authMessage.isEmpty {
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(model.authMessage)
-                            .scalableFont(13, weight: .medium)
-                            .foregroundStyle(palette.danger)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        if model.authRetryable {
-                            Button {
-                                if !username.isEmpty && !password.isEmpty {
-                                    submitLogin()
-                                } else {
-                                    Task { await model.retryConnection() }
-                                }
-                            } label: {
-                                if model.authLoading {
-                                    ProgressView().tint(palette.danger)
-                                } else {
-                                    Text("重试")
-                                        .scalableFont(13, weight: .semibold)
-                                        .foregroundStyle(palette.danger)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(model.authLoading)
-
-                            Button {
-                                if let url = URL(string: UIApplication.openSettingsURLString) {
-                                    openURL(url)
-                                }
-                            } label: {
-                                Text("设置")
-                                    .scalableFont(13, weight: .semibold)
-                                    .foregroundStyle(palette.accent)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-
-                    if !model.networkDiagnostic.isEmpty {
-                        Text(model.networkDiagnostic)
-                            .scalableFont(10, weight: .medium, design: .monospaced)
-                            .foregroundStyle(palette.muted)
-                    }
-
-                    if model.authRetryable {
-                        Text("已允许仍失败：设置 → 蜂窝网络 → 诺诺 → 无线局域网与蜂窝移动数据；或 设置 → 隐私与安全性 → 本地网络 → 诺诺。若开着 VPN/Tailscale 或 Wi-Fi 代理，请先关闭或改用蜂窝数据。")
-                            .scalableFont(10.5, weight: .regular)
-                            .foregroundStyle(palette.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(.horizontal, 4)
-            }
+            Text("Alpha 0.1.0.0 · 本机账本")
+                .scalableFont(11, weight: .regular)
+                .foregroundStyle(palette.muted)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
         }
-    }
-
-    private var accountCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if !model.authReady {
-                HStack(spacing: 10) {
-                    ProgressView().tint(palette.ink2)
-                    Text("正在连接账号")
-                        .scalableFont(14, weight: .medium)
-                        .foregroundStyle(palette.muted)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-            } else if let user = model.user {
-                HStack(spacing: 11) {
-                    Text(String(user.name.prefix(1)).uppercased())
-                        .scalableFont(16, weight: .bold)
-                        .foregroundStyle(palette.accentInk)
-                        .frame(width: 36, height: 36)
-                        .background(palette.accent, in: Circle())
-                    Text(user.name)
-                        .scalableFont(16, weight: .semibold)
-                        .foregroundStyle(palette.ink)
-                    Spacer()
-                    if model.authLoading {
-                        ProgressView().tint(palette.muted)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 15)
-                .padding(.bottom, 12)
-
-                divider
-
-                Button {
-                    Task { await model.logout() }
-                } label: {
-                    Text("退出登录")
-                        .scalableFont(16, weight: .medium)
-                        .foregroundStyle(palette.danger)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .frame(minHeight: 54)
-                        .padding(.horizontal, 16)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(model.authLoading)
-            } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    fieldLabel("用户名")
-                    TextField("用户名", text: $username)
-                        .textContentType(.username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($focusedField, equals: .username)
-                        .submitLabel(.next)
-                        .onSubmit { focusedField = .password }
-                        .scalableFont(16, weight: .medium)
-                        .foregroundStyle(palette.ink)
-                        .padding(.horizontal, 13)
-                        .frame(minHeight: 46)
-                        .background(fieldBackground)
-
-                    fieldLabel("密码")
-                    SecureField("密码", text: $password)
-                        .textContentType(.password)
-                        .focused($focusedField, equals: .password)
-                        .submitLabel(.go)
-                        .onSubmit { submitLogin() }
-                        .scalableFont(16, weight: .medium)
-                        .foregroundStyle(palette.ink)
-                        .padding(.horizontal, 13)
-                        .frame(minHeight: 46)
-                        .background(fieldBackground)
-
-                    Button(action: submitLogin) {
-                        Group {
-                            if model.authLoading {
-                                ProgressView().tint(palette.accentInk)
-                            } else {
-                                Text("登录")
-                                    .scalableFont(16, weight: .semibold)
-                            }
-                        }
-                        .foregroundStyle(palette.accentInk)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 46)
-                        .background(palette.accent, in: RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
-                    }
-                    .buttonStyle(PressableStyle(scale: 0.98))
-                    .disabled(model.authLoading)
-                }
-                .padding(16)
-            }
-        }
-        .background(sectionBackground)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
-                .stroke(palette.line, lineWidth: 1)
-        )
     }
 
     private var settingsTitle: String {
@@ -684,21 +523,6 @@ struct SettingsPage: View {
         }
     }
 
-    private func fieldLabel(_ title: String) -> some View {
-        Text(title)
-            .scalableFont(12, weight: .medium)
-            .foregroundStyle(palette.muted)
-    }
-
-    private var fieldBackground: some View {
-        RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
-            .fill(palette.surface)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous)
-                    .stroke(palette.line, lineWidth: 1)
-            )
-    }
-
     private var sectionBackground: Color {
         palette.surface2.opacity(palette.isDark ? 0.56 : 0.60)
     }
@@ -776,38 +600,51 @@ struct SettingsPage: View {
                 .padding(.horizontal, 16)
                 .frame(minHeight: 54)
             }
-            if model.user != nil && model.accountLoaded {
-                sectionCard {
-                    settingsAction(title: "账单导入") { showImporter = true }
-                    divider
-                    settingsAction(title: "账单导出") { showExporter = true }
-                        .disabled(model.bills.isEmpty)
-                        .opacity(model.bills.isEmpty ? 0.45 : 1)
-                }
-                sectionCard {
-                    Button {
-                        Haptics.deletePrompt()
-                        showClearAllConfirm = true
-                    } label: {
-                        HStack {
-                            Text("清空全部账单")
-                                .scalableFont(16, weight: .medium)
-                                .foregroundStyle(palette.danger)
-                            Spacer()
-                            Text("\(model.bills.count) 笔")
-                                .scalableFont(15, weight: .medium)
-                                .foregroundStyle(palette.muted)
-                        }
-                        .frame(minHeight: 54)
-                        .padding(.horizontal, 16)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
+
+            Text("账单只保存在本机，不会上传到服务器。")
+                .scalableFont(12, weight: .regular)
+                .foregroundStyle(palette.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
+
+            if model.dataMessageIsError && !model.dataMessage.isEmpty {
+                Text(model.dataMessage)
+                    .scalableFont(12, weight: .medium)
+                    .foregroundStyle(palette.danger)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+            }
+
+            sectionCard {
+                settingsAction(title: "账单导入") { showImporter = true }
+                divider
+                settingsAction(title: "账单导出") { showExporter = true }
                     .disabled(model.bills.isEmpty)
                     .opacity(model.bills.isEmpty ? 0.45 : 1)
-                    .accessibilityLabel("清空全部账单")
-                    .accessibilityHint("会先弹出确认，确认后删除全部 \(model.bills.count) 笔账单")
+            }
+            sectionCard {
+                Button {
+                    Haptics.deletePrompt()
+                    showClearAllConfirm = true
+                } label: {
+                    HStack {
+                        Text("清空全部账单")
+                            .scalableFont(16, weight: .medium)
+                            .foregroundStyle(palette.danger)
+                        Spacer()
+                        Text("\(model.bills.count) 笔")
+                            .scalableFont(15, weight: .medium)
+                            .foregroundStyle(palette.muted)
+                    }
+                    .frame(minHeight: 54)
+                    .padding(.horizontal, 16)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .disabled(model.bills.isEmpty)
+                .opacity(model.bills.isEmpty ? 0.45 : 1)
+                .accessibilityLabel("清空全部账单")
+                .accessibilityHint("会先弹出确认，确认后删除全部 \(model.bills.count) 笔账单")
             }
         }
     }
@@ -936,8 +773,4 @@ struct SettingsPage: View {
         .buttonStyle(.plain)
     }
 
-    private func submitLogin() {
-        focusedField = nil
-        Task { await model.login(username: username, password: password) }
-    }
 }

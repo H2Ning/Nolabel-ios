@@ -31,12 +31,13 @@ struct Bill: Identifiable, Codable, Hashable {
     var iso: String
     var time: String
     var createdAt: Double
+    var updatedAt: Double
     var count: Int
     var kinds: Int
     var groups: [BillDenomGroup]
 
     private enum CodingKeys: String, CodingKey {
-        case id, cents, type, note, iso, time, createdAt, count, kinds, groups
+        case id, cents, type, note, iso, time, createdAt, updatedAt
     }
 
     init(
@@ -49,7 +50,8 @@ struct Bill: Identifiable, Codable, Hashable {
         createdAt: Double,
         count: Int,
         kinds: Int,
-        groups: [BillDenomGroup]
+        groups: [BillDenomGroup],
+        updatedAt: Double? = nil
     ) {
         self.id = id
         self.cents = cents
@@ -58,6 +60,7 @@ struct Bill: Identifiable, Codable, Hashable {
         self.iso = iso
         self.time = time
         self.createdAt = createdAt
+        self.updatedAt = updatedAt ?? createdAt
         self.count = count
         self.kinds = kinds
         self.groups = groups
@@ -65,16 +68,31 @@ struct Bill: Identifiable, Codable, Hashable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString.lowercased()
         cents = try c.decodeIfPresent(Int.self, forKey: .cents) ?? 0
         type = try c.decodeIfPresent(BillType.self, forKey: .type) ?? .expense
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         iso = try c.decodeIfPresent(String.self, forKey: .iso) ?? DateHelp.todayISO
         time = try c.decodeIfPresent(String.self, forKey: .time) ?? ""
         createdAt = try c.decodeIfPresent(Double.self, forKey: .createdAt) ?? 0
-        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
-        kinds = try c.decodeIfPresent(Int.self, forKey: .kinds) ?? 0
-        groups = try c.decodeIfPresent([BillDenomGroup].self, forKey: .groups) ?? []
+        updatedAt = try c.decodeIfPresent(Double.self, forKey: .updatedAt) ?? createdAt
+
+        let computed = CashBreakdown.groups(for: cents)
+        count = CashBreakdown.totalNotes(computed)
+        kinds = computed.count
+        groups = computed.map { BillDenomGroup(key: $0.denomination.id, count: $0.count) }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(cents, forKey: .cents)
+        try c.encode(type, forKey: .type)
+        try c.encode(note, forKey: .note)
+        try c.encode(iso, forKey: .iso)
+        try c.encode(time, forKey: .time)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
     }
 
     var monthKey: String { String(iso.prefix(7)) }
@@ -84,42 +102,6 @@ struct Bill: Identifiable, Codable, Hashable {
     var typeLabel: String { type == .expense ? "支出" : "收入" }
     var fallbackTitle: String { type == .expense ? "现金支出" : "现金收入" }
     var title: String { note.isEmpty ? fallbackTitle : note }
-}
-
-struct BillsEnvelope: Codable {
-    var v: Int
-    var updatedAt: Double
-    var bills: [Bill]
-
-    init(v: Int = 1, updatedAt: Double = Date().timeIntervalSince1970 * 1000, bills: [Bill]) {
-        self.v = v
-        self.updatedAt = updatedAt
-        self.bills = bills
-    }
-}
-
-enum BillsCodec {
-    private static let decoder = JSONDecoder()
-
-    static func parse(_ raw: String) -> BillsEnvelope? {
-        guard let data = raw.data(using: .utf8) else { return nil }
-        if let envelope = try? decoder.decode(BillsEnvelope.self, from: data) {
-            return envelope
-        }
-        if let bills = try? decoder.decode([Bill].self, from: data) {
-            return BillsEnvelope(updatedAt: 0, bills: bills)
-        }
-        return nil
-    }
-
-    static func raw(_ bills: [Bill], updatedAt: Double = Date().timeIntervalSince1970 * 1000) -> String {
-        let envelope = BillsEnvelope(updatedAt: updatedAt, bills: bills)
-        guard let data = try? JSONEncoder().encode(envelope),
-              let string = String(data: data, encoding: .utf8) else {
-            return "{\"v\":1,\"updatedAt\":0,\"bills\":[]}"
-        }
-        return string
-    }
 }
 
 struct Denomination: Identifiable, Hashable {

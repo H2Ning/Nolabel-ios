@@ -111,7 +111,6 @@ struct RootView: View {
                 AppShortcutRouter.pending = nil
                 AppShortcutRouter.handler?(pending)
             }
-            await model.bootstrap()
         }
         .sheet(
             isPresented: Binding(

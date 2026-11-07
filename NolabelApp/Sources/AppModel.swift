@@ -45,7 +45,6 @@ enum EntryOperator: String, CaseIterable {
 @Observable
 @MainActor
 final class AppModel {
-    private let api = AccountAPI()
     private let defaults = UserDefaults.standard
     private let plazaSmallHeightKey = "nolabel-plaza-small-height"
     private let plazaMediumHeightKey = "nolabel-plaza-medium-height"
@@ -73,7 +72,7 @@ final class AppModel {
             defaults.set(Double(newValue), forKey: plazaMediumHeightKey)
         }
     }
-    private let cacheOwnerKey = "nolabel-cache-owner"
+    private let deviceIDKey = "nolabel-device-id"
     private let themeKey = "nolabel-theme"
     private let sortKey = "nolabel-sort-desc"
     private let cashModeKey = "nolabel-cash-mode"
@@ -81,7 +80,6 @@ final class AppModel {
     private let hapticKey = "nolabel-haptic-level"
     private let numberFormatKey = "nolabel-number-format"
     private let deleteConfirmKey = "nolabel-delete-confirm"
-    private let usernameKey = "h2ning_username"
     private let monthKey = "nolabel-selected-month"
     private let plazaDetentKey = "nolabel-plaza-detent"
     private let draftInputKey = "nolabel-entry-draft-input"
@@ -90,7 +88,6 @@ final class AppModel {
     private let draftAtKey = "nolabel-entry-draft-at"
 
     let previewMode: Bool
-    let previewProbe: Bool
     var pendingDeleteBill: Bill?
     var deleteConfirmEnabled: Bool {
         didSet { defaults.set(deleteConfirmEnabled, forKey: deleteConfirmKey) }
@@ -99,18 +96,14 @@ final class AppModel {
     private var deleteUndoSnapshot: [Bill]?
     private var undoTask: Task<Void, Never>?
     var cashPlazaOpen = false
+    private(set) var ledgerID: String = UUID().uuidString.lowercased()
+    private(set) var deviceID: String = ""
 
     var bills: [Bill] = [] {
         didSet { billsRevision &+= 1 }
     }
-    var user: AccountUser?
-    var authReady = false
-    var authLoading = false
-    var accountLoaded = false
-    var authMessage = ""
-    var authMessageIsError = false
-    var authRetryable = false
-    var networkDiagnostic = ""
+    var dataMessage = ""
+    var dataMessageIsError = false
 
     var themeMode: ThemeMode
     var hapticLevel: HapticLevel
@@ -187,9 +180,6 @@ final class AppModel {
         didSet { defaults.set(plazaStageMode, forKey: plazaStageModeKey) }
     }
 
-    private var bootstrapped = false
-    private var autoRetryUsed = false
-    private var autoRetryTask: Task<Void, Never>?
     private var entryOperatorTapIndex = 0
     private var entryOperatorTapAt: TimeInterval = 0
     var palette: AppPalette {
@@ -205,8 +195,6 @@ final class AppModel {
     var preferredColorScheme: ColorScheme? {
         themeMode.colorScheme
     }
-
-    var isLoggedIn: Bool { user != nil }
 
     var selectedMonthKey: String { DateHelp.monthKey(selectedMonth) }
 
@@ -337,7 +325,6 @@ final class AppModel {
     init() {
         let arguments = ProcessInfo.processInfo.arguments
         previewMode = arguments.contains("--preview")
-        previewProbe = arguments.contains("--preview-probe")
         let storedTheme = defaults.string(forKey: themeKey) ?? ThemeMode.system.rawValue
         themeMode = ThemeMode(rawValue: storedTheme) ?? .system
         hapticLevel = HapticLevel(rawValue: defaults.string(forKey: hapticKey) ?? "") ?? .rich
@@ -368,8 +355,14 @@ final class AppModel {
             selectedMonth = DateHelp.monthStart(Date())
         }
 
-        if let raw = BillStore.shared.loadRaw(), let envelope = BillsCodec.parse(raw) {
-            bills = envelope.bills
+        if let document = BillStore.shared.loadDocument() {
+            bills = document.bills
+            ledgerID = document.ledgerID
+        }
+        let storedDeviceID = defaults.string(forKey: deviceIDKey)
+        deviceID = storedDeviceID ?? UUID().uuidString.lowercased()
+        if storedDeviceID == nil {
+            defaults.set(deviceID, forKey: deviceIDKey)
         }
 
         if previewMode {
@@ -379,41 +372,9 @@ final class AppModel {
         Haptics.setLevel(hapticLevel)
     }
 
-    func bootstrap() async {
-        guard !bootstrapped else { return }
-        bootstrapped = true
-        if previewMode {
-            authReady = true
-            if previewProbe {
-                await runNetworkProbe()
-            }
-            return
-        }
-        loadCachedBillsIfNeeded()
-        await checkAuth()
-    }
-
-    /// Shows the last local ledger immediately so the first frame and the
-    /// widget do not wait for the account request. The owner check keeps
-    /// another account's cache from appearing after a switch.
-    private func loadCachedBillsIfNeeded() {
-        guard bills.isEmpty else { return }
-        guard let local = currentLocalEnvelope(), !local.bills.isEmpty else { return }
-        let owner = defaults.string(forKey: cacheOwnerKey)
-        let remembered = defaults.string(forKey: usernameKey)
-        guard owner == nil || owner == remembered else { return }
-        bills = local.bills
-    }
-
     private func configurePreview(arguments: [String]) {
         themeMode = value(after: "--preview-theme", in: arguments).flatMap(ThemeMode.init(rawValue:)) ?? .dark
         bills = SampleData.bills
-        authReady = true
-        authMessage = ""
-        if arguments.contains("--preview-user") {
-            user = AccountUser(id: "preview", name: "H2Ning")
-            accountLoaded = true
-        }
 
         let screen = value(after: "--preview-screen", in: arguments)
         if screen == "settings" {
@@ -438,8 +399,6 @@ final class AppModel {
             }
             entryType = .expense
             entryNote = ""
-        } else if screen == "account" {
-            settingsOpen = true
         } else {
             if arguments.contains("--preview-open"), let first = SampleData.bills.first {
                 openBillID = first.id
@@ -522,297 +481,33 @@ final class AppModel {
         return arguments[index + 1]
     }
 
-    func runNetworkProbe() async {
-        authLoading = true
-        authMessage = ""
-        authMessageIsError = false
-        defer { authLoading = false }
-        do {
-            let user = try await api.me()
-            let pin = PinnedTrustDelegate.lastPinUsed ? "，证书固定通过" : ""
-            var text = "网络连接正常" + (user.map { "，已登录 \($0.name)" } ?? "，未登录") + pin
-            do {
-                _ = try await api.fetchBills()
-                text += "，账单接口正常"
-            } catch AccountError.unauthorized {
-                text += "，账单接口正常（未登录）"
-            }
-            authMessage = text
-            authMessageIsError = true
-            authRetryable = false
-        } catch {
-            let reason = (error as? AccountError)?.failureReason ?? error.localizedDescription
-            authMessage = "\(error.localizedDescription)｜\(reason)"
-            authMessageIsError = true
-            authRetryable = true
-        }
-    }
-
-    func checkAuth() async {
-        guard !previewMode else { return }
-        authLoading = true
-        authMessage = ""
-        authMessageIsError = false
-        authRetryable = false
-        networkDiagnostic = ""
-        defer { authLoading = false }
-        do {
-            let user = try await api.me()
-            self.user = user
-            authReady = true
-            autoRetryUsed = false
-            autoRetryTask?.cancel()
-            autoRetryTask = nil
-            if user != nil {
-                await loadAccount()
-            } else {
-                accountLoaded = false
-            }
-        } catch {
-            user = nil
-            authReady = true
-            accountLoaded = false
-            authMessage = networkMessage(for: error, fallback: "网络错误，暂未连接账号")
-            authMessageIsError = true
-            authRetryable = (error as? AccountError)?.isNetwork == true
-            scheduleAutoRetryIfNeeded()
-        }
-    }
-
-    func retryConnection() async {
-        autoRetryUsed = false
-        autoRetryTask?.cancel()
-        autoRetryTask = nil
-        if user == nil {
-            await checkAuth()
-        } else {
-            await loadAccount()
-        }
-    }
-
-    func loadAccount() async {
-        guard let user else { return }
-        authLoading = true
-        accountLoaded = false
-        authMessage = ""
-        authMessageIsError = false
-        authRetryable = false
-        networkDiagnostic = ""
-        defer { authLoading = false }
-
-        do {
-            let remote = try await api.fetchBills()
-            let local = currentLocalEnvelope()
-            let owner = defaults.string(forKey: cacheOwnerKey)
-            let localBelongs = owner == nil || owner == user.name
-
-            var result = remote?.bills ?? []
-            let remoteCount = result.count
-
-            if localBelongs, let local, !local.bills.isEmpty {
-                result = mergeBills(primary: result, secondary: local.bills)
-            }
-
-            if result.isEmpty, let local, localBelongs, !local.bills.isEmpty {
-                result = local.bills
-            }
-
-            if result.count > remoteCount || (remote == nil && !result.isEmpty) {
-                try await api.saveBills(result, updatedAt: Date().timeIntervalSince1970 * 1000)
-            }
-
-            accountLoaded = true
-            bills = result
-            persistCache(bills: result, owner: user.name)
-            authMessage = ""
-            autoRetryUsed = false
-            autoRetryTask?.cancel()
-            autoRetryTask = nil
-        } catch AccountError.unauthorized {
-            self.user = nil
-            accountLoaded = false
-            authMessage = "登录已过期，请重新登录"
-            authMessageIsError = true
-            authRetryable = false
-        } catch {
-            accountLoaded = false
-            authMessage = networkMessage(for: error, fallback: "账号数据加载失败")
-            authMessageIsError = true
-            authRetryable = (error as? AccountError)?.isNetwork == true
-            scheduleAutoRetryIfNeeded()
-        }
-    }
-
-    private func networkMessage(for error: Error, fallback: String) -> String {
-        guard let accountError = error as? AccountError, accountError.isNetwork else {
-            return (error as? LocalizedError)?.errorDescription ?? fallback
-        }
-
-        var details: [String] = []
-        if let reason = accountError.failureReason {
-            details.append(reason)
-        }
-        let address = AccountAPI.privateNetworkAddress()
-        if let address {
-            details.append("DNS \(address)")
-        }
-        networkDiagnostic = details.joined(separator: " · ")
-
-        if let address {
-            return "当前网络把 h2ning.com 解析到内网地址 \(address)。请关闭 VPN/Tailscale，或切换 Wi-Fi/蜂窝后重试。"
-        }
-        return (error as? LocalizedError)?.errorDescription ?? fallback
-    }
-
-    private func scheduleAutoRetryIfNeeded() {
-        guard authRetryable, !autoRetryUsed, !previewMode else { return }
-        autoRetryUsed = true
-        autoRetryTask?.cancel()
-        autoRetryTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            guard let self, !Task.isCancelled else { return }
-            self.autoRetryTask = nil
-            guard self.authMessageIsError, !self.authLoading else { return }
-            if self.user == nil {
-                await self.checkAuth()
-            } else {
-                await self.loadAccount()
-            }
-        }
-    }
-
-    private func currentLocalEnvelope() -> BillsEnvelope? {
-        guard let raw = BillStore.shared.loadRaw() else { return nil }
-        return BillsCodec.parse(raw)
-    }
-
-    private func mergeBills(primary: [Bill], secondary: [Bill]) -> [Bill] {
-        var map: [String: Bill] = [:]
-        for bill in secondary { map[bill.id] = bill }
-        for bill in primary { map[bill.id] = bill }
-        return map.values.sorted { $0.createdAt > $1.createdAt }
-    }
-
-    private func persistCache(bills: [Bill], owner: String?) {
-        let raw = BillsCodec.raw(bills, updatedAt: Date().timeIntervalSince1970 * 1000)
-        BillStore.shared.saveRaw(raw)
-        if let owner {
-            defaults.set(owner, forKey: cacheOwnerKey)
-        } else {
-            defaults.removeObject(forKey: cacheOwnerKey)
-        }
-    }
-
-    private func clearCache() {
-        BillStore.shared.saveRaw(BillsCodec.raw([], updatedAt: Date().timeIntervalSince1970 * 1000))
-        defaults.removeObject(forKey: cacheOwnerKey)
-    }
-
-    func login(username: String, password: String) async {
-        guard !username.isEmpty, !password.isEmpty else {
-            authMessage = "请输入用户名和密码"
-            authMessageIsError = true
-            return
-        }
-        authLoading = true
-        authMessage = ""
-        authMessageIsError = false
-        authRetryable = false
-        networkDiagnostic = ""
-        defer { authLoading = false }
-        do {
-            let user = try await api.login(username: username, password: password)
-            self.user = user
-            defaults.set(username, forKey: usernameKey)
-            authReady = true
-            autoRetryUsed = false
-            autoRetryTask?.cancel()
-            autoRetryTask = nil
-            Haptics.success()
-            await loadAccount()
-        } catch {
-            authMessage = networkMessage(for: error, fallback: "登录失败")
-            authMessageIsError = true
-            authRetryable = (error as? AccountError)?.isNetwork == true
-            Haptics.error()
-            if authRetryable, !autoRetryUsed {
-                autoRetryUsed = true
-                autoRetryTask?.cancel()
-                autoRetryTask = Task { [weak self] in
-                    try? await Task.sleep(nanoseconds: 2_500_000_000)
-                    guard let self, !Task.isCancelled else { return }
-                    self.autoRetryTask = nil
-                    guard self.authMessageIsError, !self.authLoading else { return }
-                    await self.login(username: username, password: password)
-                }
-            }
-        }
-    }
-
-    func logout() async {
-        authLoading = true
-        defer { authLoading = false }
-        do {
-            try await api.logout()
-        } catch {
-            // The local session is cleared even when the server is unreachable.
-        }
-        user = nil
-        accountLoaded = false
-        authReady = true
-        bills = []
-        clearCache()
-        authMessage = ""
-        authMessageIsError = false
-        settingsSubview = .main
-    }
-
-    var savedUsername: String {
-        defaults.string(forKey: usernameKey) ?? ""
-    }
-
-    @discardableResult
-    func requireLogin() -> Bool {
-        if previewMode { return true }
-        guard user != nil, accountLoaded else {
-            authMessage = user == nil ? "请先在设置登录账号" : "账号数据还没加载好"
-            authMessageIsError = true
-            settingsOpen = true
-            settingsSubview = .main
-            return false
-        }
-        return true
+    private func persistLedger(bills: [Bill]) -> Bool {
+        let now = Date().timeIntervalSince1970 * 1000
+        let document = LedgerDocument(
+            ledgerID: ledgerID,
+            updatedAt: now,
+            exportedAt: now,
+            bills: bills
+        )
+        return BillStore.shared.saveDocument(document)
     }
 
     func saveBills(_ next: [Bill]) async -> Bool {
-        guard requireLogin() else { return false }
         writing = true
         defer { writing = false }
-        do {
-            try await api.saveBills(next, updatedAt: Date().timeIntervalSince1970 * 1000)
-            bills = next
-            if let user { persistCache(bills: next, owner: user.name) }
-            return true
-        } catch AccountError.unauthorized {
-            user = nil
-            accountLoaded = false
-            authMessage = "登录已过期，请重新登录"
-            authMessageIsError = true
-            authRetryable = false
-            settingsOpen = true
-            Haptics.error()
-            return false
-        } catch {
-            authMessage = networkMessage(for: error, fallback: "保存失败，请检查网络后重试")
-            authMessageIsError = true
-            authRetryable = (error as? AccountError)?.isNetwork == true
+        guard persistLedger(bills: next) else {
+            dataMessage = "保存失败，请检查存储空间后重试"
+            dataMessageIsError = true
             Haptics.error()
             return false
         }
+        bills = next
+        dataMessage = ""
+        dataMessageIsError = false
+        return true
     }
 
     func requestDelete(_ bill: Bill) {
-        guard requireLogin() else { return }
         if deleteConfirmEnabled {
             pendingDeleteBill = bill
             Haptics.deletePrompt()
@@ -837,7 +532,6 @@ final class AppModel {
     }
 
     func delete(_ bill: Bill) async {
-        guard requireLogin() else { return }
         let snapshot = bills
         let next = bills.filter { $0.id != bill.id }
         if await saveBills(next) {
@@ -890,11 +584,9 @@ final class AppModel {
         CSVCodec.csv(for: bills)
     }
 
-    /// Deletes every bill locally and on the server. The caller must confirm
-    /// first; this only performs the write.
+    /// Deletes every bill from the local ledger. The caller must confirm first.
     @discardableResult
     func clearAllBills() async -> Bool {
-        guard requireLogin() else { return false }
         guard !bills.isEmpty else { return true }
         if await saveBills([]) {
             selectedMonth = DateHelp.monthStart(Date())
@@ -909,7 +601,6 @@ final class AppModel {
 
     @discardableResult
     func importCSV(_ text: String) async -> Bool {
-        guard requireLogin() else { return false }
         do {
             let imported = try CSVCodec.parse(text)
             var map: [String: Bill] = [:]
@@ -920,15 +611,15 @@ final class AppModel {
                 if let latest = next.max(by: { $0.iso < $1.iso }), let date = DateHelp.date(from: latest.iso) {
                     selectedMonth = DateHelp.monthStart(date)
                 }
-                authMessage = ""
-                authMessageIsError = false
+                dataMessage = ""
+                dataMessageIsError = false
                 Haptics.success()
                 return true
             }
             return false
         } catch {
-            authMessage = (error as? LocalizedError)?.errorDescription ?? "CSV 读取失败"
-            authMessageIsError = true
+            dataMessage = (error as? LocalizedError)?.errorDescription ?? "CSV 读取失败"
+            dataMessageIsError = true
             settingsOpen = true
             Haptics.warning()
             return false
@@ -1103,12 +794,7 @@ final class AppModel {
             Haptics.warning()
             return
         }
-        guard requireLogin() else {
-            entryError = "请先在设置登录账号"
-            Haptics.warning()
-            return
-        }
-
+        let now = Date().timeIntervalSince1970 * 1000
         let wasEditing = entryEditingID != nil
         let iso = DateHelp.iso(from: entryDate)
         let time = DateHelp.time(from: entryDate)
@@ -1128,7 +814,7 @@ final class AppModel {
         if let editing = entryEditingID,
            let index = next.firstIndex(where: { $0.id == editing }) {
             let previous = next[index]
-            let timestamp = previous.iso == iso && previous.time == time ? previous.createdAt : entryDate.timeIntervalSince1970 * 1000
+            let timestamp = previous.createdAt
             bill = Bill(
                 id: previous.id,
                 cents: fields.cents,
@@ -1139,21 +825,23 @@ final class AppModel {
                 createdAt: timestamp,
                 count: fields.count,
                 kinds: fields.kinds,
-                groups: fields.groups
+                groups: fields.groups,
+                updatedAt: now
             )
             next[index] = bill
         } else {
             bill = Bill(
-                id: "\(Int(Date().timeIntervalSince1970 * 1000))\(UUID().uuidString.prefix(4))",
+                id: UUID().uuidString.lowercased(),
                 cents: fields.cents,
                 type: fields.type,
                 note: fields.note,
                 iso: fields.iso,
                 time: fields.time,
-                createdAt: Date().timeIntervalSince1970 * 1000,
+                createdAt: now,
                 count: fields.count,
                 kinds: fields.kinds,
-                groups: fields.groups
+                groups: fields.groups,
+                updatedAt: now
             )
             next.insert(bill, at: 0)
         }
@@ -1180,7 +868,7 @@ final class AppModel {
                 }
             }
         } else {
-            entryError = settingsOpen ? "登录已过期，请重新登录" : "保存失败，请检查网络后重试"
+            entryError = "保存失败，请检查存储空间后重试"
         }
     }
 

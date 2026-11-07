@@ -164,7 +164,7 @@ enum CSVCodec {
             let groups = CashBreakdown.groups(for: cents)
             guard !groups.isEmpty else { throw CSVError.badRow(line, "金额无法组合成现钞") }
             let id = field(idIndex).isEmpty
-                ? "\(Int(Date().timeIntervalSince1970 * 1000))\(UUID().uuidString.prefix(4))"
+                ? UUID().uuidString.lowercased()
                 : field(idIndex)
             guard !seen.contains(id) else { throw CSVError.badRow(line, "编号重复") }
             seen.insert(id)

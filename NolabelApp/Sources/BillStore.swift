@@ -18,8 +18,8 @@ final class BillStore {
             in: .userDomainMask
         ).first!
         directory = base.appendingPathComponent("Nolabel", isDirectory: true)
-        fileURL = directory.appendingPathComponent("bills.json")
-        backupURL = directory.appendingPathComponent("bills.backup.json")
+        fileURL = directory.appendingPathComponent("ledger.json")
+        backupURL = directory.appendingPathComponent("ledger.backup.json")
         snapshotsDirectory = directory.appendingPathComponent("Snapshots", isDirectory: true)
         exportURL = fileManager.urls(
             for: .documentDirectory,
@@ -35,35 +35,40 @@ final class BillStore {
         createSnapshotsDirectoryIfNeeded()
     }
 
-    func loadRaw() -> String? {
-        if let raw = validRaw(at: fileURL) {
-            return raw
+    func loadDocument() -> LedgerDocument? {
+        if let document = document(at: fileURL) {
+            return document
         }
-        if let raw = validRaw(at: backupURL) {
+        if let document = document(at: backupURL) {
             restore(from: backupURL)
-            return raw
+            return document
         }
         if let snapshot = latestSnapshot() {
             restore(from: snapshot.url)
-            return snapshot.raw
+            return snapshot.document
         }
-        if let raw = validRaw(at: exportURL) {
+        if let document = document(at: exportURL) {
             restore(from: exportURL)
-            return raw
+            return document
         }
         return nil
     }
 
-    func saveRaw(_ raw: String) {
-        guard let data = raw.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data),
-              object is [String: Any] || object is [Any] else {
-            return
+    @discardableResult
+    func saveDocument(_ document: LedgerDocument) -> Bool {
+        guard let raw = LedgerCodec.raw(document) else { return false }
+        return saveRaw(raw)
+    }
+
+    private func saveRaw(_ raw: String) -> Bool {
+        guard LedgerCodec.parse(raw) != nil,
+              let data = raw.data(using: .utf8) else {
+            return false
         }
 
-        if let current = validRaw(at: fileURL), current == raw {
+        if let current = rawString(at: fileURL), current == raw {
             writeExport(data, raw: raw)
-            return
+            return true
         }
 
         createDirectoryIfNeeded()
@@ -80,13 +85,14 @@ final class BillStore {
             applyProtection(to: fileURL)
             writeSnapshot(data)
             writeExport(data, raw: raw)
+            return true
         } catch {
-            // Keep the web localStorage copy; the next launch can retry.
+            return false
         }
     }
 
     private func writeExport(_ data: Data, raw: String) {
-        if let current = validRaw(at: exportURL), current == raw {
+        if let current = rawString(at: exportURL), current == raw {
             return
         }
         try? data.write(to: exportURL, options: [.atomic])
@@ -94,7 +100,7 @@ final class BillStore {
     }
 
     private func writeSnapshot(_ data: Data) {
-        let name = "bills-\(snapshotFormatter.string(from: Date())).json"
+        let name = "ledger-\(snapshotFormatter.string(from: Date())).json"
         let url = snapshotsDirectory.appendingPathComponent(name)
         try? data.write(to: url, options: [.atomic])
         applyProtection(to: url)
@@ -119,7 +125,7 @@ final class BillStore {
         }
     }
 
-    private func latestSnapshot() -> (raw: String, url: URL)? {
+    private func latestSnapshot() -> (document: LedgerDocument, url: URL)? {
         guard let files = try? fileManager.contentsOfDirectory(
             at: snapshotsDirectory,
             includingPropertiesForKeys: nil
@@ -130,8 +136,8 @@ final class BillStore {
             .filter { $0.pathExtension == "json" }
             .sorted { $0.lastPathComponent > $1.lastPathComponent }
         for url in snapshots {
-            if let raw = validRaw(at: url) {
-                return (raw, url)
+            if let document = document(at: url) {
+                return (document, url)
             }
         }
         return nil
@@ -166,11 +172,14 @@ final class BillStore {
         )
     }
 
-    private func validRaw(at url: URL) -> String? {
+    private func document(at url: URL) -> LedgerDocument? {
+        guard let raw = rawString(at: url) else { return nil }
+        return LedgerCodec.parse(raw)
+    }
+
+    private func rawString(at url: URL) -> String? {
         guard let data = try? Data(contentsOf: url),
-              let raw = String(data: data, encoding: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data),
-              object is [String: Any] || object is [Any] else {
+              let raw = String(data: data, encoding: .utf8) else {
             return nil
         }
         return raw
