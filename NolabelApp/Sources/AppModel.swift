@@ -609,31 +609,40 @@ final class AppModel {
         return false
     }
 
-    @discardableResult
-    func importCSV(_ text: String) async -> Bool {
+    func parseCSVImport(_ text: String) -> [Bill]? {
         do {
             let imported = try CSVCodec.parse(text)
-            var map: [String: Bill] = [:]
-            for bill in bills { map[bill.id] = bill }
-            for bill in imported { map[bill.id] = bill }
-            let next = map.values.sorted { $0.createdAt > $1.createdAt }
-            if await saveBills(next) {
-                if let latest = next.max(by: { $0.iso < $1.iso }), let date = DateHelp.date(from: latest.iso) {
-                    selectedMonth = DateHelp.monthStart(date)
-                }
-                dataMessage = ""
-                dataMessageIsError = false
-                Haptics.success()
-                return true
-            }
-            return false
+            dataMessage = ""
+            dataMessageIsError = false
+            return imported
         } catch {
             dataMessage = (error as? LocalizedError)?.errorDescription ?? "CSV 读取失败"
             dataMessageIsError = true
             settingsOpen = true
             Haptics.warning()
-            return false
+            return nil
         }
+    }
+
+    @discardableResult
+    func commitCSVImport(_ imported: [Bill], replacing: Bool) async -> Bool {
+        let next: [Bill]
+        if replacing {
+            next = imported.sorted { $0.createdAt > $1.createdAt }
+        } else {
+            var map: [String: Bill] = [:]
+            for bill in bills { map[bill.id] = bill }
+            for bill in imported { map[bill.id] = bill }
+            next = map.values.sorted { $0.createdAt > $1.createdAt }
+        }
+        guard await saveBills(next) else { return false }
+        if let latest = next.max(by: { $0.iso < $1.iso }), let date = DateHelp.date(from: latest.iso) {
+            selectedMonth = DateHelp.monthStart(date)
+        }
+        dataMessage = ""
+        dataMessageIsError = false
+        Haptics.success()
+        return true
     }
 
     /// Switches the home-screen icon. The primary icon is set with `nil`,

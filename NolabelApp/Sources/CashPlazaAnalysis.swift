@@ -538,11 +538,6 @@ struct CashPlazaAnalysisView: View {
             VStack(spacing: 7) {
                 ratioBar
 
-                Text(ratioCaption)
-                    .scalableFont(10.5, weight: .medium)
-                    .foregroundStyle(palette.muted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(netLabel)
                         .scalableFont(10.5, weight: .medium)
@@ -606,13 +601,6 @@ struct CashPlazaAnalysisView: View {
             }
         }
         .frame(height: 6)
-    }
-
-    private var ratioCaption: String {
-        guard let perHundred = analysis.expensePerHundredIncome else {
-            return "没有收入记录，支出全从存量里来"
-        }
-        return "每 100 元收入，花掉 \(Formats.currencySymbol)\(Formats.money(Int((perHundred * 100).rounded())))"
     }
 
     private var netLabel: String {

@@ -9,6 +9,8 @@ struct SettingsPage: View {
     @State private var showImporter = false
     @State private var showExporter = false
     @State private var showClearAllConfirm = false
+    @State private var pendingImportBills: [Bill] = []
+    @State private var showImportConfirm = false
     @State private var iconToast: String?
     @State private var iconToastTask: Task<Void, Never>?
     @State private var iconSwitching = false
@@ -80,7 +82,9 @@ struct SettingsPage: View {
                     model.dataMessageIsError = true
                     return
                 }
-                Task { await model.importCSV(text) }
+                guard let imported = model.parseCSVImport(text) else { return }
+                pendingImportBills = imported
+                showImportConfirm = true
             case .failure:
                 model.dataMessage = "CSV 文件读取失败"
                 model.dataMessageIsError = true
@@ -109,6 +113,27 @@ struct SettingsPage: View {
             }
         } message: {
             Text("将删除全部 \(model.bills.count) 笔账单，只影响本机数据。此操作无法撤销。")
+        }
+        .confirmationDialog(
+            "导入 \(pendingImportBills.count) 笔账单",
+            isPresented: $showImportConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("覆盖当前数据", role: .destructive) {
+                let imported = pendingImportBills
+                pendingImportBills = []
+                Task { await model.commitCSVImport(imported, replacing: true) }
+            }
+            Button("合并") {
+                let imported = pendingImportBills
+                pendingImportBills = []
+                Task { await model.commitCSVImport(imported, replacing: false) }
+            }
+            Button("取消", role: .cancel) {
+                pendingImportBills = []
+            }
+        } message: {
+            Text("当前账本有 \(model.bills.count) 笔。覆盖会删除现有账单，只保留导入的 \(pendingImportBills.count) 笔；合并会保留现有账单，并按编号更新。")
         }
     }
 
