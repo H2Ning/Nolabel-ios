@@ -12,8 +12,10 @@ struct CashPlazaView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var smallDetentHeight: CGFloat
     @State private var mediumDetentHeight: CGFloat
-    @State private var stageYaw = Double(CashSceneLayout.defaultYaw)
-    @State private var stagePitch = Double(CashSceneLayout.packageTilt)
+    /// Cached for this presentation: dragging the cash stage must not rebuild
+    /// the month snapshot or the verdict analysis on every gesture frame.
+    @State private var plazaSnapshot: PlazaSnapshot
+    @State private var plazaAnalysis: MonthAnalysis
     @State private var selectedDayLabel: String?
     @State private var barInset: CGFloat = 0
     @State private var analysisTitleBottom: CGFloat = 0
@@ -36,6 +38,11 @@ struct CashPlazaView: View {
         self.onClose = onClose
         _smallDetentHeight = State(initialValue: model.plazaSmallHeight ?? 268)
         _mediumDetentHeight = State(initialValue: model.plazaMediumHeight ?? 538)
+        _plazaSnapshot = State(initialValue: PlazaSnapshot(bills: model.monthBills))
+        _plazaAnalysis = State(initialValue: MonthAnalysis(
+            bills: model.monthBills,
+            month: model.selectedMonth
+        ))
     }
 
     private var monthTitle: String { model.monthTitle }
@@ -175,7 +182,7 @@ struct CashPlazaView: View {
 
     var body: some View {
         NavigationStack {
-            content(PlazaSnapshot(bills: model.monthBills))
+            content(plazaSnapshot)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -194,6 +201,9 @@ struct CashPlazaView: View {
                     }
                 }
         }
+        .onChange(of: model.monthDataVersion) { _, _ in
+            refreshPlazaData()
+        }
         .presentationDetents(
             [.height(smallDetentHeight), .height(mediumDetentHeight), .large],
             selection: Binding(
@@ -202,6 +212,14 @@ struct CashPlazaView: View {
             )
         )
         .presentationDragIndicator(.visible)
+    }
+
+    private func refreshPlazaData() {
+        plazaSnapshot = PlazaSnapshot(bills: model.monthBills)
+        plazaAnalysis = MonthAnalysis(
+            bills: model.monthBills,
+            month: model.selectedMonth
+        )
     }
 
     private func presentationDetent(for kind: PlazaDetent) -> PresentationDetent {
@@ -248,10 +266,7 @@ struct CashPlazaView: View {
                             }
 
                         MonthVerdictCard(
-                            analysis: MonthAnalysis(
-                                bills: model.monthBills,
-                                month: model.selectedMonth
-                            ),
+                            analysis: plazaAnalysis,
                             palette: palette
                         )
                         .onGeometryChange(for: CGFloat.self) { geometry in
@@ -398,17 +413,14 @@ struct CashPlazaView: View {
             if snapshot.tallies.isEmpty {
                 emptyStage
             } else {
-                CashStageView(
+                PlazaCashStage(
                     source: .groups(snapshot.tallies),
                     palette: palette,
-                    yaw: $stageYaw,
-                    pitch: $stagePitch,
                     mode: model.plazaStageMode,
                     onSelectMode: { value in
                         model.plazaStageMode = value
                         Haptics.cashMode(value)
                     },
-                    onReady: {},
                     onExpandedContentHeight: { height in
                         expandedGridHeight = height
                     }
@@ -645,3 +657,29 @@ private struct PlazaDay: Identifiable {
     var id: Date { date }
 }
 
+
+/// Owns the 3D rotation locally, so a drag invalidates only this stage — not
+/// the analysis sheet, its chart or its verdict card.
+private struct PlazaCashStage: View {
+    let source: CashSceneSource
+    let palette: AppPalette
+    let mode: Int
+    let onSelectMode: (Int) -> Void
+    let onExpandedContentHeight: (CGFloat) -> Void
+
+    @State private var yaw = Double(CashSceneLayout.defaultYaw)
+    @State private var pitch = Double(CashSceneLayout.packageTilt)
+
+    var body: some View {
+        CashStageView(
+            source: source,
+            palette: palette,
+            yaw: $yaw,
+            pitch: $pitch,
+            mode: mode,
+            onSelectMode: onSelectMode,
+            onReady: {},
+            onExpandedContentHeight: onExpandedContentHeight
+        )
+    }
+}

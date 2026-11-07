@@ -182,8 +182,6 @@ final class AppModel {
     var entryWaitingForOperand = false
     var dateSheetOpen = false
     var entryError = ""
-    var cashYaw: Double = Double(CashSceneLayout.defaultYaw)
-    var cashPitch: Double = Double(CashSceneLayout.packageTilt)
     var cashMode = 1
     var plazaStageMode: Int {
         didSet { defaults.set(plazaStageMode, forKey: plazaStageModeKey) }
@@ -1040,8 +1038,6 @@ final class AppModel {
         entryJustEvaluated = false
         entryError = ""
         resetOperatorCycle()
-        cashYaw = Double(CashSceneLayout.defaultYaw)
-        cashPitch = Double(CashSceneLayout.packageTilt)
         entryOpen = true
         Haptics.soft()
     }

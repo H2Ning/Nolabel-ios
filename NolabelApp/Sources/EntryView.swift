@@ -15,15 +15,11 @@ struct EntryView: View {
                     palette.pageBG.ignoresSafeArea()
 
                     VStack(spacing: 0) {
-                    CashStageView(
+                    EntryCashStage(
                         source: .cents(model.entryPreviewCents),
                         palette: palette,
-                        yaw: $model.cashYaw,
-                        pitch: $model.cashPitch,
                         mode: model.cashMode,
-                        onSelectMode: { model.setCashMode($0) },
-                        onReady: {},
-                        modeBadgeAtBottom: true
+                        onSelectMode: { model.setCashMode($0) }
                     )
                     .frame(maxWidth: .infinity, minHeight: 140, maxHeight: 360)
                     .padding(.horizontal, 20)
@@ -393,5 +389,30 @@ struct DatePickerSheet: View {
             }
         }
         .onAppear { date = model.entryDate }
+    }
+}
+
+/// Same isolation as the plaza stage: rotating the notes must not re-render
+/// the keypad or the entry card.
+private struct EntryCashStage: View {
+    let source: CashSceneSource
+    let palette: AppPalette
+    let mode: Int
+    let onSelectMode: (Int) -> Void
+
+    @State private var yaw = Double(CashSceneLayout.defaultYaw)
+    @State private var pitch = Double(CashSceneLayout.packageTilt)
+
+    var body: some View {
+        CashStageView(
+            source: source,
+            palette: palette,
+            yaw: $yaw,
+            pitch: $pitch,
+            mode: mode,
+            onSelectMode: onSelectMode,
+            onReady: {},
+            modeBadgeAtBottom: true
+        )
     }
 }
